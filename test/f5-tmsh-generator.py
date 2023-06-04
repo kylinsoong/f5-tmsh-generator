@@ -23,8 +23,17 @@ with open(fileadd, "r") as file:
     for line in file:
         line = line.replace('[', '{').replace(']', '}')
         dict = ast.literal_eval(line)
+        #config = {'name': dict[k_name], 'ip': dict[k_vip], 'port': dict[k_vport], 'protocol': dict[k_protocol]}
+        #config['serverlist'] = format_ip_addr(dict[k_serveraddr])
+        #config['serverport'] = dict[k_serverport]
+        #config['snatpoollist'] = format_ip_addr(dict[k_snataddr])
+        #generateNewVirtualServer(config)
+
+        #config = {'name': dict[k_name], 'ip': dict[k_vip], 'port': dict[k_vport], 'protocol': dict[k_protocol]}
+        #generateNewVirtualServer(config)
+
         config = {'name': dict[k_name], 'ip': dict[k_vip], 'port': dict[k_vport], 'protocol': dict[k_protocol]}
+        #config['snatpoollist'] = format_ip_addr(dict[k_snataddr])
         config['serverlist'] = format_ip_addr(dict[k_serveraddr])
         config['serverport'] = dict[k_serverport]
-        config['snatpoollist'] = format_ip_addr(dict[k_snataddr])
         generateNewVirtualServer(config)

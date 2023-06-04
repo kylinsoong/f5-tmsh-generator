@@ -2,3 +2,11 @@
 
 An generator for generate F5 BIG-IP TMSH Scripts.
 
+link:tmsh_generator_lib.py[tmsh_generator_lib.py] provide a lib for generate F5 BIG-IP VS/Pool/Snat/Monitor/Profile.
+
+== Test onb Local
+
+[source, bash]
+----
+python f5-tmsh-generator.py test/request.txt
+----
