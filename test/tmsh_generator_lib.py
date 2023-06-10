@@ -1,4 +1,6 @@
 
+from pypinyin import pinyin, Style
+
 def find_last_index(str, substr):
     last_index = -1
     while True:
@@ -72,6 +74,9 @@ The following keys are optional:
   snatpoollist - The list if snat pool ip address
 '''
 def generateNewVirtualServer(dict):
+    name = dict['name']
+    print(name)
+    first_later = pinyin(name, style=Style.FIRST_LETTER)
     prefix = "yw" + "_" + dict['ip'] + "_" + str(dict['port']) + "_"
     vs_name = prefix + "vs"
     pool_name = prefix + "pool"
