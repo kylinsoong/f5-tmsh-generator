@@ -193,12 +193,18 @@ def data_collect(filepath):
                     info_dict['snatpoolname'] = vs_snatpool_name
                     info_dict['snatpool'] = snatpool_members_detail_list 
                 info_list.append(info_dict)
-
+        else:
+            info_dict = {
+                'vsname': vs_name_detail,
+                'vsip': vs_ip_detail,
+                'vsport': vs_port_detail
+            }
+            info_list.append(info_dict)
             
     return info_list   
 
 
-if not sys.argv[1:]:
+if not sys.argv[2:]:
     print("Usage: f5-tmsh-generator.py [file] [file]")
     sys.exit()
 
