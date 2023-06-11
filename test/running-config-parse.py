@@ -3,6 +3,7 @@
 import sys
 import ast
 import re
+import socket
 
 from pypinyin import pinyin, Style
 
@@ -112,6 +113,19 @@ def generateNewVirtualServer(dict):
         vsGeneratorVSOnly(vs_name, dict['ip'], dict['port'], dict['protocol'])
 
 
+def convert_servicename_to_port(input):
+    result = "";
+    if isinstance(input, str):
+        if input.isdigit():
+            return input
+        try:
+            result = socket.getservbyname(input)
+        except OSError:
+            return input
+    else:
+        result = input
+    return str(result)
+
 def data_collect(filepath):
     info_list = []
     vs_list = []
@@ -148,6 +162,7 @@ def data_collect(filepath):
 
         vs_port_detail_list = re.search(r'destination\s+\d+\.\d+\.\d+\.\d+:(\S+)', vs_data_detail, re.I)
         vs_port_detail = vs_port_detail_list.group(1)
+        vs_port_detail = convert_servicename_to_port(vs_port_detail)
 
         vs_snatpool_name = ""
         snatpool_members_detail_list = []
@@ -177,7 +192,7 @@ def data_collect(filepath):
                 for i,j in pool_ip_port_detail_list:
                     member_dict = {
                         'ip': i,
-                        'port': j
+                        'port': convert_servicename_to_port(j)
                     }
                     members.append(member_dict)
 
@@ -185,7 +200,7 @@ def data_collect(filepath):
                     'vsname': vs_name_detail,
                     'vsip': vs_ip_detail,
                     'vsport': vs_port_detail,
-                    'poolname': pool_data_start,
+                    'poolname': vs_pool_detail,
                     'pool': members
                 }
 
@@ -212,5 +227,5 @@ fileconfig = sys.argv[1]
 
 l = data_collect(fileconfig)
 
-for i in l:
-    print(i)
+#for i in l:
+#    print(i)

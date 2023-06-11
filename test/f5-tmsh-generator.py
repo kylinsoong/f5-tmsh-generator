@@ -3,6 +3,7 @@
 import sys
 import ast
 import re
+import socket
 
 from pypinyin import pinyin, Style
 
@@ -111,6 +112,18 @@ def generateNewVirtualServer(dict):
     else:
         vsGeneratorVSOnly(vs_name, dict['ip'], dict['port'], dict['protocol'])
 
+def convert_servicename_to_port(input):
+    result = "";
+    if isinstance(input, str):
+        if input.isdigit():
+            return input
+        try:
+            result = socket.getservbyname(input)
+        except OSError:
+            return input
+    else:
+        result = input
+    return str(result)
 
 def data_collect(filepath):
     info_list = []
@@ -148,6 +161,7 @@ def data_collect(filepath):
 
         vs_port_detail_list = re.search(r'destination\s+\d+\.\d+\.\d+\.\d+:(\S+)', vs_data_detail, re.I)
         vs_port_detail = vs_port_detail_list.group(1)
+        vs_port_detail = convert_servicename_to_port(vs_port_detail)
 
         vs_snatpool_name = ""
         snatpool_members_detail_list = []
@@ -177,7 +191,7 @@ def data_collect(filepath):
                 for i,j in pool_ip_port_detail_list:
                     member_dict = {
                         'ip': i,
-                        'port': j
+                        'port': convert_servicename_to_port(j)
                     }
                     members.append(member_dict)
 
@@ -185,7 +199,7 @@ def data_collect(filepath):
                     'vsname': vs_name_detail,
                     'vsip': vs_ip_detail,
                     'vsport': vs_port_detail,
-                    'poolname': pool_data_start,
+                    'poolname': vs_pool_detail,
                     'pool': members
                 }
 
@@ -225,7 +239,8 @@ k_externalvlan = 'externalvlan'
 
 with open(fileadd, "r") as file:
     l = data_collect(fileconfig)
-    print(len(l))
+    for i in l:
+        print(l)
     for line in file:
         line = line.replace('[', '{').replace(']', '}')
         dict = ast.literal_eval(line)
@@ -237,4 +252,4 @@ with open(fileadd, "r") as file:
         config['internalvlan'] = dict[k_internalvlan]
         config['external'] = dict[k_external]
         config['externalvlan'] = dict[k_externalvlan]
-        generateNewVirtualServer(config)
+#        generateNewVirtualServer(config)
