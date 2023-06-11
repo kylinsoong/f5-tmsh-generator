@@ -1,36 +1,3 @@
-= What's it?
-:toc: manual
-
-An generator for generate F5 BIG-IP TMSH Scripts.
-
-link:f5-tmsh-generator.py[f5-tmsh-generator.py] provide a lib for generate F5 BIG-IP VS/Pool/Snat/Monitor/Profile.
-
-[source, bash]
-.*Run on Local*
-----
-python f5-tmsh-generator.py test/f5config.1 test/request.txt
-----
-
-== Usage
-
-=== BIG-IP Configuration
-
-[source, bash]
-.*Network*
-----
-tmsh create net vlan external interfaces add { 1.1 { untagged } }
-tmsh create net vlan internal interfaces add { 1.2 { untagged } }
-tmsh create net self 10.1.10.240 address 10.1.10.240/24 vlan external allow-service default
-tmsh create net self 10.1.20.240 address 10.1.20.240/24 vlan internal allow-service default
-tmsh create net route Default_Gateway network 0.0.0.0/0 gw 10.1.10.2
-tmsh modify sys dns name-servers add { 10.1.10.2 }
-tmsh modify sys ntp timezone Asia/Shanghai
-tmsh save sys config
-----
-
-[source, bash]
-.*VS/Pool/SNAT*
-----
 tmsh create ltm pool pool_1 members add { 10.1.20.11:8081 { address 10.1.20.11 } 10.1.20.12:8081 { address 10.1.20.12 } 10.1.20.23:8081 { address 10.1.20.23 } } monitor http
 tmsh create ltm pool pool_2 members add { 10.1.20.21:8081 { address 10.1.20.21 } 10.1.20.22:8081 { address 10.1.20.22 } } monitor http
 tmsh create ltm pool pool_3 members add { 10.1.20.11:8081 { address 10.1.20.11 } 10.1.20.12:8081 { address 10.1.20.12 } 10.1.20.13:8081 { address 10.1.20.13 } 10.1.20.14:8081 { address 10.1.20.14 } 10.1.20.15:8081 { address 10.1.20.15 } 10.1.20.16:8081 { address 10.1.20.16 } 10.1.20.17:8081 { address 10.1.20.17 } 10.1.20.18:8081 { address 10.1.20.18 } 10.1.20.19:8081 { address 10.1.20.19 } 10.1.20.20:8081 { address 10.1.20.20 }}
@@ -40,17 +7,3 @@ tmsh create ltm snatpool snat_3 { members add { 10.1.10.106} members add { 10.1.
 tmsh create ltm virtual vs_1 destination 10.1.10.11:80 pool pool_1 ip-protocol tcp profiles add { http { } } source-address-translation { type snat pool snat_1 }
 tmsh create ltm virtual vs_2 destination 10.1.10.12:80 pool pool_2 ip-protocol tcp profiles add { http { } } source-address-translation { type snat pool snat_2 }
 tmsh create ltm virtual vs_3 destination 10.1.10.13:80 pool pool_3 ip-protocol tcp profiles add { http { } } source-address-translation { type snat pool snat_3 }
-----
-
-* link:bash/bash_net_setup.sh[bash/bash_net_setup.sh]
-* link:bash/bash_add.sh[bash/bash_add.sh] 
-* link:bash/bash_delete.sh[bash/bash_delete.sh]
-
-=== running-config 
-
-[source, bash]
-----
-tmsh show running-config 
-----
-
-* link:config/f5config.0[config/f5config.0]

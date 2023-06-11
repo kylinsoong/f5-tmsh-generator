@@ -1,0 +1,683 @@
+# tmsh show running-config 
+Display all 197 items? (y/n) y
+auth password-policy { }
+auth remote-role { }
+auth remote-user { }
+auth source { }
+auth user admin {
+    description "Admin User"
+    encrypted-password $1$VFlFWR0F$iIy0wXSbTl4EpmMYPnX1A.
+    partition Common
+    partition-access {
+        all-partitions {
+            role admin
+        }
+    }
+    shell none
+}
+cli global-settings { }
+cli preference {
+    alias-path { /Common }
+    prompt { host user status current-folder config-sync-status }
+}
+cm cert dtca-bundle.crt {
+    certificate-key-size 2048
+    checksum SHA1:1289:e4b4fb54d6201c3fcdaff06859d2d259b49fda84
+    create-time 2023-06-11:10:45:58
+    created-by %devmgmtd
+    expiration-date 2001811561
+    expiration-string "Jun  8 02:46:01 2033 GMT"
+    issuer CN=e16dc416-553e-496b-8abc000c295d0b42
+    key-type rsa-public
+    last-update-time 2023-06-11:10:46:10
+    mode 33188
+    revision 2
+    serial-number 994871
+    size 1289
+    subject CN=e16dc416-553e-496b-8abc000c295d0b42
+    updated-by %devmgmtd
+    version 3
+}
+cm cert dtca.crt {
+    certificate-key-size 2048
+    checksum SHA1:1289:e4b4fb54d6201c3fcdaff06859d2d259b49fda84
+    create-time 2023-06-11:10:45:58
+    created-by %devmgmtd
+    expiration-date 2001811561
+    expiration-string "Jun  8 02:46:01 2033 GMT"
+    issuer CN=e16dc416-553e-496b-8abc000c295d0b42
+    key-type rsa-public
+    last-update-time 2023-06-11:10:46:10
+    mode 33188
+    revision 2
+    serial-number 994871
+    size 1289
+    subject CN=e16dc416-553e-496b-8abc000c295d0b42
+    updated-by %devmgmtd
+    version 3
+}
+cm cert dtdi.crt {
+    certificate-key-size 2048
+    checksum SHA1:1245:f165407f868f5b5eebfc686e36d5c1fcf3909b44
+    create-time 2023-06-11:10:45:58
+    created-by %devmgmtd
+    expiration-date 2001811570
+    expiration-string "Jun  8 02:46:10 2033 GMT"
+    issuer CN=e16dc416-553e-496b-8abc000c295d0b42
+    key-type rsa-public
+    last-update-time 2023-06-11:10:46:10
+    mode 33188
+    revision 2
+    serial-number 31951
+    size 1245
+    subject CN=bigip1
+    updated-by %devmgmtd
+    version 3
+}
+cm device bigip1 {
+    active-modules { "Local Traffic Manager, VE-3G|UYZATPQ-KZMGKSN|Rate Shaping|APM, Limited|SSL, VE|Max Compression, VE|Exclusive Version, v12.1.X - 18.X|Anti-Virus Checks|Base Endpoint Security Checks|Firewall Checks|Network Access|Secure Virtual Keyboard|APM, Web Application|Machine Certificate Checks|Protected Workspace|Remote Desktop|App Tunnel" }
+    base-mac 00:0c:29:5d:0b:42
+    build 0.0.6
+    cert dtdi.crt
+    chassis-id 564def60-1d3a-b872-0711e65d0b42
+    edition Final
+    failover-state active
+    hostname bigip1
+    key dtdi.key
+    management-ip 10.1.1.133
+    marketing-name "BIG-IP Virtual Edition"
+    optional-modules { "Advanced Firewall Manager, VE-3G" "Advanced Protocols, VE" "Advanced Web Application Firewall, VE-3G" "Anti-Bot Mobile, VE 3 Gbps" "APM, Base, VE (50 CCU / 200 AS)" "APM, VE 3 Gbps" "App Mode (TMSH Only, No Root/Bash)" "ASM to AWF Upgrade, VE-3G" "ASM, ADD-VE, 3G" "Better to Best w/AWF Upgrade, 3Gbps" "BIG-IP VE, Multicast Routing" "BIG-IP VE, Privileged User Access, 100 Endpoints" "BIG-IP VE, Privileged User Access, 1000 Endpoints" "BIG-IP VE, Privileged User Access, 250 Endpoints" "BIG-IP VE, Privileged User Access, 50 Endpoints" "BIG-IP VE, Privileged User Access, 500 Endpoints" "BPEM-VE, ADD 3G" "CGN, ADD-VE, 3G" "DataSafe, VE-3G" "DNS and GTM (1K QPS), VE" "DNS and GTM (250 QPS), VE" "Dynamic Policy Provisioning, VE-3G" "External Interface and Network HSM, VE" "FIPS 140, BIG-IP VE-1G to 10G" "Intrusion Prevention System, VE-3G" "IP Intelligence, 1Yr, VE-1G/VE-3G/VE-5G" "IP Intelligence, 3Yr, VE-1G/VE-3G/VE-5G" "IPS, 1Yr, VE-1G / VE-3G / VE-5G" "IPS, 3Yr, VE-1G / VE-3G / VE-5G" "LTM to Best Bundle Upgrade, 3Gbps" "LTM to Best w/AWF Upgrade, 3Gbps" "LTM to Better Bundle Upgrade, 3Mbps" "LTM, 3 Gbps -5 Gbps Upgrade" ONAP "PEM, ADD-VE, 3G" "Routing Bundle, VE" "Secure Web Gateway, VE-3G-10G, 10000 Sessions, 1Yr" "Secure Web Gateway, VE-3G-10G, 10000 Sessions, 3Yr" "Secure Web Gateway, VE-3G-10G, 5000 Sessions, 1Yr" "Secure Web Gateway, VE-3G-10G, 5000 Sessions, 3Yr" "SSL Orchestrator, VE (3G/5G/10G)" "Subscriber Discovery, VE-3G" "Traffic Classification, VE-3G" "URL Filtering, VE-3G-10G, 10000 Sessions, 1Yr" "URL Filtering, VE-3G-10G, 10000 Sessions, 3Yr" "URL Filtering, VE-3G-10G, 5000 Sessions, 1Yr" "URL Filtering, VE-3G-10G, 5000 Sessions, 3Yr" "VE SSL Compression Offload, Medium" }
+    platform-id Z100
+    product BIG-IP
+    self-device true
+    time-zone Asia/Shanghai
+    version 13.1.3
+}
+cm device-group device_trust_group {
+    auto-sync enabled
+    devices {
+        bigip1 { }
+    }
+    network-failover disabled
+}
+cm device-group gtm {
+    devices {
+        bigip1 { }
+    }
+    network-failover disabled
+}
+cm key dtca.key {
+    checksum SHA1:1704:299edc13ba4bc0a7e664a444617f2790e246839c
+    create-time 2023-06-11:10:45:58
+    created-by %devmgmtd
+    key-size 2048
+    last-update-time 2023-06-11:10:46:10
+    mode 33184
+    revision 2
+    size 1704
+    updated-by %devmgmtd
+}
+cm key dtdi.key {
+    checksum SHA1:1704:4df80710d5c65ccc21941b686c2966a4a917c2fb
+    create-time 2023-06-11:10:45:58
+    created-by %devmgmtd
+    key-size 2048
+    last-update-time 2023-06-11:10:46:10
+    mode 33184
+    revision 2
+    size 1704
+    updated-by %devmgmtd
+}
+cm traffic-group traffic-group-1 {
+    unit-id 1
+}
+cm traffic-group traffic-group-local-only {
+    is-floating false
+}
+cm trust-domain Root {
+    ca-cert dtca.crt
+    ca-cert-bundle dtca-bundle.crt
+    ca-devices { /Common/bigip1 }
+    ca-key dtca.key
+    status standalone
+    trust-group device_trust_group
+}
+ltm default-node-monitor {
+    rule none
+}
+ltm dns analytics global-settings { }
+ltm dns cache global-settings { }
+ltm global-settings connection { }
+ltm global-settings general {
+    share-single-mac vmw-compat
+}
+ltm global-settings rule { }
+ltm global-settings traffic-control { }
+ltm node 10.1.20.11 {
+    address 10.1.20.11
+}
+ltm node 10.1.20.12 {
+    address 10.1.20.12
+}
+ltm node 10.1.20.13 {
+    address 10.1.20.13
+}
+ltm node 10.1.20.14 {
+    address 10.1.20.14
+}
+ltm node 10.1.20.15 {
+    address 10.1.20.15
+}
+ltm node 10.1.20.16 {
+    address 10.1.20.16
+}
+ltm node 10.1.20.17 {
+    address 10.1.20.17
+}
+ltm node 10.1.20.18 {
+    address 10.1.20.18
+}
+ltm node 10.1.20.19 {
+    address 10.1.20.19
+}
+ltm node 10.1.20.20 {
+    address 10.1.20.20
+}
+ltm node 10.1.20.21 {
+    address 10.1.20.21
+}
+ltm node 10.1.20.22 {
+    address 10.1.20.22
+}
+ltm node 10.1.20.23 {
+    address 10.1.20.23
+}
+ltm persistence global-settings { }
+ltm pool pool_1 {
+    members {
+        10.1.20.11:tproxy {
+            address 10.1.20.11
+            session monitor-enabled
+            state down
+        }
+        10.1.20.12:tproxy {
+            address 10.1.20.12
+            session monitor-enabled
+            state down
+        }
+        10.1.20.23:tproxy {
+            address 10.1.20.23
+            session monitor-enabled
+            state down
+        }
+    }
+    monitor http
+}
+ltm pool pool_2 {
+    members {
+        10.1.20.21:tproxy {
+            address 10.1.20.21
+            session monitor-enabled
+            state down
+        }
+        10.1.20.22:tproxy {
+            address 10.1.20.22
+            session monitor-enabled
+            state down
+        }
+    }
+    monitor http
+}
+ltm pool pool_3 {
+    members {
+        10.1.20.11:tproxy {
+            address 10.1.20.11
+        }
+        10.1.20.12:tproxy {
+            address 10.1.20.12
+        }
+        10.1.20.13:tproxy {
+            address 10.1.20.13
+        }
+        10.1.20.14:tproxy {
+            address 10.1.20.14
+        }
+        10.1.20.15:tproxy {
+            address 10.1.20.15
+        }
+        10.1.20.16:tproxy {
+            address 10.1.20.16
+        }
+        10.1.20.17:tproxy {
+            address 10.1.20.17
+        }
+        10.1.20.18:tproxy {
+            address 10.1.20.18
+        }
+        10.1.20.19:tproxy {
+            address 10.1.20.19
+        }
+        10.1.20.20:tproxy {
+            address 10.1.20.20
+        }
+    }
+}
+ltm snat-translation 10.1.10.103 {
+    address 10.1.10.103
+    inherited-traffic-group true
+    traffic-group traffic-group-1
+}
+ltm snat-translation 10.1.10.104 {
+    address 10.1.10.104
+    inherited-traffic-group true
+    traffic-group traffic-group-1
+}
+ltm snat-translation 10.1.10.105 {
+    address 10.1.10.105
+    inherited-traffic-group true
+    traffic-group traffic-group-1
+}
+ltm snat-translation 10.1.10.106 {
+    address 10.1.10.106
+    inherited-traffic-group true
+    traffic-group traffic-group-1
+}
+ltm snat-translation 10.1.10.107 {
+    address 10.1.10.107
+    inherited-traffic-group true
+    traffic-group traffic-group-1
+}
+ltm snat-translation 10.1.10.108 {
+    address 10.1.10.108
+    inherited-traffic-group true
+    traffic-group traffic-group-1
+}
+ltm snatpool snat_1 {
+    members {
+        10.1.10.103
+        10.1.10.104
+    }
+}
+ltm snatpool snat_2 {
+    members {
+        10.1.10.105
+        10.1.10.106
+    }
+}
+ltm snatpool snat_3 {
+    members {
+        10.1.10.107
+        10.1.10.108
+    }
+}
+ltm tacdb licenseddb licensed-tacdb {
+    partition none
+}
+ltm virtual vs_1 {
+    destination 10.1.10.11:http
+    ip-protocol tcp
+    mask 255.255.255.255
+    pool pool_1
+    profiles {
+        http { }
+        tcp { }
+    }
+    source 0.0.0.0/0
+    source-address-translation {
+        pool snat_1
+        type snat
+    }
+    translate-address enabled
+    translate-port enabled
+    vs-index 2
+}
+ltm virtual vs_2 {
+    destination 10.1.10.12:http
+    ip-protocol tcp
+    mask 255.255.255.255
+    pool pool_2
+    profiles {
+        http { }
+        tcp { }
+    }
+    source 0.0.0.0/0
+    source-address-translation {
+        pool snat_2
+        type snat
+    }
+    translate-address enabled
+    translate-port enabled
+    vs-index 3
+}
+ltm virtual vs_3 {
+    destination 10.1.10.13:http
+    ip-protocol tcp
+    mask 255.255.255.255
+    pool pool_3
+    profiles {
+        http { }
+        tcp { }
+    }
+    source 0.0.0.0/0
+    source-address-translation {
+        pool snat_3
+        type snat
+    }
+    translate-address enabled
+    translate-port enabled
+    vs-index 4
+}
+net cos global-settings { }
+net dag-globals { }
+net fdb tunnel http-tunnel { }
+net fdb tunnel socks-tunnel { }
+net fdb vlan external { }
+net fdb vlan internal { }
+net interface 1.1 {
+    if-index 48
+    mac-address 00:0c:29:5d:0b:4c
+    media-active 10000T-FD
+    media-fixed 10000T-FD
+    media-max auto
+    mtu 9198
+}
+net interface 1.2 {
+    if-index 64
+    mac-address 00:0c:29:5d:0b:56
+    media-active 10000T-FD
+    media-fixed 10000T-FD
+    media-max auto
+    mtu 9198
+}
+net interface 1.3 {
+    if-index 80
+    mac-address 00:0c:29:5d:0b:60
+    media-fixed 10000T-FD
+    media-max auto
+    mtu 9198
+}
+net interface mgmt {
+    if-index 32
+    mac-address 00:0c:29:5d:0b:42
+    media-active 100TX-FD
+}
+net ipsec ike-daemon ikedaemon { }
+net lldp-globals { }
+net multicast-globals { }
+net packet-filter-trusted { }
+net route Default_Gateway {
+    gw 10.1.10.2
+    network default
+}
+net route-domain 0 {
+    id 0
+    vlans {
+        external
+        internal
+        socks-tunnel
+        http-tunnel
+    }
+}
+net self 10.1.20.240 {
+    address 10.1.20.240/24
+    allow-service {
+        default
+    }
+    traffic-group traffic-group-local-only
+    vlan internal
+}
+net self 10.1.10.240 {
+    address 10.1.10.240/24
+    allow-service {
+        default
+    }
+    traffic-group traffic-group-local-only
+    vlan external
+}
+net self-allow {
+    defaults {
+        igmp:any
+        ospf:any
+        pim:any
+        tcp:domain
+        tcp:f5-iquery
+        tcp:https
+        tcp:snmp
+        tcp:ssh
+        udp:520
+        udp:cap
+        udp:domain
+        udp:f5-iquery
+        udp:snmp
+    }
+}
+net stp-globals { }
+net tunnels tunnel http-tunnel {
+    description "Tunnel for http-explicit profile"
+    if-index 240
+    profile tcp-forward
+}
+net tunnels tunnel socks-tunnel {
+    description "Tunnel for socks profile"
+    if-index 256
+    profile tcp-forward
+}
+net vlan external {
+    fwd-mode l3
+    if-index 272
+    interfaces {
+        1.1 { }
+    }
+    tag 4094
+}
+net vlan internal {
+    fwd-mode l3
+    if-index 288
+    interfaces {
+        1.2 { }
+    }
+    tag 4093
+}
+sys aom { }
+sys autoscale-group { }
+sys crypto allow-key-export { }
+sys daemon-log-settings clusterd { }
+sys daemon-log-settings csyncd { }
+sys daemon-log-settings icr-eventd { }
+sys daemon-log-settings icrd { }
+sys daemon-log-settings lind { }
+sys daemon-log-settings mcpd { }
+sys daemon-log-settings tmm { }
+sys datastor { }
+sys diags ihealth {
+    expiration 30
+    options none
+    password none
+    user none
+}
+sys diags ihealth-request {
+    error-str none
+    ihealth-finish-time 0
+    ihealth-start-time 0
+    progress 0
+    qk-progress 0
+    qkview-date 0
+    qkview-filename none
+    qkview-size 0
+    qkview-user none
+    tcpdump-date 0
+    tcpdump-filename none
+    tcpdump-size 0
+}
+sys disk logical-disk HD1 {
+    mode mixed
+    size 83968
+    vg-free 22584
+    vg-in-use 61156
+}
+sys disk logical-disk HD2 {
+    size 20480
+    vg-reserved 4096
+}
+sys dns {
+    name-servers { 10.1.10.2 }
+}
+sys dynad key {
+    blob hAjuKIYF5BQ/j4YaJN2mRB2nXpdMWSJXCeL9W93jAxRdRQU5zaf/JrLAWh7BfBbivkbw6mzEsTLOPfL7hay2KG1osGelByXB6/4FA5KNscZaUAGrMT6Ze7W9xcE6vCB6PiYMgdIEOKEAW+WBcmHrEGlUEPMPYITsYipdGtwMfIJ7K6WNE5R42YiOZuccXJzfjk/Niqadt604DPZDRJxg0FSbi9f7xP/yIql78HXGAoINPnJPJVf+bIlyPnqUuroOBP3gxdP4H9GaQiR90UvfFKqFqXeogrXpgNAwGisuj2KO511tIuJT43TUz1UdGUolATrkRL8Aiv5dNrD2i1n8Ku5YH7ChNZE2wBora+ZIUuP6+eqD4XkrYBiG8Guo0j7nuZDhdGWwwrVls4NiGd5Sz10i0fwxoJNISORUXeRxW/wS/nEoslGDP7pl6TjqlZDUrlfD08Kaak/2+xUyCqpj1WrCmQ46lyOH6G8FyruE66Os9m4eKpnGOcVctsBH5evsamn5IqN5UJX3SrwEBv92Z/U5cMIccXLR8ZTEMJvu0gmP+KkKlc2qLQgbKwgMR+tFSB+lnS4cc9Ow/CQT2SWcUxJWOowUzx9DNPfk1F7P78miBTgPcgM5w5iZkRg/KwHJywOQnQ6ctNhlPaE97IBwcx1iwD2NHrBbetxkioqTZco=
+    key $M$Pj$Z9X4BVAGrJ8a0mFf8ebF7gjtZoUlCVaDacts4AgWRfiI7HqPYLt25Crc0CbrgS1z
+}
+sys dynad settings {
+    development-mode false
+}
+sys ecm cloud-provider aws-ec2 {
+    description "The aws-ec2 parameters"
+    property-template {
+        account { }
+        availability-zone {
+            valid-values { a b c d }
+        }
+        instance-type {
+            valid-values { t2.micro t2.small t2.medium m3.medium m3.large m3.xlarge m3.2xlarge c3.large c3.xlarge c3.2xlarge c3.4xlarge c3.8xlarge r3.large r3.xlarge r3.2xlarge r3.4xlarge r3.8xlarge }
+        }
+        region {
+            valid-values { us-east-1 us-west-1 us-west-2 sa-east-1 eu-west-1 eu-central-1 ap-southeast-2 ap-southeast-1 ap-northeast-1 }
+        }
+    }
+}
+sys ecm cloud-provider dnet {
+    description "The dnet parameters"
+}
+sys ecm cloud-provider vsphere {
+    description "The vsphere parameters"
+    property-template {
+        cloud-host-ip { }
+        dhcp-network-name { }
+        end-point-url { }
+        node-name { }
+    }
+}
+sys ecm config { }
+sys feature-module cgnat {
+    disabled
+}
+sys folder Drafts {
+    device-group none
+    inherited-devicegroup true
+    inherited-traffic-group true
+    traffic-group traffic-group-1
+}
+sys fpga firmware-config {
+    type standard-balanced-fpga
+}
+sys global-settings {
+    mgmt-dhcp disabled
+}
+sys httpd { }
+sys icontrol-soap { }
+sys log-rotate { }
+sys management-dhcp sys-mgmt-dhcp-config {
+    request-options { subnet-mask broadcast-address routers domain-name domain-name-servers host-name ntp-servers interface-mtu }
+}
+sys management-ip 10.1.1.133/24 {
+    description configured-statically
+}
+sys management-ovsdb {
+    bfd-disabled
+    bfd-route-domain none
+    ca-cert-file none
+    cert-file none
+    cert-key-file none
+    disabled
+    flooding-type replicator
+    log-level info
+    logical-routing-type none
+    tunnel-maintenance-mode active
+}
+sys management-route default {
+    description configured-statically
+    gateway 10.1.1.1
+    mtu 1500
+    network default
+}
+sys ntp {
+    timezone Asia/Shanghai
+}
+sys outbound-smtp {
+    from-line-override disabled
+    mailhub localhost
+}
+sys provision ltm {
+    level nominal
+}
+sys scriptd { }
+sys sflow global-settings http { }
+sys sflow global-settings interface { }
+sys sflow global-settings system { }
+sys sflow global-settings vlan { }
+sys snmp {
+    agent-addresses { tcp6:161 udp6:161 }
+    communities {
+        comm-public {
+            community-name public
+            source default
+        }
+    }
+    disk-monitors {
+        root {
+            minspace 2000
+            path /
+        }
+        var {
+            minspace 10000
+            path /var
+        }
+    }
+    process-monitors {
+        bigd {
+            max-processes infinity
+            process bigd
+        }
+        chmand {
+            process chmand
+        }
+        httpd {
+            max-processes infinity
+            process httpd
+        }
+        mcpd {
+            process mcpd
+        }
+        sod {
+            process sod
+        }
+        tmm {
+            max-processes infinity
+            process tmm
+        }
+    }
+}
+sys software update {
+    auto-check enabled
+    auto-phonehome enabled
+    frequency weekly
+}
+sys software volume HD1.1 {
+    active
+    active-requested
+    basebuild 0.0.6
+    build 0.0.6
+    media {
+        HD1.1 {
+            default-boot-location
+            media hd
+            size default
+        }
+    }
+    product BIG-IP
+    status complete
+    version 13.1.3
+}
+sys sshd { }
+sys state-mirroring { }
+sys syslog { }
+sys url-db download-schedule urldb { }
