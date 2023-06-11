@@ -68,3 +68,11 @@ $ ./test/running-config-parse.py config/f5config.1
 {'vsname': 'vs_2', 'vsip': '10.1.10.12', 'vsport': 'http', 'poolname': 7017, 'pool': [{'ip': '10.1.20.21', 'port': 'tproxy'}, {'ip': '10.1.20.22', 'port': 'tproxy'}], 'snatpoolname': 'snat_2', 'snatpool': ['10.1.10.104', '10.1.10.105']}
 {'vsname': 'vs_3', 'vsip': '10.1.10.13', 'vsport': 'http', 'poolname': 7330, 'pool': [{'ip': '10.1.20.11', 'port': 'tproxy'}, {'ip': '10.1.20.12', 'port': 'tproxy'}, {'ip': '10.1.20.13', 'port': 'tproxy'}, {'ip': '10.1.20.14', 'port': 'tproxy'}, {'ip': '10.1.20.15', 'port': 'tproxy'}, {'ip': '10.1.20.16', 'port': 'tproxy'}, {'ip': '10.1.20.17', 'port': 'tproxy'}, {'ip': '10.1.20.18', 'port': 'tproxy'}, {'ip': '10.1.20.19', 'port': 'tproxy'}, {'ip': '10.1.20.20', 'port': 'tproxy'}], 'snatpoolname': 'snat_3', 'snatpool': ['10.1.10.106', '10.1.10.107', '10.1.10.108']}
 ----
+
+=== Service name port mapping
+
+[source, bash]
+----
+./test/extract-port-from-service-name.py test/f5-services-names.txt 
+./test/extract-port-from-service-name.py test/services-uniq.txt 
+----

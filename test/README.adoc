@@ -1,0 +1,10 @@
+= Scripts used in test
+
+[source, bash]
+.*Extract all service names*
+----
+grep -Ev ^'(#|$)' services.txt > ~/tmp/tm.3
+cat ~/tmp/tm.3 | awk '{print $1}' > ~/tmp/tm.4
+sort ~/tmp/tm.4 | uniq > services-uniq.txt
+----
+

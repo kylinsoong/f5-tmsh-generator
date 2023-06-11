@@ -118,6 +118,7 @@ def convert_servicename_to_port(input):
         if input.isdigit():
             return input
         try:
+            print(input)
             result = socket.getservbyname(input)
         except OSError:
             return input
@@ -239,8 +240,7 @@ k_externalvlan = 'externalvlan'
 
 with open(fileadd, "r") as file:
     l = data_collect(fileconfig)
-    for i in l:
-        print(l)
+    print(len(l))
     for line in file:
         line = line.replace('[', '{').replace(']', '}')
         dict = ast.literal_eval(line)
