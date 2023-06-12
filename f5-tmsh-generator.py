@@ -112,6 +112,13 @@ def generateNewVirtualServer(dict):
     else:
         vsGeneratorVSOnly(vs_name, dict['ip'], dict['port'], dict['protocol'])
 
+def manually_mapping(input):
+    if input == 'any':
+        return '0'
+    else:
+        print(input)
+        return '0'
+
 def convert_servicename_to_port(input):
     result = "";
     if isinstance(input, str):
@@ -120,10 +127,22 @@ def convert_servicename_to_port(input):
         try:
             result = socket.getservbyname(input)
         except OSError:
-            return input
+            return manually_mapping(input)
     else:
         result = input
     return str(result)
+
+def convert_servicename_to_port_f5(input):
+    all_dict = {}
+    with open("f5-services") as myfile:
+        for line in myfile:
+            name, var = line.partition(" ")[::2]
+            all_dict[name.strip()] = var.strip()
+
+    if input in all_dict:
+        return all_dict[input]
+    else:
+        return convert_servicename_to_port(input)
 
 def data_collect(filepath):
     info_list = []
@@ -161,7 +180,7 @@ def data_collect(filepath):
 
         vs_port_detail_list = re.search(r'destination\s+\d+\.\d+\.\d+\.\d+:(\S+)', vs_data_detail, re.I)
         vs_port_detail = vs_port_detail_list.group(1)
-        vs_port_detail = convert_servicename_to_port(vs_port_detail)
+        vs_port_detail = convert_servicename_to_port_f5(vs_port_detail)
 
         vs_snatpool_name = ""
         snatpool_members_detail_list = []
@@ -191,7 +210,7 @@ def data_collect(filepath):
                 for i,j in pool_ip_port_detail_list:
                     member_dict = {
                         'ip': i,
-                        'port': convert_servicename_to_port(j)
+                        'port': convert_servicename_to_port_f5(j)
                     }
                     members.append(member_dict)
 

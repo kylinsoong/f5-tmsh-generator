@@ -8,3 +8,11 @@ cat ~/tmp/tm.3 | awk '{print $1}' > ~/tmp/tm.4
 sort ~/tmp/tm.4 | uniq > services-uniq.txt
 ----
 
+[source, bash]
+.*Extract all service name/port mapping*
+----
+grep -Ev ^'(#|$)' services.txt > ~/tmp/tm.5
+cat ~/tmp/tm.5 | awk '{print $1, $2}' > ~/tmp/tm.6
+sort ~/tmp/tm.6 | uniq > f5-services
+----
+
