@@ -31,10 +31,20 @@ def format_ip_addr(ip):
         start = list[0][(lastdot + 1):]
         last = ips[1]
         for i in range(int(last) - int(start)):
-            num = int(start) + i
+            num = int(start) + i + 1
             list.insert(i + 1, prefix + str(num))
     else:
         list.insert(0, ip)
+    return list
+
+def format_ip_addr_list(ip):
+    list = []
+    if("," in ip) :
+        ips = ip.split(",")
+        for i in ips:
+            list.extend(format_ip_addr(i))
+    else:
+        list = format_ip_addr(ip)
     return list
 
 def poolGenerator(name, serlist, serport):
@@ -263,9 +273,9 @@ with open(fileadd, "r") as file:
         line = line.replace('[', '{').replace(']', '}')
         dict = ast.literal_eval(line)
         config = {'name': dict[k_name], 'ip': dict[k_vip], 'port': dict[k_vport], 'protocol': dict[k_protocol]}
-        config['serverlist'] = format_ip_addr(dict[k_serveraddr])
+        config['serverlist'] = format_ip_addr_list(dict[k_serveraddr])
         config['serverport'] = dict[k_serverport]
-        config['snatpoollist'] = format_ip_addr(dict[k_snataddr])
+        config['snatpoollist'] = format_ip_addr_list(dict[k_snataddr])
         config['internal'] = dict[k_internal]
         config['internalvlan'] = dict[k_internalvlan]
         config['external'] = dict[k_external]
