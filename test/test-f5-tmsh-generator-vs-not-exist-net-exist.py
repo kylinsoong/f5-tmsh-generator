@@ -163,6 +163,43 @@ def convert_servicename_to_port_f5(input):
     else:
         return convert_servicename_to_port(input)
 
+def data_collect_snat(data_all, vs_data_detail):
+    vs_snatpool_name = ""
+    snatpool_members_detail_list = []
+    vs_snat_detail_list = re.search(r'source-address-translation\s+(\S+)', vs_data_detail, re.I)
+    if vs_snat_detail_list:
+        vs_snat_start = re.search(vs_snat_detail_list.group(), vs_data_detail, re.I).start()
+        vs_snat_end = re.search("}", vs_data_detail[vs_snat_start:]).start()
+        vs_snat_detail = vs_data_detail[vs_snat_start:][:vs_snat_end + 1]
+        vs_snatpool_name_list = re.search(r'pool\s+(\S+)', vs_snat_detail, re.I)
+        if vs_snatpool_name_list:
+            vs_snatpool_name = vs_snatpool_name_list.group(1)
+            vs_snatpool_data_start = re.search(r'ltm snatpool\s+'+vs_snatpool_name, data_all, re.I).start()
+            vs_snatpool_data_end = re.search(r'}\s+}', data_all[vs_snatpool_data_start:]).start()
+            vs_snatpool_data_detail = data_all[vs_snatpool_data_start:][:vs_snatpool_data_end + 1]
+            snatpool_members_list = re.search(r'members\s+(\S+)', vs_snatpool_data_detail, re.I)
+            if snatpool_members_list:
+                vs_snatpool_data_detail = vs_snatpool_data_detail[snatpool_members_list.start():]
+                snatpool_members_detail_list = re.findall(r'(\d+\.\d+\.\d+\.\d+)', vs_snatpool_data_detail, re.I)
+            else:
+                snatpool_members_detail_list = None
+        else:
+            vs_snatpool_name = None
+            snatpool_members_detail_list = None
+    else:
+        vs_snatpool_name = None
+        snatpool_members_detail_list = None
+
+    return (vs_snatpool_name, snatpool_members_detail_list)
+
+
+def append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict):
+    if vs_snatpool_name is not None:
+        info_dict['snatpoolname'] = vs_snatpool_name
+    if snatpool_members_detail_list is not None and len(snatpool_members_detail_list) > 0:
+        info_dict['snatpool'] = snatpool_members_detail_list
+
+
 def data_collect(filepath):
 
     info_list = []
@@ -218,56 +255,67 @@ def data_collect(filepath):
         vs_port_detail = vs_port_detail_list.group(1)
         vs_port_detail = convert_servicename_to_port_f5(vs_port_detail)
 
-        vs_snatpool_name = ""
-        snatpool_members_detail_list = []
+        snatpool_results = data_collect_snat(data_all, vs_data_detail)
+        vs_snatpool_name = snatpool_results[0]
+        snatpool_members_detail_list = snatpool_results[1]
+
         vs_pool_detail_list = re.search(r'pool\s+(\S+)', vs_data_detail, re.I)
         if vs_pool_detail_list:
             vs_pool_detail = vs_pool_detail_list.group(1)
-            pool_data_start = re.search(r'ltm pool\s+'+vs_pool_detail, data_all, re.I).start()
-            pool_data_end = re.search(r'}\s+}', data_all[pool_data_start:]).start()
-            pool_data_detail = data_all[pool_data_start:][:pool_data_end]
 
-            vs_snat_detail_list = re.search(r'source-address-translation\s+(\S+)', vs_data_detail, re.I)
-            if vs_snat_detail_list:
-                vs_snat_start = re.search(vs_snat_detail_list.group(), vs_data_detail, re.I).start()
-                vs_snat_end = re.search("}", vs_data_detail[vs_snat_start:]).start()
-                vs_snat_detail = vs_data_detail[vs_snat_start:][:vs_snat_end + 1]
-                vs_snatpool_name_list = re.search(r'pool\s+(\S+)', vs_snat_detail, re.I)
-                if vs_snatpool_name_list:
-                    vs_snatpool_name = vs_snatpool_name_list.group(1)
-                    vs_snatpool_data_start = re.search(r'ltm snatpool\s+'+vs_snatpool_name, data_all, re.I).start()
-                    vs_snatpool_data_end = re.search(r'}\s+}', data_all[vs_snatpool_data_start:]).start()
-                    vs_snatpool_data_detail = data_all[vs_snatpool_data_start:][:vs_snatpool_data_end + 1]
-                    snatpool_members_detail_list = re.findall(r'(\d+\.\d+\.\d+\.\d+)', vs_snatpool_data_detail, re.I)
-
-            pool_ip_port_detail_list = re.findall(r'(\d+\.\d+\.\d+\.\d+):(\S+)\s+{', pool_data_detail, re.I)
-            if pool_ip_port_detail_list:
-                members = []
-                for i,j in pool_ip_port_detail_list:
-                    member_dict = {
-                        'ip': i,
-                        'port': convert_servicename_to_port_f5(j)
-                    }
-                    members.append(member_dict)
-
+            # The re.search(r'pool\s+(\S+)', vs_data_detail, re.I) search may get both pool and snatpool
+            #   If vs has pool, then the vs_pool_detail is the name of pool
+            #   if vs don't has pool, then the vs_pool_detail may be the snatpool name
+            #
+            # If pool name equals snatpool name, should skip the pool match parse
+            #        VS has snatpool, but no has pool
+            if vs_pool_detail == vs_snatpool_name:
                 info_dict = {
                     'vsname': vs_name_detail,
                     'vsip': vs_ip_detail,
-                    'vsport': vs_port_detail,
-                    'poolname': vs_pool_detail,
-                    'pool': members
+                    'vsport': vs_port_detail
                 }
-
-                if len(snatpool_members_detail_list) > 0:
-                    info_dict['snatpoolname'] = vs_snatpool_name
-                    info_dict['snatpool'] = snatpool_members_detail_list 
+                append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
                 info_list.append(info_dict)
-        else:
+            else:
+                pool_data_start = re.search(r'ltm pool\s+'+vs_pool_detail, data_all, re.I).start()
+                pool_data_end = re.search(r'}\s+}', data_all[pool_data_start:]).start()
+                pool_data_detail = data_all[pool_data_start:][:pool_data_end]
+                pool_ip_port_detail_list = re.findall(r'(\d+\.\d+\.\d+\.\d+):(\S+)\s+{', pool_data_detail, re.I)
+                if pool_ip_port_detail_list:
+                    members = []
+                    for i,j in pool_ip_port_detail_list:
+                        member_dict = {
+                            'ip': i,
+                            'port': convert_servicename_to_port_f5(j)
+                        }
+                        members.append(member_dict)
+
+                    info_dict = {
+                        'vsname': vs_name_detail,
+                        'vsip': vs_ip_detail,
+                        'vsport': vs_port_detail,
+                        'poolname': vs_pool_detail,
+                        'pool': members
+                    }
+                    append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
+                    info_list.append(info_dict)
+                else:    # VS has pool, but the pool does not has member                    
+                    info_dict = {
+                        'vsname': vs_name_detail,
+                        'vsip': vs_ip_detail,
+                        'vsport': vs_port_detail,
+                        'poolname': vs_pool_detail
+                    }
+                    append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
+                    info_list.append(info_dict)
+        else: # VS does not has a pool
             info_dict = {
                 'vsname': vs_name_detail,
                 'vsip': vs_ip_detail,
                 'vsport': vs_port_detail
             }
+            append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
             info_list.append(info_dict)
             
     return (net_list, info_list)
