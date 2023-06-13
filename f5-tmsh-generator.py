@@ -51,22 +51,22 @@ def format_ip_addr_list(ip):
 def poolGenerator(name, serlist, serport):
     pool = "tmsh create ltm pool " + name + " members add {"
     for ip in serlist:
-        member = " " + ip + ":" + str(serport) + " { address " + ip + " }"
+        member = " " + ip + ":" + str(serport)
         pool += member
     pool += " } monitor http"
     print(pool)
 
 def snatGenerator(name, snatlist):
-    snat = "tmsh create ltm snatpool " + name + " {"
+    snat = "tmsh create ltm snatpool " + name + " members add {"
     for ip in snatlist:
-        member = " members add { " + ip + " }"
+        member = " " + ip
         snat += member
     snat += " }"
     print(snat)
 
 def vsGenerator(vs_name, pool_name, snat_name, addr, port, protocol):
-    vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " pool " + pool_name + " ip-protocol " + protocol + " source-address-translation { type snat " + snat_name + " }"
-    print(vs)  
+    vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " pool " + pool_name + " ip-protocol " + protocol + " profiles add { http { } } source-address-translation { type snat pool " + snat_name + " }"
+    print(vs)
 
 def vsGeneratorSnatOnly(vs_name, snat_name, addr, port, protocol):
     vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " ip-protocol " + protocol + " source-address-translation { type snat " + snat_name + " }"
@@ -79,6 +79,58 @@ def vsGeneratorPoolOnly(vs_name, pool_name, addr, port, protocol):
 def vsGeneratorVSOnly(vs_name, addr, port, protocol):
     vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " ip-protocol " + protocol
     print(vs)
+
+
+def is_vs_exist(vs_name, infolist):
+    for info in infolist:
+        if info['vsname'] == vs_name:
+            return True
+    return False
+
+def is_net_exists(ip, netlist):
+    for n in netlist:
+        if ipaddress.ip_address(ip) in ipaddress.ip_network(n, False):
+            return True
+    return False
+
+def verify_and_generate_net_scripts(ip, config):
+    netlist = config['netlist']
+    if not is_net_exists(ip, netlist):
+        print("TDO-- Generate network scripts")
+
+def generate_net_scripts(config):
+    vip = config['ip']
+    verify_and_generate_net_scripts(vip, config)
+
+    poolip = config['serverlist']
+    for ip in poolip:
+        verify_and_generate_net_scripts(ip, config)
+
+    snatpoolip = config['snatpoollist']
+    for ip in snatpoolip:
+        verify_and_generate_net_scripts(ip, config)
+
+
+def generate_vs_not_exist_net_exist(vs_name, pool_name, snat_name, dict):
+    isPoolCreated = False
+    isSnatCreated = False
+
+    if("serverlist" in dict and "serverport" in dict):
+        poolGenerator(pool_name, dict['serverlist'], dict['serverport'])
+        isPoolCreated = True
+
+    if("snatpoollist" in dict):
+        snatGenerator(snat_name, dict['snatpoollist'])
+        isSnatCreated = True
+
+    if(isPoolCreated and isSnatCreated):
+        vsGenerator(vs_name, pool_name, snat_name, dict['ip'], dict['port'], dict['protocol'])
+    elif(isPoolCreated and ~isSnatCreated):
+        vsGeneratorPoolOnly(vs_name, pool_name, dict['ip'], dict['port'], dict['protocol'])
+    elif(~isPoolCreated and isSnatCreated):
+        vsGeneratorSnatOnly(vs_name, snat_name, dict['ip'], dict['port'], dict['protocol'])
+    else:
+        vsGeneratorVSOnly(vs_name, dict['ip'], dict['port'], dict['protocol'])
 
 
 '''
@@ -100,35 +152,19 @@ The following keys are optional:
 '''
 def generateNewVirtualServer(dict):
     first_later_list = pinyin(dict['name'], style=Style.FIRST_LETTER)
-    prefix = listToString(first_later_list) + "_" + dict['ip'] + "_" + str(dict['port']) + "_"
-    vs_name = prefix + "vs"
-    pool_name = prefix + "pool"
+    prefix = listToString(first_later_list) + "_" + dict['ip'] + "_"
+    prefix_port = prefix + str(dict['port']) + "_"
+    vs_name = prefix_port + "vs"
+    pool_name = prefix_port + "pool"
     snat_name = prefix + "snat"
 
-    isPoolCreated = False
-    isSnatCreated = False
-
-    print(config['netlist'])
-    print(config['infolist'])
-
-    return '0'
-
-    if("serverlist" in dict and "serverport" in dict):
-        poolGenerator(pool_name, dict['serverlist'], dict['serverport'])
-        isPoolCreated = True
-
-    if("snatpoollist" in dict):
-        snatGenerator(snat_name, dict['snatpoollist'])
-        isSnatCreated = True    
-
-    if(isPoolCreated and isSnatCreated):
-        vsGenerator(vs_name, pool_name, snat_name, dict['ip'], dict['port'], dict['protocol'])
-    elif(isPoolCreated and ~isSnatCreated):
-        vsGeneratorPoolOnly(vs_name, pool_name, dict['ip'], dict['port'], dict['protocol'])
-    elif(~isPoolCreated and isSnatCreated):
-        vsGeneratorSnatOnly(vs_name, snat_name, dict['ip'], dict['port'], dict['protocol'])
+    if is_vs_exist(vs_name, dict['infolist']):
+        print("VS exist, TODO--")
     else:
-        vsGeneratorVSOnly(vs_name, dict['ip'], dict['port'], dict['protocol'])
+        generate_net_scripts(dict)
+        generate_vs_not_exist_net_exist(vs_name, pool_name, snat_name, dict)
+
+
 
 def manually_mapping(input):
     if input == 'any':
