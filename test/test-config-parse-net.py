@@ -4,6 +4,7 @@ import sys
 import ast
 import re
 import socket
+import ipaddress
 
 from pypinyin import pinyin, Style
 
@@ -179,8 +180,11 @@ def data_collect(filepath):
         if net_self_address_list:
             net_self_address = net_self_address_list.group(0)
             net_self_address = net_self_address.lstrip('address').strip()
-            print(net_self_address)
-
+            net_addr = ipaddress.ip_network(net_self_address, False)
+            net_list.append(str(net_addr))
+    net_list = list(dict.fromkeys(net_list))
+    #print(net_list)
+    #print(len(net_list))
 
     vs_name_data = re.findall(r'ltm virtual\s+\S+',data_all, re.I)
     for i in vs_name_data:
@@ -258,13 +262,18 @@ def data_collect(filepath):
             }
             info_list.append(info_dict)
             
-    return info_list   
+    return (net_list, info_list)   
 
 
-fileconfig1 = "f5config.2"
-fileconfig2 = "../config/f5config.1"
-l = data_collect(fileconfig2)
-print(len(l))
-l = data_collect(fileconfig1)
-print(len(l))
+#l = data_collect("f5config.1")
+#l = data_collect("f5config.2")
+#l = data_collect("../config/f5config.0")
+l = data_collect("../config/f5config.1")
+
+#print(l)
+
+net_list = l[0]
+info_list = l[1]
+print(type(net_list))
+print(net_list)
 

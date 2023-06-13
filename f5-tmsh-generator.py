@@ -4,6 +4,7 @@ import sys
 import ast
 import re
 import socket
+import ipaddress
 
 from pypinyin import pinyin, Style
 
@@ -88,6 +89,8 @@ The dictionary should contains the following key:
   ip       - VS ip
   port     - VS port
   protocol - VS Protocol
+  netlist  - show running-config contained network
+  infolist - show running-config contained VS/Pool/Snat Info
   
 The following keys are optional:
 
@@ -104,6 +107,11 @@ def generateNewVirtualServer(dict):
 
     isPoolCreated = False
     isSnatCreated = False
+
+    print(config['netlist'])
+    print(config['infolist'])
+
+    return '0'
 
     if("serverlist" in dict and "serverport" in dict):
         poolGenerator(pool_name, dict['serverlist'], dict['serverport'])
@@ -155,8 +163,11 @@ def convert_servicename_to_port_f5(input):
         return convert_servicename_to_port(input)
 
 def data_collect(filepath):
+
     info_list = []
     vs_list = []
+    net_list = []
+
     with open(filepath, 'r') as fo:
         data_all = fo.read()
 
@@ -167,6 +178,20 @@ def data_collect(filepath):
         error1 = '[7m---(less '+i
         data_all = data_all.replace(error1, '')
     fo.close()
+
+    net_name_data = re.findall(r'net self\s+\S+',data_all, re.I)
+    for i in net_name_data:
+        net_self_data_start = re.search(i, data_all, re.I).start()
+        net_self_data_end = re.search('address', data_all[net_self_data_start:]).start()
+        net_self_data = data_all[net_self_data_start:][:net_self_data_end + 40]
+        #net_self_address = re.search(r'address\s+(\d+\.\d+\.\d+\.\d+)', net_self_data, re.I)
+        net_self_address_list = re.search(r'address\s+((\d){1,3}\.){3}\d{1,3}(\/(\d{1,2}))?', net_self_data, re.I)
+        if net_self_address_list:
+            net_self_address = net_self_address_list.group(0)
+            net_self_address = net_self_address.lstrip('address').strip()
+            net_addr = ipaddress.ip_network(net_self_address, False)
+            net_list.append(str(net_addr))
+    net_list = list(dict.fromkeys(net_list))
 
     vs_name_data = re.findall(r'ltm virtual\s+\S+',data_all, re.I)
     for i in vs_name_data:
@@ -244,7 +269,7 @@ def data_collect(filepath):
             }
             info_list.append(info_dict)
             
-    return info_list   
+    return (net_list, info_list)
 
 
 if not sys.argv[2:]:
@@ -267,8 +292,7 @@ k_external = 'external地址'
 k_externalvlan = 'externalvlan'
 
 with open(fileadd, "r") as file:
-    l = data_collect(fileconfig)
-    print(len(l))
+    config_results = data_collect(fileconfig)
     for line in file:
         line = line.replace('[', '{').replace(']', '}')
         dict = ast.literal_eval(line)
@@ -280,4 +304,6 @@ with open(fileadd, "r") as file:
         config['internalvlan'] = dict[k_internalvlan]
         config['external'] = dict[k_external]
         config['externalvlan'] = dict[k_externalvlan]
+        config['netlist'] = config_results[0]
+        config['infolist'] = config_results[1]
         generateNewVirtualServer(config)
