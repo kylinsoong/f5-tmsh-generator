@@ -81,11 +81,16 @@ def vsGeneratorVSOnly(vs_name, addr, port, protocol):
     print(vs)
 
 
-def is_vs_exist(vs_name, infolist):
+def is_vs_exist(vs_name, dict):
+    infolist = dict['infolist']
+    vs_ip = dict['ip']
+    vs_port = dict['port']
     for info in infolist:
-        if info['vsname'] == vs_name:
+        if info['vsname'] == vs_name and info['vsip'] == vs_ip and info['vsport'] == vs_port:
             return True
+
     return False
+
 
 def is_net_exists(ip, netlist):
     for n in netlist:
@@ -158,7 +163,7 @@ def generateNewVirtualServer(dict):
     pool_name = prefix_port + "pool"
     snat_name = prefix + "snat"
 
-    if is_vs_exist(vs_name, dict['infolist']):
+    if is_vs_exist(vs_name, dict):
         print("VS exist, TODO--")
     else:
         generate_net_scripts(dict)
