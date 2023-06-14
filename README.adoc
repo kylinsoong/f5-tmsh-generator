@@ -101,3 +101,14 @@ tmsh create ltm pool qywy_10.1.10.14_80_pool members add { 10.1.20.3:8080 10.1.2
 tmsh create ltm snatpool qywy_10.1.10.14_snat members add { 10.1.10.108 10.1.10.109 }
 tmsh modify ltm virtual qywy_10.1.10.14_80_vs pool qywy_10.1.10.14_80_pool source-address-translation { type snat pool qywy_10.1.10.14_snat }
 ----
+
+=== VS Exist & Net Exist & Pool Not Exist && SNAT Exist
+
+[source, bash]
+----
+$ ./f5-tmsh-generator.py config/f5config.2 test/request-vs-exist-pool-not-exist-snat-exist.txt
+tmsh create ltm pool qywx_10.1.10.13_80_pool members add { 10.1.20.3:8080 10.1.20.4:8080 10.1.20.5:8080 10.1.20.7:8080 10.1.20.28:8080 10.1.20.29:8080 10.1.20.30:8080 } monitor http
+tmsh modify ltm snatpool qywx_10.1.10.13_snat members add { 10.1.10.108 10.1.10.109 }
+tmsh modify ltm virtual qywx_10.1.10.13_80_vs pool qywx_10.1.10.13_80_pool
+----
+

@@ -76,6 +76,26 @@ def snatGenerator(name, dict):
     else:
         return False
 
+def extract_exist_members(snat_name, infolist):
+    results = []
+    for info in infolist:
+        if "snatpoolname" in info and snat_name == info['snatpoolname'] and "snatpool" in info:
+            results = info['snatpool']
+            break
+    return results
+
+def snat_generator_modify_add_memebers(snat_name, dict):
+    members = extract_exist_members(snat_name, dict['infolist'])
+    if("snatpoollist" in dict):
+        snatlist = dict['snatpoollist']
+        snat = "tmsh modify ltm snatpool " + snat_name + " members add {"
+        for ip in snatlist:
+            if ip not in members:
+                member = " " + ip
+                snat += member
+        snat += " }"
+        print(snat)
+
 def vsGenerator(vs_name, pool_name, snat_name, addr, port, protocol):
     vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " pool " + pool_name + " ip-protocol " + protocol + " profiles add { http { } } source-address-translation { type snat pool " + snat_name + " }"
     print(vs)
@@ -96,6 +116,10 @@ def vs_generator_modify_reference_pool_snat(vs_name, pool_name, snat_name):
     vs = "tmsh modify ltm virtual " + vs_name + " pool " + pool_name + " source-address-translation { type snat pool "+ snat_name +" }"
     print(vs)
 
+def vs_generator_modify_reference_pool(vs_name, pool_name):
+    vs = "tmsh modify ltm virtual " + vs_name + " pool " + pool_name
+    print(vs)
+
 
 def is_vs_exist(vs_name, dict):
     infolist = dict['infolist']
@@ -109,7 +133,7 @@ def is_vs_exist(vs_name, dict):
 def is_pool_exist(pool_name, dict):
     infolist = dict['infolist']
     for info in infolist:
-        if "poolname" in dict and pool_name == dict['poolname']:
+        if "poolname" in info and pool_name == info['poolname']:
             return True
     return False
 
@@ -117,7 +141,7 @@ def is_pool_exist(pool_name, dict):
 def is_snatpool_exist(snat_name, dict):
     infolist = dict['infolist']
     for info in infolist:
-        if "snatpoolname" in dict and pool_name == dict['snatpoolname']:
+        if "snatpoolname" in info and snat_name == info['snatpoolname']:
             return True
     return False
 
@@ -156,12 +180,15 @@ def generate_vs_exist(vs_name, pool_name, snat_name, dict):
         isPoolCreated = poolGenerator(pool_name, dict)
 
     if is_snatpool_exist(snat_name, dict):
-        print("santpoolexist")
+        snat_generator_modify_add_memebers(snat_name, dict)
     else:
         isSnatCreated = snatGenerator(snat_name, dict)
 
+
     if(isPoolCreated and isSnatCreated):
         vs_generator_modify_reference_pool_snat(vs_name, pool_name, snat_name)
+    elif(isPoolCreated and ~isSnatCreated):
+        vs_generator_modify_reference_pool(vs_name, pool_name)
     
 
 
