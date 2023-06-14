@@ -62,6 +62,36 @@ def poolGenerator(name, dict):
     else:
         return False
 
+def extract_exist_poolmembers(pool_name, infolist):
+    results = []
+    ip_list = []
+    port_list = []
+    for info in infolist:
+        if "poolname" in info and pool_name == info['poolname'] and "pool" in info:
+            results = info['pool']
+            break
+    for i in results:
+        ip_list.append(i['ip'])
+        port_list.append(i['port'])
+    return (ip_list, list(dict.fromkeys(port_list)))     
+
+def pool_generator_modify_add_memebers(name, dict):
+    members = extract_exist_poolmembers(name, dict['infolist'])
+    if("serverlist" in dict and "serverport" in dict):
+        serlist = dict['serverlist']
+        serport = dict['serverport']
+        pool = "tmsh modify ltm pool " + name + " members add {"
+        if serport not in members[1]:
+            for ip in serlist:
+                member = " " + ip + ":" + str(serport)
+                pool += member
+        else:
+            for ip in serlist:
+                if ip not in members[0]:
+                    member = " " + ip + ":" + str(serport)
+                    pool += member
+        pool += " }"
+        print(pool)            
 
 def snatGenerator(name, dict):
     if("snatpoollist" in dict):
@@ -120,6 +150,10 @@ def vs_generator_modify_reference_pool(vs_name, pool_name):
     vs = "tmsh modify ltm virtual " + vs_name + " pool " + pool_name
     print(vs)
 
+def vs_generator_modify_reference_snat(vs_name, snat_name):
+    vs = "tmsh modify ltm virtual " + vs_name +  " source-address-translation { type snat pool "+ snat_name +" }"
+    print(vs)
+
 
 def is_vs_exist(vs_name, dict):
     infolist = dict['infolist']
@@ -175,7 +209,7 @@ def generate_vs_exist(vs_name, pool_name, snat_name, dict):
     isSnatCreated = False
 
     if is_pool_exist(pool_name, dict):
-        print("poolexist")
+        pool_generator_modify_add_memebers(pool_name, dict)
     else:
         isPoolCreated = poolGenerator(pool_name, dict)
 
@@ -189,7 +223,8 @@ def generate_vs_exist(vs_name, pool_name, snat_name, dict):
         vs_generator_modify_reference_pool_snat(vs_name, pool_name, snat_name)
     elif(isPoolCreated and ~isSnatCreated):
         vs_generator_modify_reference_pool(vs_name, pool_name)
-    
+    elif(~isPoolCreated and isSnatCreated):
+        vs_generator_modify_reference_snat(vs_name, snat_name)    
 
 
 def generate_vs_not_exist(vs_name, pool_name, snat_name, dict):
