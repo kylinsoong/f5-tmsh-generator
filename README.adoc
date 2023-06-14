@@ -121,3 +121,12 @@ tmsh modify ltm pool sjyh_10.1.10.12_80_pool members add { 10.1.20.7:8081 10.1.2
 tmsh create ltm snatpool sjyh_10.1.10.12_snat members add { 10.1.10.108 10.1.10.109 }
 tmsh modify ltm virtual sjyh_10.1.10.12_80_vs source-address-translation { type snat pool sjyh_10.1.10.12_snat }
 ----
+
+=== VS Exist & Net Exist & Pool Exist && SNAT Exist
+
+[source, bash]
+----
+$ ./f5-tmsh-generator.py config/f5config.3 test/request-vs-exist-pool-exist-snat-exist.txt
+tmsh modify ltm pool ydbg_10.1.10.11_80_pool members add { 10.1.20.13:8080 10.1.20.14:8080 10.1.20.15:8080 10.1.20.7:8080 10.1.20.28:8080 10.1.20.29:8080 10.1.20.30:8080 }
+tmsh modify ltm snatpool ydbg_10.1.10.11_snat members add { 10.1.10.108 10.1.10.109 }
+----
