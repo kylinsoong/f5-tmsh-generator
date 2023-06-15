@@ -130,3 +130,15 @@ $ ./f5-tmsh-generator.py config/f5config.3 test/request-vs-exist-pool-exist-snat
 tmsh modify ltm pool ydbg_10.1.10.11_80_pool members add { 10.1.20.13:8080 10.1.20.14:8080 10.1.20.15:8080 10.1.20.7:8080 10.1.20.28:8080 10.1.20.29:8080 10.1.20.30:8080 }
 tmsh modify ltm snatpool ydbg_10.1.10.11_snat members add { 10.1.10.108 10.1.10.109 }
 ----
+
+=== VS not Exist & Net not Exist
+
+[source, bash]
+----
+$ ./f5-tmsh-generator.py config/f5config.3 test/request-net-not-exist-vs-not-exist.txt
+tmsh create net vlan external interfaces add { 2.1 { untagged } }
+tmsh create net self 10.1.10.240 address 10.1.10.240/24 vlan external allow-service default
+tmsh create ltm pool qyyx_10.3.10.11_80_pool members add { 10.1.20.13:8080 10.1.20.14:8080 10.1.20.15:8080 10.1.20.7:8080 10.1.20.28:8080 10.1.20.29:8080 10.1.20.30:8080 } monitor http
+tmsh create ltm snatpool qyyx_10.3.10.11_snat members add { 10.1.10.108 10.1.10.109 }
+tmsh create ltm virtual qyyx_10.3.10.11_80_vs destination 10.3.10.11:80 pool qyyx_10.3.10.11_80_pool ip-protocol tcp profiles add { http { } } source-address-translation { type snat pool qyyx_10.3.10.11_snat }
+----

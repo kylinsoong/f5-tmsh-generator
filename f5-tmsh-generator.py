@@ -155,6 +155,18 @@ def vs_generator_modify_reference_snat(vs_name, snat_name):
     print(vs)
 
 
+def network_generate(ip, config):
+    vlan_name = "external"
+    vlan_inter = "2.1"
+    vlan_type = "untagged" 
+    vlan = "tmsh create net vlan " + vlan_name + " interfaces add { " + vlan_inter + " { " + vlan_type + " } }"
+    gateway_ip = "10.1.10.240"
+    gateway_net = "10.1.10.240/24"
+    vlan_gateway = "tmsh create net self " + gateway_ip + " address " + gateway_net + " vlan " + vlan_name + " allow-service default"
+    print(vlan)
+    print(vlan_gateway)
+
+
 def is_vs_exist(vs_name, dict):
     infolist = dict['infolist']
     vs_ip = dict['ip']
@@ -189,7 +201,7 @@ def is_net_exists(ip, netlist):
 def verify_and_generate_net_scripts(ip, config):
     netlist = config['netlist']
     if not is_net_exists(ip, netlist):
-        print("TODO-- Generate network scripts")
+        network_generate(ip, config)
 
 def generate_net_scripts(config):
     vip = config['ip']
