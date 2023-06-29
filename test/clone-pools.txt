@@ -1,0 +1,18 @@
+ltm virtual DXY_RongQiSuZhuJi_duinei_30002_vs {
+    clone-pools {
+        DXY_RongQiSuZhuJi_duinei_30002_pool {
+            context serverside
+        }
+    }
+    destination 11.105.120.14:pago-services2
+    ip-protocol tcp
+    mask 255.255.255.255
+    pool DXY_RongQiSuZhuJi_duinei_30002_pool
+    profiles {
+        no-pva-FastL4 { }
+    }
+    source 0.0.0.0/0
+    translate-address enabled
+    translate-port enabled
+    vs-index 72
+}

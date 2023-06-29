@@ -163,8 +163,8 @@ def network_generate(ip, config):
     gateway_ip = "10.1.10.240"
     gateway_net = "10.1.10.240/24"
     vlan_gateway = "tmsh create net self " + gateway_ip + " address " + gateway_net + " vlan " + vlan_name + " allow-service default"
-    print(vlan)
-    print(vlan_gateway)
+    #print(vlan)
+    #print(vlan_gateway)
 
 
 def is_vs_exist(vs_name, dict):
@@ -420,6 +420,10 @@ def data_collect(filepath):
         vs_pool_detail_list = re.search(r'pool\s+(\S+)', vs_data_detail, re.I)
         if vs_pool_detail_list:
             vs_pool_detail = vs_pool_detail_list.group(1)
+
+            if vs_pool_detail == "{" :
+                tmp_list = re.findall(r'pool\s+(\S+)', vs_data_detail, re.I)
+                vs_pool_detail = tmp_list[1]
 
             # The re.search(r'pool\s+(\S+)', vs_data_detail, re.I) search may get both pool and snatpool
             #   If vs has pool, then the vs_pool_detail is the name of pool
