@@ -56,7 +56,7 @@ def poolGenerator(name, dict):
         for ip in serlist:
             member = " " + ip + ":" + str(serport)
             pool += member
-        pool += " } monitor http"
+        pool += " } monitor tcp"
         print(pool)
         return True
     else:
@@ -126,20 +126,29 @@ def snat_generator_modify_add_memebers(snat_name, dict):
         snat += " }"
         print(snat)
 
+def profileGenerator(protocol):
+    if protocol == "tcp":
+        return "profiles add { fastL4 { } }"
+    elif protocol == "http":
+        return "profiles add { http { } }"
+    else:
+        return "profiles add { fastL4 { } }"
+
 def vsGenerator(vs_name, pool_name, snat_name, addr, port, protocol):
-    vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " pool " + pool_name + " ip-protocol " + protocol + " profiles add { http { } } source-address-translation { type snat pool " + snat_name + " }"
+    print(vs_name, pool_name, snat_name, addr, port, protocol)
+    vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " pool " + pool_name + " ip-protocol tcp " + profileGenerator(protocol) + " source-address-translation { type snat pool " + snat_name + " }"
     print(vs)
 
 def vsGeneratorSnatOnly(vs_name, snat_name, addr, port, protocol):
-    vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " ip-protocol " + protocol + " source-address-translation { type snat " + snat_name + " }"
+    vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " ip-protocol tcp " + profileGenerator(protocol) + " source-address-translation { type snat " + snat_name + " }"
     print(vs)
 
 def vsGeneratorPoolOnly(vs_name, pool_name, addr, port, protocol):
-    vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " ip-protocol " + protocol + " pool " + pool_name
+    vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " ip-protocol tcp  pool " + pool_name + " " + profileGenerator(protocol)
     print(vs)
 
 def vsGeneratorVSOnly(vs_name, addr, port, protocol):
-    vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " ip-protocol " + protocol
+    vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " ip-protocol tcp " + profileGenerator(protocol)
     print(vs)
 
 def vs_generator_modify_reference_pool_snat(vs_name, pool_name, snat_name):
