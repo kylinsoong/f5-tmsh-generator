@@ -181,7 +181,7 @@ def is_vs_exist(vs_name, dict):
     vs_ip = dict['ip']
     vs_port = dict['port']
     for info in infolist:
-        if info['vsname'] == vs_name and info['vsip'] == vs_ip and info['vsport'] == vs_port:
+        if info['vsip'] == vs_ip and info['vsport'] == vs_port:
             return True
     return False
 
