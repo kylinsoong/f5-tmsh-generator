@@ -207,10 +207,18 @@ def is_net_exists(ip, netlist):
             return True
     return False
 
+def is_valid_ip_address(address):
+    try:
+        ipaddress.ip_address(address)
+        return True
+    except ValueError:
+        return False
+
 def verify_and_generate_net_scripts(ip, config):
-    netlist = config['netlist']
-    if not is_net_exists(ip, netlist):
-        network_generate(ip, config)
+    if is_valid_ip_address(ip): 
+        netlist = config['netlist']
+        if not is_net_exists(ip, netlist):
+            network_generate(ip, config)
 
 def generate_net_scripts(config):
     vip = config['ip']
