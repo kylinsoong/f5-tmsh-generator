@@ -97,12 +97,18 @@ def snatGenerator(name, dict):
     if("snatpoollist" in dict):
         snatlist = dict['snatpoollist']
         snat = "tmsh create ltm snatpool " + name + " members add {"
+        members = ""
         for ip in snatlist:
-            member = " " + ip
-            snat += member
-        snat += " }"
-        print(snat)
-        return True
+            if is_valid_ip_address(ip) :
+                member = " " + ip
+                members += member
+        if len(members) > 1:
+            snat += members;
+            snat += " }"
+            print(snat)
+            return True
+        else:
+            return False
     else:
         return False
 
