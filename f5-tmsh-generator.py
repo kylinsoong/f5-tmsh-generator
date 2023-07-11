@@ -190,8 +190,18 @@ def is_vs_exist(vs_name, dict):
     vs_port = dict['port']
     for info in infolist:
         if info['vsip'] == vs_ip and info['vsport'] == vs_port:
+            dict['existed_vs_name'] = info['vsname'] 
+            if 'poolname' in info.keys():
+                dict['existed_pool_name'] = info['poolname']
+            else:
+                dict['existed_pool_name'] = None
+            if 'snatpoolname' in info.keys(): 
+                dict['existed_snatpool_name'] = info['snatpoolname']
+            else:
+                dict['existed_snatpool_name'] = None
             return True
     return False
+
 
 def is_pool_exist(pool_name, dict):
     infolist = dict['infolist']
@@ -306,6 +316,11 @@ def generateNewVirtualServer(dict):
     generate_net_scripts(dict)
 
     if is_vs_exist(vs_name, dict):
+        vs_name = dict['existed_vs_name']
+        if dict['existed_pool_name'] is not None:
+            pool_name = dict['existed_pool_name'] 
+        if dict['existed_snatpool_name'] is not None:
+            snat_name = dict['existed_snatpool_name']
         generate_vs_exist(vs_name, pool_name, snat_name, dict)
     else:
         generate_vs_not_exist(vs_name, pool_name, snat_name, dict)
