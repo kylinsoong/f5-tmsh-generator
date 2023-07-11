@@ -11,7 +11,9 @@ from pypinyin import pinyin, Style
 def listToString(s):
     result = ""
     for l in s:
-        result += l[0]
+        item = l[0]
+        item = item[0].upper() + item[1:]
+        result += item
     return result
 
 def find_last_index(str, substr):
@@ -295,11 +297,10 @@ The following keys are optional:
   snatpoollist - The list if snat pool ip address
 '''
 def generateNewVirtualServer(dict):
-    first_later_list = pinyin(dict['name'], style=Style.FIRST_LETTER)
-    prefix = listToString(first_later_list) + "_" + dict['ip'] + "_"
-    prefix_port = prefix + str(dict['port']) + "_"
-    vs_name = prefix_port + "vs"
-    pool_name = prefix_port + "pool"
+    first_later_list = pinyin(dict['name'], style=Style.NORMAL)
+    prefix = listToString(first_later_list) + "_" + dict['ip'] + "_" + str(dict['port']) + "_"
+    vs_name = prefix + "vs"
+    pool_name = prefix + "pool"
     snat_name = prefix + "snat"
 
     generate_net_scripts(dict)
