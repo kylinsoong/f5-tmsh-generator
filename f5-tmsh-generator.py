@@ -143,7 +143,6 @@ def profileGenerator(protocol):
         return "profiles add { fastL4 { } }"
 
 def vsGenerator(vs_name, pool_name, snat_name, addr, port, protocol):
-    print(vs_name, pool_name, snat_name, addr, port, protocol)
     vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " pool " + pool_name + " ip-protocol tcp " + profileGenerator(protocol) + " source-address-translation { type snat pool " + snat_name + " }"
     print(vs)
 
