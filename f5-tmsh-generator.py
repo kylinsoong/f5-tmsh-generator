@@ -231,23 +231,84 @@ def is_valid_ip_address(address):
     except ValueError:
         return False
 
+def is_valid_ip_network(address):
+    try:
+        ipaddress.ip_network(address, False)
+        return True
+    except ValueError:
+        return False
+
 def verify_and_generate_net_scripts(ip, config):
     if is_valid_ip_address(ip): 
         netlist = config['netlist']
         if not is_net_exists(ip, netlist):
             network_generate(ip, config)
 
-def generate_net_scripts(config):
+def itertor_and_generate_net_scripts(config):
     vip = config['ip']
     verify_and_generate_net_scripts(vip, config)
-
+        
     poolip = config['serverlist']
     for ip in poolip:
         verify_and_generate_net_scripts(ip, config)
-
+        
     snatpoolip = config['snatpoollist']
     for ip in snatpoolip:
         verify_and_generate_net_scripts(ip, config)
+
+def generate_net_vlan(vlan_name, trunk, tag):
+    tmsh = "tmsh create net vlan " + vlan_name + " interfaces add { " + trunk + " { tagged } } tag " + tag
+    print(tmsh)
+
+def extract_floating_address(network):
+    ip_address_str = network[0:len(network) - 3]
+    ip_address = ipaddress.ip_address(ip_address_str) + 2
+    floatingip = str(ip_address) + network[len(network) - 3:]
+    return floatingip
+
+def generate_net_gateway(self, floating, vlan_name, self_name, floating_name):
+    tmsh_self = "tmsh create net self " + self_name + " address " + self + " vlan " + vlan_name + " allow-service default"
+    tmsh_floating = "tmsh create net self " + floating_name + " address " + floating + " vlan " + vlan_name + " allow-service default traffic-group /Common/traffic-group-1"
+    print(tmsh_self)
+    print(tmsh_floating)
+
+def generate_net_scripts(config):
+    # Current comment out itertor all VIP, Pool Member IP, SNATPool Member IP and generate netscript
+    #itertor_and_generate_net_scripts(config)
+
+    net_external = config['external']
+    net_externaltag = config['externalvlan']
+    net_externaltrunk = config['externaltrunk']
+    net_internal = config['internal'] 
+    net_internaltag = config['internalvlan'] 
+    net_internaltrunk = config['internaltrunk']
+
+    isExternalVlanCreated = False
+    isInternalVlanCreated = False
+
+    if len(net_externaltag) > 0 and len(net_externaltrunk) > 0:
+        vlan_name = "External_vlan" + net_externaltag 
+        generate_net_vlan(vlan_name, net_externaltrunk, net_externaltag)
+        isExternalVlanCreated = True
+
+    if len(net_internaltag) > 0 and len(net_internaltrunk) > 0:
+        vlan_name = "Internal_vlan" + net_internaltag
+        generate_net_vlan(vlan_name, net_internaltrunk, net_internaltag)
+        isInternalVlanCreated = True
+    
+    if isExternalVlanCreated and is_valid_ip_network(net_external):
+        vlan_name = "External_vlan" + net_externaltag
+        self_name = "External_selfip_vlan" + net_externaltag
+        floating_name = "External_floatingip_vlan" + net_externaltag
+        floatingip = extract_floating_address(net_external)
+        generate_net_gateway(net_external, floatingip, vlan_name, self_name, floating_name)
+
+    if isInternalVlanCreated and is_valid_ip_network(net_internal):
+        vlan_name = "Internal_vlan" + net_internaltag
+        self_name = "Internal_selfip_vlan" + net_internaltag
+        floating_name = "Internal_floatingip_vlan" + net_internaltag
+        floatingip = extract_floating_address(net_internal)
+        generate_net_gateway(net_external, floatingip, vlan_name, self_name, floating_name)
 
 
 def generate_vs_exist(vs_name, pool_name, snat_name, dict):
@@ -537,8 +598,10 @@ k_serveraddr = '真实服务器地址'
 k_protocol = '协议类型'
 k_internal = 'internal地址'
 k_internalvlan = 'internalvlan'
+k_internaltrunk = 'internaltrunk'
 k_external = 'external地址'
 k_externalvlan = 'externalvlan'
+k_externaltrunk = 'externaltrunk'
 
 with open(fileadd, "r") as file:
     config_results = data_collect(fileconfig)
@@ -551,8 +614,10 @@ with open(fileadd, "r") as file:
         config['snatpoollist'] = format_ip_addr_list(dict[k_snataddr])
         config['internal'] = dict[k_internal]
         config['internalvlan'] = dict[k_internalvlan]
+        config['internaltrunk'] = dict[k_internaltrunk]
         config['external'] = dict[k_external]
         config['externalvlan'] = dict[k_externalvlan]
+        config['externaltrunk'] = dict[k_externaltrunk]
         config['netlist'] = config_results[0]
         config['infolist'] = config_results[1]
         generateNewVirtualServer(config)
