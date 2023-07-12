@@ -79,9 +79,12 @@ def extract_exist_poolmembers(pool_name, infolist):
 
 def pool_generator_modify_add_memebers(name, dict):
     members = extract_exist_poolmembers(name, dict['infolist'])
+    isPoolNotEmpty = True
     if("serverlist" in dict and "serverport" in dict):
         serlist = dict['serverlist']
         serport = dict['serverport']
+        if len(serlist) == 1 and serlist[0] == "":
+            isPoolNotEmpty = False
         pool = "tmsh modify ltm pool " + name + " members add {"
         if serport not in members[1]:
             for ip in serlist:
@@ -93,7 +96,8 @@ def pool_generator_modify_add_memebers(name, dict):
                     member = " " + ip + ":" + str(serport)
                     pool += member
         pool += " }"
-        print(pool)            
+        if isPoolNotEmpty:
+            print(pool)            
 
 def snatGenerator(name, dict):
     if("snatpoollist" in dict):
@@ -124,15 +128,19 @@ def extract_exist_members(snat_name, infolist):
 
 def snat_generator_modify_add_memebers(snat_name, dict):
     members = extract_exist_members(snat_name, dict['infolist'])
+    isSNATPoolNotEmpty = True
     if("snatpoollist" in dict):
         snatlist = dict['snatpoollist']
+        if len(snatlist) == 1 and snatlist[0] == "":
+            isSNATPoolNotEmpty = False
         snat = "tmsh modify ltm snatpool " + snat_name + " members add {"
         for ip in snatlist:
             if ip not in members:
                 member = " " + ip
                 snat += member
         snat += " }"
-        print(snat)
+        if isSNATPoolNotEmpty:
+            print(snat)
 
 def profileGenerator(protocol):
     if protocol == "tcp":
