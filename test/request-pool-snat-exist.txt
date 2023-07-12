@@ -1,0 +1,1 @@
+['系统名称': '移动办公', 'VS地址': '10.1.10.11', 'VS端口': '80', '真实服务器地址': '10.1.20.11-12', '服务器端口': '8081', '协议类型': 'tcp', 'SNAT地址': '10.1.10.101', 'internal地址': '', 'internalvlan': '', 'internaltrunk': '', 'external地址': '', 'externalvlan': '', 'externaltrunk': '']
