@@ -280,6 +280,9 @@ def generate_net_gateway(self, floating, vlan_name, self_name, floating_name, st
     print(tmsh_standby)
     print(tmsh_floating)
 
+def generate_save_sync(dict):
+    print("tmsh save sys config")
+
 def generate_net_scripts(config):
     # Current comment out itertor all VIP, Pool Member IP, SNATPool Member IP and generate netscript
     #itertor_and_generate_net_scripts(config)
@@ -394,6 +397,8 @@ def generateNewVirtualServer(dict):
         generate_vs_exist(vs_name, pool_name, snat_name, dict)
     else:
         generate_vs_not_exist(vs_name, pool_name, snat_name, dict)
+
+    generate_save_sync(dict)
 
 
 
