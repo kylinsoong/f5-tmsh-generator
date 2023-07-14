@@ -334,7 +334,7 @@ def generate_net_scripts(config):
         floating_name = "Internal_floatingip_vlan" + net_internaltag
         floatingip = extract_floating_address(net_internal)
         standby = extract_standby_address(net_internal)
-        generate_net_gateway(net_external, floatingip, vlan_name, self_name, floating_name, standby)
+        generate_net_gateway(net_internal, floatingip, vlan_name, self_name, floating_name, standby)
 
 
 def generate_vs_exist(vs_name, pool_name, snat_name, dict):
