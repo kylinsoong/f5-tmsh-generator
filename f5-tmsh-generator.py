@@ -163,7 +163,7 @@ def profileGenerator(protocol):
     if protocol == "tcp":
         return "profiles add { fastL4 { } }"
     elif protocol == "http":
-        return "profiles add { http { } }"
+        return "profiles add { http { } } service-down-immediate-action reset"
     else:
         return "profiles add { fastL4 { } }"
 
