@@ -142,6 +142,10 @@ def data_collect_system_extract_login(data_all):
         timeout_validation_spec = "否"
         timeout_validation_tmsh.append("tmsh modify sys sshd inactivity-timeout 720")
 
+    sshd_allow = data_all[sshd_data_start:][:sshd_timeout_start]
+    sshd_allow = sshd_allow.lstrip("sys sshd").strip().lstrip("{").strip()
+    sshd_allow = "sshd " + sshd_allow
+
     httpd_data_start = re.search(r'sys httpd\s+(\S+)', data_all,re.I).start()
     httpd_timeout_start = re.search(r'auth-pam-idle-timeout\s+(\S+)', data_all[httpd_data_start:],re.I).start()
     httpd_timeout_end = re.search(r'}', data_all[httpd_data_start:][httpd_timeout_start:]).start()
@@ -155,7 +159,11 @@ def data_collect_system_extract_login(data_all):
 
     user_login_validation_list.append((6, timeout_validation_note, timeout_validation_spec, timeout_validation_tmsh, False))
 
-    return user_login_validation_list    
+    httpd_allow = data_all[httpd_data_start:][:httpd_timeout_start]
+    httpd_allow = httpd_allow.lstrip("sys httpd").strip().lstrip("{").strip()
+    httpd_allow = "https " + httpd_allow
+
+    return (user_login_validation_list, sshd_allow, httpd_allow)  
 
 def data_collect_system_extract_ntp(data_all):
     ntp_validation_list = []
@@ -222,18 +230,59 @@ def data_collect_system_extract_snmp(data_all):
     else:
         snmp_validation_list.append((12, "", "否", ["tmsh modify sys snmp traps add { XXXXX  { version 2c community psbcread host XX.XX.XX.XX  port XXX } } "], True))
 
-    return snmp_validation_list
+    snmp_allowed_address = ""
+    snmp_allowed_address_start = re.search("allowed-addresses", snmp_data,re.I).start()
+    snmp_allowed_address_end = re.search("communities", snmp_data[snmp_allowed_address_start:],re.I).start()
+    snmp_allowed_address_raw = snmp_data[snmp_allowed_address_start:][:snmp_allowed_address_end]
+    if len(snmp_allowed_address_raw) > 20:
+        snmp_allowed_address = "snmp " + snmp_allowed_address_raw
 
+    return (snmp_validation_list, snmp_allowed_address)
 
+def data_collect_system_extract_syslog(data_all):
+    syslog_validation_list = []
+    syslog_data_start = re.search("sys syslog", data_all,re.I).start()
+    syslog_data_end = re.search("sys turboflex profile-config", data_all[syslog_data_start:],re.I).start()
+    syslog_data = data_all[syslog_data_start:][:syslog_data_end]
+    if len(syslog_data) > 30:
+        syslog_validation_list.append((13, "", "是", [syslog_data], True))
+    else:
+        syslog_validation_list.append((13, "", "否", ["tmsh modify sys syslog remote-servers add { XXXX { host XXX.XXX.XXX.XXX remote-port XXX local-ip XXX.XXX.XXX.XXX } }"], True))
+    syslog_validation_list.append((14, "", "是", ["tmsh  modify  sys  syslog  local6-from notice"], True))
+    return syslog_validation_list 
+
+def data_collect_system_extract_acl(sshd_acl, httpd_acl, snmp_acl):
+    secure_acl_validation_list = []
+
+    if len(sshd_acl) > 20:
+        secure_acl_validation_list.append((16, "", "是", [sshd_acl], True))
+    else:
+        secure_acl_validation_list.append((16, "", "否", ["tmsh modify sys sshd allow add { xxx.xxx.xxx.xxx/xx }"], True))
+ 
+    if len(httpd_acl) > 20:
+        secure_acl_validation_list.append((16, "", "是", [httpd_acl], True))
+    else:
+        secure_acl_validation_list.append((16, "", "否", ["tmsh modify sys httpd allow add { xxx.xxx.xxx.xxx/xx }"], True))    
+
+    if len(snmp_acl) > 30:
+       secure_acl_validation_list.append((15, "", "是", [snmp_acl], True))
+    else:
+       secure_acl_validation_list.append((15, "", "否", ["tmsh modify sys snmp allowed-addresses add { xxx.xxx.xxx.xxx  }"], True))
     
+    return secure_acl_validation_list
 
 def data_collect_system(data_all):
     hostname = data_collect_system_extract_hostname(data_all)
     user_validation_results = data_collect_system_extract_users(data_all)
-    login_validation_results = data_collect_system_extract_login(data_all)
+    login_validation_results_all = data_collect_system_extract_login(data_all)
+    login_validation_results = login_validation_results_all[0]
     ntp_validation_results = data_collect_system_extract_ntp(data_all)
-    snmp_validation_results = data_collect_system_extract_snmp(data_all)    
-    print(snmp_validation_results)
+    snmp_validation_results_all = data_collect_system_extract_snmp(data_all)    
+    snmp_validation_results = snmp_validation_results_all[0]
+    syslog_validation_results = data_collect_system_extract_syslog(data_all)
+    secure_acl_validation_results = data_collect_system_extract_acl(login_validation_results_all[1], login_validation_results_all[2], snmp_validation_results_all[1])
+ 
+    print(secure_acl_validation_results)    
 
     return (hostname, user_validation_results)
  
