@@ -50,7 +50,7 @@ def format_ip_addr_list(ip):
         list = format_ip_addr(ip)
     return list
 
-def poolGenerator(name, dict):
+def poolGenerator(name, dict, rollback_tmsh_list):
     if("serverlist" in dict and "serverport" in dict):
         serlist = dict['serverlist']
         serport = dict['serverport']
@@ -60,6 +60,7 @@ def poolGenerator(name, dict):
             pool += member
         pool += " } monitor tcp"
         print(pool)
+        rollback_tmsh_list.append("tmsh delete ltm pool " + name)
         return True
     else:
         return False
@@ -77,7 +78,7 @@ def extract_exist_poolmembers(pool_name, infolist):
         port_list.append(i['port'])
     return (ip_list, list(dict.fromkeys(port_list)))     
 
-def pool_generator_modify_add_memebers(name, dict):
+def pool_generator_modify_add_memebers(name, dict, rollback_tmsh_list):
     members = extract_exist_poolmembers(name, dict['infolist'])
     isPoolNotEmpty = True
     isMemberAdded = False
@@ -87,22 +88,28 @@ def pool_generator_modify_add_memebers(name, dict):
         if len(serlist) == 1 and serlist[0] == "":
             isPoolNotEmpty = False
         pool = "tmsh modify ltm pool " + name + " members add {"
+        pool_rollback = "tmsh modify ltm pool " + name + " members delete {"
         if serport not in members[1]:
             for ip in serlist:
                 member = " " + ip + ":" + str(serport)
                 pool += member
+                pool_rollback += member
                 isMemberAdded = True
         else:
             for ip in serlist:
                 if ip not in members[0]:
                     member = " " + ip + ":" + str(serport)
                     pool += member
+                    pool_rollback += member
                     isMemberAdded = True
         pool += " }"
+        pool_rollback += " }"
         if isPoolNotEmpty and isMemberAdded:
-            print(pool)            
+            print("====")
+            print(pool)
+            rollback_tmsh_list.append(pool_rollback)            
 
-def snatGenerator(name, dict):
+def snatGenerator(name, dict, rollback_tmsh_list):
     if("snatpoollist" in dict):
         snatlist = dict['snatpoollist']
         snat = "tmsh create ltm snatpool " + name + " members add {"
@@ -115,6 +122,7 @@ def snatGenerator(name, dict):
             snat += members;
             snat += " }"
             print(snat)
+            rollback_tmsh_list.append("tmsh delete ltm snatpool " + name )
             return True
         else:
             return False
@@ -129,7 +137,7 @@ def extract_exist_members(snat_name, infolist):
             break
     return results
 
-def snat_generator_modify_add_memebers(snat_name, dict):
+def snat_generator_modify_add_memebers(snat_name, dict, rollback_tmsh_list):
     members = extract_exist_members(snat_name, dict['infolist'])
     isSNATPoolNotEmpty = True
     isMemberAdded = False
@@ -138,14 +146,18 @@ def snat_generator_modify_add_memebers(snat_name, dict):
         if len(snatlist) == 1 and snatlist[0] == "":
             isSNATPoolNotEmpty = False
         snat = "tmsh modify ltm snatpool " + snat_name + " members add {"
+        snat_rollback = "tmsh modify ltm snatpool " + snat_name + " members delete {"
         for ip in snatlist:
             if ip not in members:
                 member = " " + ip
                 snat += member
+                snat_rollback += member
                 isMemberAdded = True
         snat += " }"
+        snat_rollback += " }"
         if isSNATPoolNotEmpty and isMemberAdded:
             print(snat)
+            rollback_tmsh_list.append(snat_rollback)
 
 def profileGenerator(protocol):
     if protocol == "tcp":
@@ -155,33 +167,47 @@ def profileGenerator(protocol):
     else:
         return "profiles add { fastL4 { } }"
 
-def vsGenerator(vs_name, pool_name, snat_name, addr, port, protocol):
+def vsGenerator(vs_name, pool_name, snat_name, addr, port, protocol, rollback_tmsh_list):
     vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " pool " + pool_name + " ip-protocol tcp " + profileGenerator(protocol) + " source-address-translation { type snat pool " + snat_name + " }"
+    vs_rollback = "tmsh delete ltm virtual " + vs_name 
     print(vs)
+    rollback_tmsh_list.append(vs_rollback)
 
-def vsGeneratorSnatOnly(vs_name, snat_name, addr, port, protocol):
+def vsGeneratorSnatOnly(vs_name, snat_name, addr, port, protocol, rollback_tmsh_list):
     vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " ip-protocol tcp " + profileGenerator(protocol) + " source-address-translation { type snat " + snat_name + " }"
+    vs_rollback = "tmsh modify ltm virtual " + vs_name + " pool none source-address-translation { type none }"
     print(vs)
+    rollback_tmsh_list.append(vs_rollback)
 
-def vsGeneratorPoolOnly(vs_name, pool_name, addr, port, protocol):
+def vsGeneratorPoolOnly(vs_name, pool_name, addr, port, protocol, rollback_tmsh_list):
     vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " ip-protocol tcp  pool " + pool_name + " " + profileGenerator(protocol)
+    vs_rollback = "tmsh modify ltm virtual " + vs_name + " pool none"
     print(vs)
+    rollback_tmsh_list.append(vs_rollback)
 
-def vsGeneratorVSOnly(vs_name, addr, port, protocol):
+def vsGeneratorVSOnly(vs_name, addr, port, protocol, rollback_tmsh_list):
     vs = "tmsh create ltm virtual " + vs_name + " destination " + addr + ":" + str(port) + " ip-protocol tcp " + profileGenerator(protocol)
+    vs_rollback = "tmsh delete ltm virtual " + vs_name 
     print(vs)
+    rollback_tmsh_list.append(vs_rollback)
 
-def vs_generator_modify_reference_pool_snat(vs_name, pool_name, snat_name):
+def vs_generator_modify_reference_pool_snat(vs_name, pool_name, snat_name, rollback_tmsh_list):
     vs = "tmsh modify ltm virtual " + vs_name + " pool " + pool_name + " source-address-translation { type snat pool "+ snat_name +" }"
+    vs_rollback = "tmsh modify ltm virtual " + vs_name + " pool none source-address-translation { type none }"
     print(vs)
+    rollback_tmsh_list.append(vs_rollback)
 
-def vs_generator_modify_reference_pool(vs_name, pool_name):
+def vs_generator_modify_reference_pool(vs_name, pool_name, rollback_tmsh_list):
     vs = "tmsh modify ltm virtual " + vs_name + " pool " + pool_name
+    vs_rollback = "tmsh modify ltm virtual " + vs_name + " pool none"
     print(vs)
+    rollback_tmsh_list.append(vs_rollback)
 
-def vs_generator_modify_reference_snat(vs_name, snat_name):
+def vs_generator_modify_reference_snat(vs_name, snat_name, rollback_tmsh_list):
     vs = "tmsh modify ltm virtual " + vs_name +  " source-address-translation { type snat pool "+ snat_name +" }"
+    vs_rollback = "tmsh modify ltm virtual " + vs_name + " source-address-translation { type none }"
     print(vs)
+    rollback_tmsh_list.append(vs_rollback)
 
 
 def network_generate(ip, config):
@@ -269,9 +295,12 @@ def itertor_and_generate_net_scripts(config):
     for ip in snatpoolip:
         verify_and_generate_net_scripts(ip, config)
 
-def generate_net_vlan(vlan_name, trunk, tag):
+def generate_net_vlan(vlan_name, trunk, tag, rollback_tmsh_list, isActive):
     tmsh = "tmsh create net vlan " + vlan_name + " interfaces add { " + trunk + " { tagged } } tag " + tag
+    tmsh_rollback = "tmsh delete net vlan " + vlan_name
     print(tmsh)
+    if isActive:
+        rollback_tmsh_list.append(tmsh_rollback)
 
 def extract_floating_address(network):
     ip_address_str = network[0:len(network) - 3]
@@ -285,12 +314,16 @@ def extract_standby_address(network):
     standbyip = str(ip_address) + network[len(network) - 3:]
     return standbyip
 
-def generate_net_gateway(self, floating, vlan_name, self_name, floating_name, standby, isActive):
+def generate_net_gateway(self, floating, vlan_name, self_name, floating_name, standby, isActive, rollback_tmsh_list):
     tmsh_self = "tmsh create net self " + self_name + " address " + self + " vlan " + vlan_name + " allow-service default"
+    tmsh_self_rollback = "tmsh delete net self " + self_name 
     tmsh_standby = "tmsh create net self " + self_name + " address " + standby + " vlan " + vlan_name + " allow-service default"
     tmsh_floating = "tmsh create net self " + floating_name + " address " + floating + " vlan " + vlan_name + " allow-service default traffic-group /Common/traffic-group-1"
+    tmsh_floating_rollback = "tmsh delete net self " + floating_name
     if isActive:
         print(tmsh_self)
+        rollback_tmsh_list.append(tmsh_self_rollback)
+        rollback_tmsh_list.append(tmsh_floating_rollback)
     else:
         print(tmsh_standby)
     print(tmsh_floating)
@@ -300,18 +333,18 @@ def generate_save_sync(dict, sync_group_name):
     if sync_group_name is not None:
         print("tmsh run cm config-sync to-group " + sync_group_name)
 
-def generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_internaltag, net_internaltrunk, net_external, net_internal, isActive):
+def generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_internaltag, net_internaltrunk, net_external, net_internal, isActive, rollback_tmsh_list):
     isExternalVlanCreated = False
     isInternalVlanCreated = False
 
     if len(net_externaltag) > 0 and len(net_externaltrunk) > 0:
         vlan_name = "External_vlan" + net_externaltag
-        generate_net_vlan(vlan_name, net_externaltrunk, net_externaltag)
+        generate_net_vlan(vlan_name, net_externaltrunk, net_externaltag, rollback_tmsh_list, isActive)
         isExternalVlanCreated = True
 
     if len(net_internaltag) > 0 and len(net_internaltrunk) > 0:
         vlan_name = "Internal_vlan" + net_internaltag
-        generate_net_vlan(vlan_name, net_internaltrunk, net_internaltag)
+        generate_net_vlan(vlan_name, net_internaltrunk, net_internaltag, rollback_tmsh_list, isActive)
         isInternalVlanCreated = True
     
     if isExternalVlanCreated and is_valid_ip_network(net_external):
@@ -320,7 +353,7 @@ def generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_inter
         floating_name = "External_floatingip_vlan" + net_externaltag
         floatingip = extract_floating_address(net_external)
         standby = extract_standby_address(net_external)
-        generate_net_gateway(net_external, floatingip, vlan_name, self_name, floating_name, standby, isActive)
+        generate_net_gateway(net_external, floatingip, vlan_name, self_name, floating_name, standby, isActive, rollback_tmsh_list)
 
     if isInternalVlanCreated and is_valid_ip_network(net_internal):
         vlan_name = "Internal_vlan" + net_internaltag
@@ -328,9 +361,9 @@ def generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_inter
         floating_name = "Internal_floatingip_vlan" + net_internaltag
         floatingip = extract_floating_address(net_internal)
         standby = extract_standby_address(net_internal)
-        generate_net_gateway(net_internal, floatingip, vlan_name, self_name, floating_name, standby, isActive)
+        generate_net_gateway(net_internal, floatingip, vlan_name, self_name, floating_name, standby, isActive, rollback_tmsh_list)
 
-def generate_net_scripts(config):
+def generate_net_scripts(config, rollback_tmsh_list):
     # Current comment out itertor all VIP, Pool Member IP, SNATPool Member IP and generate netscript
     #itertor_and_generate_net_scripts(config)
 
@@ -345,48 +378,48 @@ def generate_net_scripts(config):
     isInternalVlanCreated = False
 
     print("---- 一号机网络配置 ----")
-    generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_internaltag, net_internaltrunk, net_external, net_internal, True)
+    generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_internaltag, net_internaltrunk, net_external, net_internal, True, rollback_tmsh_list)
 
     print("---- 二号机网络配置 ----")
-    generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_internaltag, net_internaltrunk, net_external, net_internal, False)
+    generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_internaltag, net_internaltrunk, net_external, net_internal, False, rollback_tmsh_list)
 
 
-def generate_vs_exist(vs_name, pool_name, snat_name, dict):
+def generate_vs_exist(vs_name, pool_name, snat_name, dict, rollback_tmsh_list):
     isPoolCreated = False
     isSnatCreated = False
 
     if is_pool_exist(pool_name, dict):
-        pool_generator_modify_add_memebers(pool_name, dict)
+        pool_generator_modify_add_memebers(pool_name, dict, rollback_tmsh_list)
     else:
-        isPoolCreated = poolGenerator(pool_name, dict)
+        isPoolCreated = poolGenerator(pool_name, dict, rollback_tmsh_list)
 
     if is_snatpool_exist(snat_name, dict):
-        snat_generator_modify_add_memebers(snat_name, dict)
+        snat_generator_modify_add_memebers(snat_name, dict, rollback_tmsh_list)
     else:
-        isSnatCreated = snatGenerator(snat_name, dict)
+        isSnatCreated = snatGenerator(snat_name, dict, rollback_tmsh_list)
 
 
     if(isPoolCreated and isSnatCreated):
-        vs_generator_modify_reference_pool_snat(vs_name, pool_name, snat_name)
+        vs_generator_modify_reference_pool_snat(vs_name, pool_name, snat_name, rollback_tmsh_list)
     elif(isPoolCreated and ~isSnatCreated):
-        vs_generator_modify_reference_pool(vs_name, pool_name)
+        vs_generator_modify_reference_pool(vs_name, pool_name, rollback_tmsh_list)
     elif(~isPoolCreated and isSnatCreated):
-        vs_generator_modify_reference_snat(vs_name, snat_name)    
+        vs_generator_modify_reference_snat(vs_name, snat_name, rollback_tmsh_list)    
 
 
-def generate_vs_not_exist(vs_name, pool_name, snat_name, dict):
+def generate_vs_not_exist(vs_name, pool_name, snat_name, dict, rollback_tmsh_list):
 
-    isPoolCreated = poolGenerator(pool_name, dict)
-    isSnatCreated = snatGenerator(snat_name, dict)
+    isPoolCreated = poolGenerator(pool_name, dict, rollback_tmsh_list)
+    isSnatCreated = snatGenerator(snat_name, dict, rollback_tmsh_list)
 
     if(isPoolCreated and isSnatCreated):
-        vsGenerator(vs_name, pool_name, snat_name, dict['ip'], dict['port'], dict['protocol'])
+        vsGenerator(vs_name, pool_name, snat_name, dict['ip'], dict['port'], dict['protocol'], rollback_tmsh_list)
     elif(isPoolCreated and ~isSnatCreated):
-        vsGeneratorPoolOnly(vs_name, pool_name, dict['ip'], dict['port'], dict['protocol'])
+        vsGeneratorPoolOnly(vs_name, pool_name, dict['ip'], dict['port'], dict['protocol'], rollback_tmsh_list)
     elif(~isPoolCreated and isSnatCreated):
-        vsGeneratorSnatOnly(vs_name, snat_name, dict['ip'], dict['port'], dict['protocol'])
+        vsGeneratorSnatOnly(vs_name, snat_name, dict['ip'], dict['port'], dict['protocol'], rollback_tmsh_list)
     else:
-        vsGeneratorVSOnly(vs_name, dict['ip'], dict['port'], dict['protocol'])
+        vsGeneratorVSOnly(vs_name, dict['ip'], dict['port'], dict['protocol'], rollback_tmsh_list)
 
 
 '''
@@ -413,7 +446,9 @@ def generateNewVirtualServer(dict):
     pool_name = prefix + "pool"
     snat_name = prefix + "snat"
 
-    generate_net_scripts(dict)
+    rollback_tmsh_list = []
+
+    generate_net_scripts(dict, rollback_tmsh_list)
     print("----  业务变更配置  ----")
     if is_vs_exist(vs_name, dict):
         vs_name = dict['existed_vs_name']
@@ -421,12 +456,16 @@ def generateNewVirtualServer(dict):
             pool_name = dict['existed_pool_name'] 
         if dict['existed_snatpool_name'] is not None:
             snat_name = dict['existed_snatpool_name']
-        generate_vs_exist(vs_name, pool_name, snat_name, dict)
+        generate_vs_exist(vs_name, pool_name, snat_name, dict, rollback_tmsh_list)
     else:
-        generate_vs_not_exist(vs_name, pool_name, snat_name, dict)
+        generate_vs_not_exist(vs_name, pool_name, snat_name, dict, rollback_tmsh_list)
 
     sync_group_name = dict['syncgroup']
     generate_save_sync(dict, sync_group_name)
+
+    print("----  变更回退配置  ----")
+    for item in rollback_tmsh_list:
+        print(item)
 
 
 
