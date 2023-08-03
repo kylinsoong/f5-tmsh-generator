@@ -464,8 +464,9 @@ def generateNewVirtualServer(dict):
     generate_save_sync(dict, sync_group_name)
 
     print("----  变更回退配置  ----")
-    for item in rollback_tmsh_list:
-        print(item)
+    num = len(rollback_tmsh_list) - 1
+    for num in range(num, -1 , -1):
+        print(rollback_tmsh_list[num])
 
 
 
