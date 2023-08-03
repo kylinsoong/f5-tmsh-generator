@@ -295,8 +295,10 @@ def generate_net_gateway(self, floating, vlan_name, self_name, floating_name, st
         print(tmsh_standby)
     print(tmsh_floating)
 
-def generate_save_sync(dict):
+def generate_save_sync(dict, sync_group_name):
     print("tmsh save sys config")
+    if sync_group_name is not None:
+        print("tmsh run cm config-sync to-group " + sync_group_name)
 
 def generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_internaltag, net_internaltrunk, net_external, net_internal, isActive):
     isExternalVlanCreated = False
@@ -423,7 +425,8 @@ def generateNewVirtualServer(dict):
     else:
         generate_vs_not_exist(vs_name, pool_name, snat_name, dict)
 
-    generate_save_sync(dict)
+    sync_group_name = dict['syncgroup']
+    generate_save_sync(dict, sync_group_name)
 
 
 
@@ -496,6 +499,28 @@ def append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict):
     if snatpool_members_detail_list is not None and len(snatpool_members_detail_list) > 0:
         info_dict['snatpool'] = snatpool_members_detail_list
 
+def data_collect_device_group(data_all):
+    sync_group_name_data = re.findall(r'cm device-group\s+\S+',data_all, re.I)
+    sync_group_list = []
+    for i in sync_group_name_data:
+        sync_group_list.append(i)
+
+    sync_group_name = None
+    for i,num in zip(sync_group_name_data, range(len(sync_group_name_data))):
+        if num < len(sync_group_list) - 1:
+            sync_group_data_start = re.search(i, data_all, re.I).start()
+            sync_group_data_end = re.search(sync_group_list[num+1], data_all[sync_group_data_start:]).start()
+            sync_group_data_detail = data_all[sync_group_data_start:][:sync_group_data_end]
+        else:
+            sync_group_data_start = re.search(i, data_all, re.I).start()
+            sync_group_data_end = re.search(r'cm key', data_all[sync_group_data_start:]).start()
+            sync_group_data_detail = data_all[sync_group_data_start:][:sync_group_data_end]
+        if "sync-failover" in sync_group_data_detail:
+            sync_group_name = sync_group_list[num]
+            sync_group_name = sync_group_name[len("cm device-group"):]
+            sync_group_name = sync_group_name.strip()
+            break
+    return sync_group_name
 
 def data_collect(filepath):
 
@@ -619,7 +644,8 @@ def data_collect(filepath):
             append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
             info_list.append(info_dict)
             
-    return (net_list, info_list)
+    sync_group_name_result = data_collect_device_group(data_all)
+    return (net_list, info_list, sync_group_name_result)
 
 
 if not sys.argv[2:]:
@@ -660,4 +686,5 @@ with open(fileadd, "r") as file:
         config['externaltrunk'] = dict[k_externaltrunk]
         config['netlist'] = config_results[0]
         config['infolist'] = config_results[1]
+        config['syncgroup'] = config_results[2]
         generateNewVirtualServer(config)
