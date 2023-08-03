@@ -467,6 +467,7 @@ def generateNewVirtualServer(dict):
     num = len(rollback_tmsh_list) - 1
     for num in range(num, -1 , -1):
         print(rollback_tmsh_list[num])
+    generate_save_sync(dict, sync_group_name)
 
 
 

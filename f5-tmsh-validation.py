@@ -271,6 +271,29 @@ def data_collect_system_extract_acl(sshd_acl, httpd_acl, snmp_acl):
     
     return secure_acl_validation_list
 
+
+def data_collect_system_extract_management(data_all):
+    mgmt_validation_list = []
+    matches = re.search(r'sys management-ip\s+(\S+)', data_all, re.I)
+    if matches:
+        management_ip = matches.group()
+        mgmt_validation_list.append((17, "", "是", [management_ip], True))
+        
+    data_start = re.search("sys management-route default", data_all,re.I).start()
+    data_end = re.search("sys ntp", data_all[data_start:],re.I).start()
+    mgmt_route_data = data_all[data_start:][:data_end]
+
+    gateways = re.search(r'gateway\s+(\S+)', mgmt_route_data, re.I)
+    if gateways:
+        management_route = gateways.group()
+        management_route = "sys management-route default " + management_route 
+        mgmt_validation_list.append((18, "", "是", [management_route], True))
+    else:
+        mgmt_validation_list.append((19, "", "否", ["tmsh create sys  management-route default gateway xxx.xxx.xxx.xxx"], True))
+    
+    return mgmt_validation_list
+
+
 def data_collect_system(data_all):
     hostname = data_collect_system_extract_hostname(data_all)
     user_validation_results = data_collect_system_extract_users(data_all)
@@ -281,8 +304,9 @@ def data_collect_system(data_all):
     snmp_validation_results = snmp_validation_results_all[0]
     syslog_validation_results = data_collect_system_extract_syslog(data_all)
     secure_acl_validation_results = data_collect_system_extract_acl(login_validation_results_all[1], login_validation_results_all[2], snmp_validation_results_all[1])
+    management_validation_results = data_collect_system_extract_management(data_all)
  
-    print(secure_acl_validation_results)    
+    #print(management_validation_results)    
 
     return (hostname, user_validation_results)
  
