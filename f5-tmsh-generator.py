@@ -285,16 +285,48 @@ def extract_standby_address(network):
     standbyip = str(ip_address) + network[len(network) - 3:]
     return standbyip
 
-def generate_net_gateway(self, floating, vlan_name, self_name, floating_name, standby):
+def generate_net_gateway(self, floating, vlan_name, self_name, floating_name, standby, isActive):
     tmsh_self = "tmsh create net self " + self_name + " address " + self + " vlan " + vlan_name + " allow-service default"
     tmsh_standby = "tmsh create net self " + self_name + " address " + standby + " vlan " + vlan_name + " allow-service default"
     tmsh_floating = "tmsh create net self " + floating_name + " address " + floating + " vlan " + vlan_name + " allow-service default traffic-group /Common/traffic-group-1"
-    print(tmsh_self)
-    print(tmsh_standby)
+    if isActive:
+        print(tmsh_self)
+    else:
+        print(tmsh_standby)
     print(tmsh_floating)
 
 def generate_save_sync(dict):
     print("tmsh save sys config")
+
+def generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_internaltag, net_internaltrunk, net_external, net_internal, isActive):
+    isExternalVlanCreated = False
+    isInternalVlanCreated = False
+
+    if len(net_externaltag) > 0 and len(net_externaltrunk) > 0:
+        vlan_name = "External_vlan" + net_externaltag
+        generate_net_vlan(vlan_name, net_externaltrunk, net_externaltag)
+        isExternalVlanCreated = True
+
+    if len(net_internaltag) > 0 and len(net_internaltrunk) > 0:
+        vlan_name = "Internal_vlan" + net_internaltag
+        generate_net_vlan(vlan_name, net_internaltrunk, net_internaltag)
+        isInternalVlanCreated = True
+    
+    if isExternalVlanCreated and is_valid_ip_network(net_external):
+        vlan_name = "External_vlan" + net_externaltag
+        self_name = "External_selfip_vlan" + net_externaltag
+        floating_name = "External_floatingip_vlan" + net_externaltag
+        floatingip = extract_floating_address(net_external)
+        standby = extract_standby_address(net_external)
+        generate_net_gateway(net_external, floatingip, vlan_name, self_name, floating_name, standby, isActive)
+
+    if isInternalVlanCreated and is_valid_ip_network(net_internal):
+        vlan_name = "Internal_vlan" + net_internaltag
+        self_name = "Internal_selfip_vlan" + net_internaltag
+        floating_name = "Internal_floatingip_vlan" + net_internaltag
+        floatingip = extract_floating_address(net_internal)
+        standby = extract_standby_address(net_internal)
+        generate_net_gateway(net_internal, floatingip, vlan_name, self_name, floating_name, standby, isActive)
 
 def generate_net_scripts(config):
     # Current comment out itertor all VIP, Pool Member IP, SNATPool Member IP and generate netscript
@@ -310,31 +342,11 @@ def generate_net_scripts(config):
     isExternalVlanCreated = False
     isInternalVlanCreated = False
 
-    if len(net_externaltag) > 0 and len(net_externaltrunk) > 0:
-        vlan_name = "External_vlan" + net_externaltag 
-        generate_net_vlan(vlan_name, net_externaltrunk, net_externaltag)
-        isExternalVlanCreated = True
+    print("---- 一号机网络配置 ----")
+    generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_internaltag, net_internaltrunk, net_external, net_internal, True)
 
-    if len(net_internaltag) > 0 and len(net_internaltrunk) > 0:
-        vlan_name = "Internal_vlan" + net_internaltag
-        generate_net_vlan(vlan_name, net_internaltrunk, net_internaltag)
-        isInternalVlanCreated = True
-    
-    if isExternalVlanCreated and is_valid_ip_network(net_external):
-        vlan_name = "External_vlan" + net_externaltag
-        self_name = "External_selfip_vlan" + net_externaltag
-        floating_name = "External_floatingip_vlan" + net_externaltag
-        floatingip = extract_floating_address(net_external)
-        standby = extract_standby_address(net_external)
-        generate_net_gateway(net_external, floatingip, vlan_name, self_name, floating_name, standby)
-
-    if isInternalVlanCreated and is_valid_ip_network(net_internal):
-        vlan_name = "Internal_vlan" + net_internaltag
-        self_name = "Internal_selfip_vlan" + net_internaltag
-        floating_name = "Internal_floatingip_vlan" + net_internaltag
-        floatingip = extract_floating_address(net_internal)
-        standby = extract_standby_address(net_internal)
-        generate_net_gateway(net_internal, floatingip, vlan_name, self_name, floating_name, standby)
+    print("---- 二号机网络配置 ----")
+    generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_internaltag, net_internaltrunk, net_external, net_internal, False)
 
 
 def generate_vs_exist(vs_name, pool_name, snat_name, dict):
@@ -400,7 +412,7 @@ def generateNewVirtualServer(dict):
     snat_name = prefix + "snat"
 
     generate_net_scripts(dict)
-
+    print("----  业务变更配置  ----")
     if is_vs_exist(vs_name, dict):
         vs_name = dict['existed_vs_name']
         if dict['existed_pool_name'] is not None:
