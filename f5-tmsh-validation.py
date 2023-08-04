@@ -4,6 +4,71 @@ import sys
 import ast
 import re
 
+def spec_user_management_validation(data_all):
+    auth_user_data = re.findall(r'auth user\s+\S+',data_all, re.I)
+    user_list = []
+    user_role_dict = {}
+    for i in auth_user_data:
+        user_list.append(i)
+
+    for i,num in zip(auth_user_data,range(len(user_list))):
+        if num < len(user_list)-1:
+            user_data_start = re.search(i, data_all, re.I).start()
+            user_data_end = re.search(user_list[num+1], data_all[user_data_start:]).start()
+            user_data_detail = data_all[user_data_start:][:user_data_end]
+        else:
+            user_data_start = re.search(i, data_all, re.I).start()
+            user_data_end = re.search(r'cli global-settings', data_all[user_data_start:]).start()
+            user_data_detail = data_all[user_data_start:][:user_data_end]
+
+        user_name_detail_list = re.search(r'auth user\s+(\S+)', user_data_detail,re.I)
+        user_name = user_name_detail_list.group(1)
+        user_role_detail_list = re.search(r'role\s+(\S+)', user_data_detail,re.I)
+        user_role = user_role_detail_list.group(1)
+        user_role_dict[user_name] = user_role
+
+    user_validation_list = []
+    user_config_note = []
+    user_config_spec = SPEC_BASELINE_YES
+    user_config_tmsh = []
+    if "psbc" not in user_role_dict:
+        user_config_note.append(SPEC_USER_MANAGEMENT_PSBC_NOT_EXIST)
+        user_config_spec = SPEC_BASELINE_NO
+        user_config_tmsh.append("tmsh create auth user psbc password PSBC@BJ*sc*sjzx2022 partition-access add { all-partitions { role admin } } shell bash")
+    if "view" not in user_role_dict:
+        user_config_note.append(SPEC_USER_MANAGEMENT_VIEW_NOT_EXIST)
+        user_config_spec = SPEC_BASELINE_NO
+        user_config_tmsh.append("tmsh create auth user view password Viewmon@2020 partition-access add { all-partitions { role auditor } } shell tmsh")
+
+    user_validation_list.append((1, user_config_note, user_config_spec, user_config_tmsh, True))
+
+    default_user_note = ""
+    default_user_spec = SPEC_BASELINE_YES
+    default_user_tmsh = ""
+    if "admin" in user_role_dict:
+        default_user_note = SPEC_USER_MANAGEMENT_ADMIN_NOT_DELETE
+        default_user_spec = SPEC_BASELINE_NO
+        default_user_tmsh = " tmsh modify sys db systemauth.primaryadminuser value psbc"
+
+    user_validation_list.append((2, default_user_note, default_user_spec, default_user_tmsh, False))
+
+    user_role_config_note = []
+    user_role_config_spec = SPEC_BASELINE_YES
+    user_role_config_tmsh = []
+    if "psbc" in user_role_dict and user_role_dict['psbc'] != "admin":
+        user_role_config_note.append(SPEC_USER_MANAGEMENT_PSBC_NO_EXPECT_RIGHT)
+        user_role_config_spec = SPEC_BASELINE_NO
+        user_role_config_tmsh.append("tmsh modify auth user psbc partition-access modify { all-partitions { role admin }}")
+
+    if "view" in user_role_dict and user_role_dict['view'] != "auditor":
+        user_role_config_note.append(SPEC_USER_MANAGEMENT_VIEW_NO_EXPECT_RIGHT)
+        user_role_config_spec = SPEC_BASELINE_NO
+        user_role_config_tmsh.append("tmsh modify auth user view partition-access modify { all-partitions { role auditor }}")
+
+    user_validation_list.append((3, user_role_config_note, user_role_config_spec, user_role_config_tmsh, False))
+
+    return user_validation_list
+
 class Spec:
     def __init__(self, name, hostname, data):
         self.name = name
@@ -25,7 +90,8 @@ class Spec:
 
 class SpecUserManagement(Spec):
     def parse(self):
-        external_function(self.data)
+        validation_results = spec_user_management_validation(self.data)
+        self.spec_basic.extend(validation_results)
 
 class SpecLoginMethods(Spec):
     def parse(self):
@@ -471,26 +537,35 @@ SPEC_ITEM_TCP_CONNECTIONS = "长连接业务配置"
 SPEC_ITEM_SNATPOOLME_CONF = "SNAT配置项检查"
 SPEC_ITEM_HTTP_RST_ONDOWN = "后台服务不可用时发rst"
 
-data_all = load_bigip_running_config(fileconfig)
-hostname = data_collect_system_extract_hostname(data_all)
+SPEC_BASELINE_YES = "是"
+SPEC_BASELINE_NO = "否"
+SPEC_USER_MANAGEMENT_PSBC_NOT_EXIST = "psbc 用户不存在"
+SPEC_USER_MANAGEMENT_VIEW_NOT_EXIST = "view 用户不存在"
+SPEC_USER_MANAGEMENT_ADMIN_NOT_DELETE = "默认用户 admin 未删除"
+SPEC_USER_MANAGEMENT_PSBC_NO_EXPECT_RIGHT = "psbc 用户权限不对"
+SPEC_USER_MANAGEMENT_VIEW_NO_EXPECT_RIGHT = "view 用户权限不对"
+
+
+bigip_running_config = load_bigip_running_config(fileconfig)
+hostname = data_collect_system_extract_hostname(bigip_running_config)
 
 spec_validation_list = []
 
-spec_validation_list.append(SpecUserManagement(SPEC_ITEM_USER_MANAGEMENT, hostname, data_all))
-spec_validation_list.append(SpecLoginMethods(SPEC_ITEM_EXLOGIN_METHODS, hostname, data_all))
-spec_validation_list.append(SpecNTPSyncSetting(SPEC_ITEM_NTPSYN_SETTINGS, hostname, data_all))
-spec_validation_list.append(SpecSNMPManagement(SPEC_ITEM_SNMP_MANAGEMENT, hostname, data_all))
-spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, hostname, data_all))
-spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, hostname, data_all))
+spec_validation_list.append(SpecUserManagement(SPEC_ITEM_USER_MANAGEMENT, hostname, bigip_running_config))
+spec_validation_list.append(SpecLoginMethods(SPEC_ITEM_EXLOGIN_METHODS, hostname, bigip_running_config))
+spec_validation_list.append(SpecNTPSyncSetting(SPEC_ITEM_NTPSYN_SETTINGS, hostname, bigip_running_config))
+spec_validation_list.append(SpecSNMPManagement(SPEC_ITEM_SNMP_MANAGEMENT, hostname, bigip_running_config))
+spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, hostname, bigip_running_config))
+spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, hostname, bigip_running_config))
 
-spec_validation_list.append(SpecInterfaceConfiguration(SPEC_ITEM_INTERFACES_CONF, hostname, data_all))
-spec_validation_list.append(SpecRouteConfiguration(SPEC_ITEM_INEXROUTER_CONF, hostname, data_all))
-spec_validation_list.append(SpecHAConfiguration(SPEC_ITEM_HASETTINGS_CONF, hostname, data_all))
-spec_validation_list.append(SpecFailoverSetting(SPEC_ITEM_FAILOVERS_CHECK, hostname, data_all))
+spec_validation_list.append(SpecInterfaceConfiguration(SPEC_ITEM_INTERFACES_CONF, hostname, bigip_running_config))
+spec_validation_list.append(SpecRouteConfiguration(SPEC_ITEM_INEXROUTER_CONF, hostname, bigip_running_config))
+spec_validation_list.append(SpecHAConfiguration(SPEC_ITEM_HASETTINGS_CONF, hostname, bigip_running_config))
+spec_validation_list.append(SpecFailoverSetting(SPEC_ITEM_FAILOVERS_CHECK, hostname, bigip_running_config))
 
-spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECTIONS, hostname, data_all))
-spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, hostname, data_all))
-spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, hostname, data_all))
+spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECTIONS, hostname, bigip_running_config))
+spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, hostname, bigip_running_config))
+spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, hostname, bigip_running_config))
 
 for spec in spec_validation_list:
     spec.write_to_excel()
