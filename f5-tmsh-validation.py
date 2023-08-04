@@ -6,6 +6,38 @@ import re
 import socket
 import ipaddress
 
+def manually_mapping(input):
+    if input == 'any':
+        return '0'
+    else:
+        print(input)
+        return '0'
+
+def convert_servicename_to_port(input):
+    result = "";
+    if isinstance(input, str):
+        if input.isdigit():
+            return input
+        try:
+            result = socket.getservbyname(input)
+        except OSError:
+            return manually_mapping(input)
+    else:
+        result = input
+    return str(result)
+
+def convert_servicename_to_port_f5(input):
+    all_dict = {}
+    with open("f5-services") as myfile:
+        for line in myfile:
+            name, var = line.partition(" ")[::2]
+            all_dict[name.strip()] = var.strip()
+
+    if input in all_dict:
+        return all_dict[input]
+    else:
+        return convert_servicename_to_port(input)
+
 
 '''
 Parse Config, the main function:
@@ -294,6 +326,47 @@ def data_collect_system_extract_management(data_all):
     return mgmt_validation_list
 
 
+def data_collect_system_extract_trunk(data_all):
+    interface_validation_list = []
+    net_trunk_data = re.findall(r'net trunk\s+\S+',data_all, re.I)
+    net_trunk_list = []
+    for i in net_trunk_data:
+        net_trunk_list.append(i)
+
+    for i,num in zip(net_trunk_data,range(len(net_trunk_list))):
+        if num < len(net_trunk_list)-1:
+            data_start = re.search(i, data_all, re.I).start()
+            data_end = re.search(net_trunk_list[num+1], data_all[data_start:]).start()
+            data_detail = data_all[data_start:][:data_end]
+        else:
+            data_start = re.search(i, data_all, re.I).start()
+            data_end = re.search(r'net tunnels', data_all[data_start:]).start()
+            data_detail = data_all[data_start:][:data_end]   
+        
+        matches = re.search(r'net trunk\s+(\S+)', data_detail, re.I)
+        trunk_name = matches.group()
+        trunk_name = trunk_name[len("net trunk"):]
+        trunk_disable_tmsh = "tmsh modify  net  trunk " + trunk_name + " lacp disabled"
+
+        inter_data_start = re.search("interfaces", data_detail, re.I).start()
+        inter_data_end = re.search(r'}', data_detail[inter_data_start:]).start()
+        inter_data_detail = data_detail[inter_data_start:][:inter_data_end + 1]
+        inter_data_detail = trunk_name + " " + inter_data_detail
+
+        interface_validation_list.append((17, "", "是", [inter_data_detail], True))        
+
+        if "lacp enabled" in data_detail:
+            interface_validation_list.append((17, "", "否", [trunk_disable_tmsh], False))
+
+    if len(interface_validation_list) <= 0:
+        interface_validation_list.append((17, "", "否", ["tmsh create net trunk XXXX interfaces add { X.X }"], True))  
+        interface_validation_list.append((18, "", "否", ["tmsh create net trunk XXXX interfaces add { X.X }"], True)) 
+    else:
+        interface_validation_list.append((18, "HA 基于业务 trunk ", "是", [""], False)) 
+            
+    print(interface_validation_list)
+
+
 def data_collect_system(data_all):
     hostname = data_collect_system_extract_hostname(data_all)
     user_validation_results = data_collect_system_extract_users(data_all)
@@ -304,195 +377,14 @@ def data_collect_system(data_all):
     snmp_validation_results = snmp_validation_results_all[0]
     syslog_validation_results = data_collect_system_extract_syslog(data_all)
     secure_acl_validation_results = data_collect_system_extract_acl(login_validation_results_all[1], login_validation_results_all[2], snmp_validation_results_all[1])
-    management_validation_results = data_collect_system_extract_management(data_all)
+    data_collect_system_extract_trunk(data_all)
+
+    #management_validation_results = data_collect_system_extract_management(data_all)
  
-    #print(management_validation_results)    
+    #print(login_validation_results_all)    
 
     return (hostname, user_validation_results)
  
-
-def manually_mapping(input):
-    if input == 'any':
-        return '0'
-    else:
-        print(input)
-        return '0'
-
-def convert_servicename_to_port(input):
-    result = "";
-    if isinstance(input, str):
-        if input.isdigit():
-            return input
-        try:
-            result = socket.getservbyname(input)
-        except OSError:
-            return manually_mapping(input)
-    else:   
-        result = input
-    return str(result)
-
-def convert_servicename_to_port_f5(input):
-    all_dict = {}
-    with open("f5-services") as myfile:
-        for line in myfile:
-            name, var = line.partition(" ")[::2]
-            all_dict[name.strip()] = var.strip()
-        
-    if input in all_dict:
-        return all_dict[input]
-    else:
-        return convert_servicename_to_port(input)
-
-def data_collect_snat(data_all, vs_data_detail):
-    vs_snatpool_name = ""
-    snatpool_members_detail_list = []
-    vs_snat_detail_list = re.search(r'source-address-translation\s+(\S+)', vs_data_detail, re.I)
-    if vs_snat_detail_list:
-        vs_snat_start = re.search(vs_snat_detail_list.group(), vs_data_detail, re.I).start()
-        vs_snat_end = re.search("}", vs_data_detail[vs_snat_start:]).start()
-        vs_snat_detail = vs_data_detail[vs_snat_start:][:vs_snat_end + 1]
-        vs_snatpool_name_list = re.search(r'pool\s+(\S+)', vs_snat_detail, re.I)
-        if vs_snatpool_name_list:
-            vs_snatpool_name = vs_snatpool_name_list.group(1)
-            vs_snatpool_data_start = re.search(r'ltm snatpool\s+'+vs_snatpool_name, data_all, re.I).start()
-            vs_snatpool_data_end = re.search(r'}\s+}', data_all[vs_snatpool_data_start:]).start()
-            vs_snatpool_data_detail = data_all[vs_snatpool_data_start:][:vs_snatpool_data_end + 1]
-            snatpool_members_list = re.search(r'members\s+(\S+)', vs_snatpool_data_detail, re.I)
-            if snatpool_members_list:
-                vs_snatpool_data_detail = vs_snatpool_data_detail[snatpool_members_list.start():]
-                snatpool_members_detail_list = re.findall(r'(\d+\.\d+\.\d+\.\d+)', vs_snatpool_data_detail, re.I)
-            else:
-                snatpool_members_detail_list = None
-        else:
-            vs_snatpool_name = None
-            snatpool_members_detail_list = None
-    else:
-        vs_snatpool_name = None
-        snatpool_members_detail_list = None
-
-    return (vs_snatpool_name, snatpool_members_detail_list)
-
-
-def append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict):
-    if vs_snatpool_name is not None:
-        info_dict['snatpoolname'] = vs_snatpool_name
-    if snatpool_members_detail_list is not None and len(snatpool_members_detail_list) > 0:
-        info_dict['snatpool'] = snatpool_members_detail_list
-
-
-def data_collect(data_all):
-
-    info_list = []
-    vs_list = []
-    net_list = []
-
-    net_name_data = re.findall(r'net self\s+\S+',data_all, re.I)
-    for i in net_name_data:
-        net_self_data_start = re.search(i, data_all, re.I).start()
-        net_self_data_end = re.search('address', data_all[net_self_data_start:]).start()
-        net_self_data = data_all[net_self_data_start:][:net_self_data_end + 40]
-        #net_self_address = re.search(r'address\s+(\d+\.\d+\.\d+\.\d+)', net_self_data, re.I)
-        net_self_address_list = re.search(r'address\s+((\d){1,3}\.){3}\d{1,3}(\/(\d{1,2}))?', net_self_data, re.I)
-        if net_self_address_list:
-            net_self_address = net_self_address_list.group(0)
-            net_self_address = net_self_address.lstrip('address').strip()
-            net_addr = ipaddress.ip_network(net_self_address, False)
-            net_list.append(str(net_addr))
-    net_list = list(dict.fromkeys(net_list))
-
-    vs_name_data = re.findall(r'ltm virtual\s+\S+',data_all, re.I)
-    for i in vs_name_data:
-        vs_list.append(i)
-
-    for i,num  in zip(vs_name_data,range(len(vs_name_data))):
-        if num < len(vs_list)-1:
-            vs_data_start = re.search(i, data_all, re.I).start()
-            vs_data_end = re.search(vs_list[num+1], data_all[vs_data_start:]).start()
-            vs_data_detail = data_all[vs_data_start:][:vs_data_end]
-        else:
-            vs_data_start = re.search(i, data_all, re.I).start()
-            vs_data_end = re.search(r'net interface', data_all[vs_data_start:]).start()
-            vs_data_detail = data_all[vs_data_start:][:vs_data_end]
-
-        vs_name_detail_list = re.search(r'ltm virtual\s+(\S+)', vs_data_detail,re.I)
-        vs_name_detail = vs_name_detail_list.group(1)
-        
-        vs_ip_detail_list = re.search(r'destination\s+(\d+\.\d+\.\d+\.\d+)', vs_data_detail, re.I)
-        vs_ip_detail = vs_ip_detail_list.group(1)
-
-        vs_port_detail_list = re.search(r'destination\s+\d+\.\d+\.\d+\.\d+:(\S+)', vs_data_detail, re.I)
-        vs_port_detail = vs_port_detail_list.group(1)
-        vs_port_detail = convert_servicename_to_port_f5(vs_port_detail)
-
-        snatpool_results = data_collect_snat(data_all, vs_data_detail)
-        vs_snatpool_name = snatpool_results[0]
-        snatpool_members_detail_list = snatpool_results[1]
-
-        vs_pool_detail_list = re.search(r'pool\s+(\S+)', vs_data_detail, re.I)
-        if vs_pool_detail_list:
-            vs_pool_detail = vs_pool_detail_list.group(1)
-
-            if vs_pool_detail == "{" :
-                tmp_list = re.findall(r'pool\s+(\S+)', vs_data_detail, re.I)
-                vs_pool_detail = tmp_list[1]
-
-            # The re.search(r'pool\s+(\S+)', vs_data_detail, re.I) search may get both pool and snatpool
-            #   If vs has pool, then the vs_pool_detail is the name of pool
-            #   if vs don't has pool, then the vs_pool_detail may be the snatpool name
-            #
-            # If pool name equals snatpool name, should skip the pool match parse
-            #        VS has snatpool, but no has pool
-            if vs_pool_detail == vs_snatpool_name:
-                info_dict = {
-                    'vsname': vs_name_detail,
-                    'vsip': vs_ip_detail,
-                    'vsport': vs_port_detail
-                }
-                append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
-                info_list.append(info_dict)
-            else:
-                pool_data_start = re.search(r'ltm pool\s+'+vs_pool_detail, data_all, re.I).start()
-                pool_data_end = re.search(r'}\s+}', data_all[pool_data_start:]).start()
-                pool_data_detail = data_all[pool_data_start:][:pool_data_end]
-                pool_ip_port_detail_list = re.findall(r'(\d+\.\d+\.\d+\.\d+):(\S+)\s+{', pool_data_detail, re.I)
-                if pool_ip_port_detail_list:
-                    members = []
-                    for i,j in pool_ip_port_detail_list:
-                        member_dict = {
-                            'ip': i,
-                            'port': convert_servicename_to_port_f5(j)
-                        }
-                        members.append(member_dict)
-
-                    info_dict = {
-                        'vsname': vs_name_detail,
-                        'vsip': vs_ip_detail,
-                        'vsport': vs_port_detail,
-                        'poolname': vs_pool_detail,
-                        'pool': members
-                    }
-                    append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
-                    info_list.append(info_dict)
-                else:    # VS has pool, but the pool does not has member                    
-                    info_dict = {
-                        'vsname': vs_name_detail,
-                        'vsip': vs_ip_detail,
-                        'vsport': vs_port_detail,
-                        'poolname': vs_pool_detail
-                    }
-                    append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
-                    info_list.append(info_dict)
-        else: # VS does not has a pool
-            info_dict = {
-                'vsname': vs_name_detail,
-                'vsip': vs_ip_detail,
-                'vsport': vs_port_detail
-            }
-            append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
-            info_list.append(info_dict)
-            
-    return (net_list, info_list)
-
 
 if not sys.argv[2:]:
     print("Usage: f5-tmsh-validation.py [file] [file]")
