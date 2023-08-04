@@ -3,41 +3,85 @@
 import sys
 import ast
 import re
-import socket
-import ipaddress
 
-def manually_mapping(input):
-    if input == 'any':
-        return '0'
-    else:
-        print(input)
-        return '0'
+class Spec:
+    def __init__(self, name, hostname, data):
+        self.name = name
+        self.hostname = hostname
+        self.data = data
+        self.spec_basic = []
+        self.spec_supplementary = []
+        self.parse()
 
-def convert_servicename_to_port(input):
-    result = "";
-    if isinstance(input, str):
-        if input.isdigit():
-            return input
-        try:
-            result = socket.getservbyname(input)
-        except OSError:
-            return manually_mapping(input)
-    else:
-        result = input
-    return str(result)
+    def parse(self):
+        pass
 
-def convert_servicename_to_port_f5(input):
-    all_dict = {}
-    with open("f5-services") as myfile:
-        for line in myfile:
-            name, var = line.partition(" ")[::2]
-            all_dict[name.strip()] = var.strip()
+    def write_to_excel(self):
+        for item in self.spec_basic:
+            print(item)
 
-    if input in all_dict:
-        return all_dict[input]
-    else:
-        return convert_servicename_to_port(input)
+        for item in self.spec_supplementary:
+            print(item)
 
+class SpecUserManagement(Spec):
+    def parse(self):
+        external_function(self.data)
+
+class SpecLoginMethods(Spec):
+    def parse(self):
+        external_function(self.data)
+
+class SpecNTPSyncSetting(Spec):
+    def parse(self):
+        external_function(self.data)
+
+class SpecSNMPManagement(Spec):
+    def parse(self):
+        external_function(self.data)
+
+class SpecSyslogSetting(Spec):
+    def parse(self):
+        external_function(self.data)
+
+class SpecSecureACLControl(Spec):
+    def parse(self):
+        external_function(self.data)
+
+class SpecInterfaceConfiguration(Spec):
+    def parse(self):
+        external_function(self.data)
+
+class SpecRouteConfiguration(Spec):
+    def parse(self):
+        external_function(self.data)
+
+class SpecHAConfiguration(Spec):
+    def parse(self):
+        external_function(self.data)
+
+class SpecFailoverSetting(Spec):
+    def parse(self):
+        external_function(self.data)
+
+class SpecTCPConnectionConfiguration(Spec):
+    def parse(self):
+        external_function(self.data)
+
+class SpecSNATConfiguration(Spec):
+    def parse(self):
+        external_function(self.data)
+
+class SpecHTTPRstActionDownSetting(Spec):
+    def parse(self):
+        external_function(self.data)
+
+
+
+
+
+
+def external_function(data_all):
+    print(len(data_all))
 
 '''
 Parse Config, the main function:
@@ -364,7 +408,7 @@ def data_collect_system_extract_trunk(data_all):
     else:
         interface_validation_list.append((18, "HA 基于业务 trunk ", "是", [""], False)) 
             
-    print(interface_validation_list)
+    return interface_validation_list
 
 
 def data_collect_system(data_all):
@@ -384,6 +428,24 @@ def data_collect_system(data_all):
     #print(login_validation_results_all)    
 
     return (hostname, user_validation_results)
+
+def load_bigip_running_config(fileconfig):
+    with open(fileconfig, 'r') as fo:
+        data_all = fo.read()
+
+    data_all = data_all.replace('[m','')
+    data_all = data_all.replace('[K', '')
+    error = re.findall(r'\[7m---\(less (\d+)',data_all)
+    for i in error:
+        error1 = '[7m---(less '+i
+        data_all = data_all.replace(error1, '')
+    fo.close()
+    return data_all
+
+def data_collect(fileconfig):
+    data_all = load_bigip_running_config(fileconfig)
+    system_results = data_collect_system(data_all)
+    print(system_results[0])
  
 
 if not sys.argv[2:]:
@@ -393,32 +455,42 @@ if not sys.argv[2:]:
 fileconfig = sys.argv[1]
 fileadd = sys.argv[2]
 
-with open(fileconfig, 'r') as fo:
-    data_all = fo.read()
-    
-data_all = data_all.replace('[m','')
-data_all = data_all.replace('[K', '')
-error = re.findall(r'\[7m---\(less (\d+)',data_all)
-for i in error:
-    error1 = '[7m---(less '+i
-    data_all = data_all.replace(error1, '')
-fo.close()
-  
-#config_results = data_collect(data_all)
-#for item in config_results[1]:
-#    print("vs name: " + item['vsname'])
+#data_collect(fileconfig)
 
-system_results = data_collect_system(data_all)
+SPEC_ITEM_USER_MANAGEMENT = "用户管理"
+SPEC_ITEM_EXLOGIN_METHODS = "登录方式"
+SPEC_ITEM_NTPSYN_SETTINGS = "NTP时钟同步"
+SPEC_ITEM_SNMP_MANAGEMENT = "SNMP管理"
+SPEC_ITEM_SYSLOG_SETTINGS = "SYSLOG日志"
+SPEC_ITEM_SEC_ACL_CONTROL = "安全访问控制"
+SPEC_ITEM_INTERFACES_CONF = "接口配置"
+SPEC_ITEM_INEXROUTER_CONF = "路由"
+SPEC_ITEM_HASETTINGS_CONF = "双机配置"
+SPEC_ITEM_FAILOVERS_CHECK = "切换条件检测" 
+SPEC_ITEM_TCP_CONNECTIONS = "长连接业务配置"
+SPEC_ITEM_SNATPOOLME_CONF = "SNAT配置项检查"
+SPEC_ITEM_HTTP_RST_ONDOWN = "后台服务不可用时发rst"
 
-print(system_results[0])
+data_all = load_bigip_running_config(fileconfig)
+hostname = data_collect_system_extract_hostname(data_all)
 
-#with open(fileadd, "r") as file:
-    #config_results = data_collect(fileconfig)
-    #system_results = data_collect_system(fileconfig)
+spec_validation_list = []
 
-    #for item in config_results[1]:
-    #    print("vs name: " + item['vsname'])
+spec_validation_list.append(SpecUserManagement(SPEC_ITEM_USER_MANAGEMENT, hostname, data_all))
+spec_validation_list.append(SpecLoginMethods(SPEC_ITEM_EXLOGIN_METHODS, hostname, data_all))
+spec_validation_list.append(SpecNTPSyncSetting(SPEC_ITEM_NTPSYN_SETTINGS, hostname, data_all))
+spec_validation_list.append(SpecSNMPManagement(SPEC_ITEM_SNMP_MANAGEMENT, hostname, data_all))
+spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, hostname, data_all))
+spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, hostname, data_all))
 
+spec_validation_list.append(SpecInterfaceConfiguration(SPEC_ITEM_INTERFACES_CONF, hostname, data_all))
+spec_validation_list.append(SpecRouteConfiguration(SPEC_ITEM_INEXROUTER_CONF, hostname, data_all))
+spec_validation_list.append(SpecHAConfiguration(SPEC_ITEM_HASETTINGS_CONF, hostname, data_all))
+spec_validation_list.append(SpecFailoverSetting(SPEC_ITEM_FAILOVERS_CHECK, hostname, data_all))
 
-    #for item in system_results:
-    #    print(item)
+spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECTIONS, hostname, data_all))
+spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, hostname, data_all))
+spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, hostname, data_all))
+
+for spec in spec_validation_list:
+    spec.write_to_excel()
