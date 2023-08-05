@@ -409,7 +409,30 @@ def spec_route_configuration_validation(data_all):
 def spec_ha_configuration_validation(data_all):
 
     ha_validation_list = []
-  
+ 
+    vlan_failsafe_list = []
+    vlan_failsafe_data = find_content_from_start_end(data_all, "net vlan", "sys aom")
+    vlan_failsafe_objects = vlan_failsafe_data.split("net vlan")
+    for f in vlan_failsafe_objects:
+       if "failsafe" in f:
+           vlan_failsafe_list.append(f)
+
+    if len(vlan_failsafe_list) > 0:
+        vlan_failsafe = vlan_failsafe_list[0]
+        vlan_failsafe_lines = vlan_failsafe.splitlines()
+        failsafe_action = None
+        for l in vlan_failsafe_lines:
+            line = l.strip()
+            if line.startswith("failsafe-action"):
+                failsafe_action = trip_prefix(line, "failsafe-action")
+                break
+        if failsafe_action == "failover":
+            ha_validation_list.append((23, "", SPEC_BASELINE_YES, [], False))
+        else:
+            ha_validation_list.append((23, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], False))
+    else:
+        ha_validation_list.append((23, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], False))
+
     ha_devices_list = []
     ha_devices_data = find_content_from_start_end(data_all, "cm device", "cm device-group")
     ha_devices = ha_devices_data.split("cm device")
@@ -453,11 +476,102 @@ def spec_ha_configuration_validation(data_all):
                     unicast_address.append(trip_prefix(address, "ip"))
             ha_devices_list.append(BIGIPDevice(configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, unicast_address, unicast_port, version))
 
-    for i in ha_devices_list:
-        print(i.configsync_ip, i.failover_state, i.hostname, i.management_ip, i.self_device, i.time_zone, i.unicast_address, i.unicast_port, i.version)
+    if len(ha_devices_list) < 2:
+        ha_validation_list.append((24, SPEC_HA_NO_HA_CONF, SPEC_BASELINE_NO, [], False))
+    elif incorrect_ha_configuration(ha_devices_list):
+        ha_validation_list.append((24, SPEC_HA_HA_CONF_NOT_CORRECT, SPEC_BASELINE_NO, [], False))
+    elif incorrect_time_zone(ha_devices_list):
+        ha_validation_list.append((24, SPEC_HA_HA_CONF_NOT_CORRECT_TIMEZONE, SPEC_BASELINE_NO, [], False))
+    elif incorrect_version(ha_devices_list):
+        ha_validation_list.append((24, SPEC_HA_HA_CONF_NOT_CORRECT_VERSION, SPEC_BASELINE_NO, [], False))
+    elif len(ha_devices_list[0].unicast_address) <= 1:
+        ha_validation_list.append((24, SPEC_HA_HA_CONF_NO_MULTI_VLAN, SPEC_BASELINE_NO, [], False))
+    else:
+        ha_validation_list.append((24, "", SPEC_BASELINE_YES, [], False))
+
+    ha_device_group_sync_list = []
+    ha_device_group_data = find_content_from_start_end(data_all, "cm device-group", "cm key")
+    ha_device_group_list = ha_device_group_data.split("cm device-group")
+    for dg in ha_device_group_list:
+        if len(dg) > 0 and "sync-failover" in dg:
+            ha_device_group_sync_list.append(dg)
+    
+    if len(ha_device_group_sync_list) == 0:
+        ha_validation_list.append((25, SPEC_HA_NO_SYNC_FAILOVER, SPEC_BASELINE_NO, [], True))
+    elif len(ha_device_group_sync_list) > 1:
+        ha_validation_list.append((25, SPEC_HA_MULTI_SYNC_FAILOVER, SPEC_BASELINE_NO, [], True))
+    elif len(ha_device_group_sync_list) == 1:
+        dg_lines = ha_device_group_sync_list[0].splitlines()
+        sync_finished = None
+        for dg_line in dg_lines:
+            line = dg_line.strip()
+            if line.startswith("full-load-on-sync"):
+                sync_finished = trip_prefix(line, "full-load-on-sync")
+        if "true" == sync_finished:
+            ha_validation_list.append((25, "", SPEC_BASELINE_YES, [], True))
+        else:
+            ha_validation_list.append((25, SPEC_HA_SYNC_NOT_FINISHED, SPEC_BASELINE_NO, [], True))
 
     return ha_validation_list
 
+def incorrect_version(ha_devices_list):
+    version = ha_devices_list[0].version
+    for i in ha_devices_list:
+        if version != i.version:
+            return True
+    return False
+
+def incorrect_time_zone(ha_devices_list):
+    time_zone = ha_devices_list[0].time_zone
+    for i in ha_devices_list:
+        if time_zone != i.time_zone:
+            return True
+    return False
+
+def incorrect_ha_configuration(ha_devices_list):
+    active = None
+    standby = None
+    for i in ha_devices_list:
+        if i.failover_state == "active":
+            active = True
+        elif i.failover_state == "standby":
+            standby = True
+    if active and standby:
+        return False
+    else:
+        return True
+
+
+
+def spec_failover_configuration_validation(data_all):
+
+    failover_validation_list = []
+
+    vlan_failsafe_list = []
+    vlan_failsafe_data = find_content_from_start_end(data_all, "net vlan", "sys aom")
+    vlan_failsafe_objects = vlan_failsafe_data.split("net vlan")
+    for f in vlan_failsafe_objects:
+       if "failsafe" in f:
+           vlan_failsafe_list.append(f)
+
+    if len(vlan_failsafe_list) > 0:
+        vlan_failsafe = vlan_failsafe_list[0]
+        vlan_failsafe_lines = vlan_failsafe.splitlines()
+        failsafe_timeout = None
+        for l in vlan_failsafe_lines:
+            line = l.strip()
+            if line.startswith("failsafe-timeout"):
+                failsafe_timeout = trip_prefix(line, "failsafe-timeout")
+                break
+        failsafe_timeout_inter = int(failsafe_timeout)
+        if failsafe_timeout_inter > 3:
+            failover_validation_list.append((26, "", SPEC_BASELINE_YES, [], False))    
+        else:
+            failover_validation_list.append((26, SPEC_FAILOVER_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], False))
+    else:
+        failover_validation_list.append((26, SPEC_FAILOVER_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], False))
+
+    return failover_validation_list
 
 
 class BIGIPDevice:
@@ -539,17 +653,23 @@ class SpecHAConfiguration(Spec):
 
 class SpecFailoverSetting(Spec):
     def parse(self):
-        print(self.management_ip, self.hostname, self.name)
+        validation_results = spec_failover_configuration_validation(self.data)
+        self.spec_basic.extend(validation_results)
 
-class SpecTCPConnectionConfiguration(Spec):
+class SpecApp(Spec):
+    def __init__(self, name, hostname, management_ip, data, vs_list):
+        super().__init__(name, hostname, management_ip, data)
+        self.vs_list = vs_list
+
+class SpecTCPConnectionConfiguration(SpecApp):
     def parse(self):
         print(self.management_ip, self.hostname, self.name)
 
-class SpecSNATConfiguration(Spec):
+class SpecSNATConfiguration(SpecApp):
     def parse(self):
         print(self.management_ip, self.hostname, self.name)
 
-class SpecHTTPRstActionDownSetting(Spec):
+class SpecHTTPRstActionDownSetting(SpecApp):
     def parse(self):
         print(self.management_ip, self.hostname, self.name)
 
@@ -562,12 +682,10 @@ def trip_prefix(line, prefix):
         return line
 
 
-
 def find_content_from_start_end(data, start_str, end_str):
     data_start = re.search(start_str, data, re.I).start()
     data_end = re.search(end_str, data[data_start:], re.I).start()
     return data[data_start:][:data_end] 
-
 
 
 def convert_servicename_to_port(input):
@@ -605,6 +723,13 @@ def data_collect_system_extract_hostname(data_all):
             hostname = hostname_raw.lstrip("hostname").strip()
 
     return (hostname, management_ip)
+
+
+
+def data_collect_app_vs_list(data_all):
+    vs_list = []
+
+    return vs_list
     
 
 
@@ -674,10 +799,21 @@ SEPC_INTERFACE_HA_ON_BUSINESS_TRUNK = "HA 基于业务 trunk"
 SPEC_INTERFACE_UNUSED_UNDISABLED = "未被定义使用的物理端口没有disable"
 SPEC_ROUTE_DEFAULT_GATEWAY = "没有默认路由配置"
 SPEC_ROUTE_DEFAULT_GATEWAY_NEXT_HOP = "路由下一跳不是对外exernal vlan在交换机上的网关地址"
+SPEC_HA_FAILSAFE_ERROR = "failover 配置错误"
+SPEC_HA_NO_HA_CONF = "未开启 HA 模式"
+SPEC_HA_HA_CONF_NOT_CORRECT = "HA 配置错误"
+SPEC_HA_HA_CONF_NOT_CORRECT_TIMEZONE = "HA 配置错误(申请时区不一样)"
+SPEC_HA_HA_CONF_NOT_CORRECT_VERSION = "HA 配置错误(设备区设备版本不一致)"
+SPEC_HA_HA_CONF_NO_MULTI_VLAN = "心跳传输地址基于单个链路"
+SPEC_HA_NO_SYNC_FAILOVER = "无sync-failover配置同步与流量切换配置"
+SPEC_HA_MULTI_SYNC_FAILOVER = "多个sync-failover配置同步与流量切换设备组"
+SPEC_HA_SYNC_NOT_FINISHED = "设备组中的配置不同步"
+SPEC_FAILOVER_FAILSAFE_ERROR = "切换条件检测检测失败"
 
 bigip_running_config = load_bigip_running_config(fileconfig)
 f5_services_dict = load_f5_services_as_map()
 device_info = data_collect_system_extract_hostname(bigip_running_config)
+vs_list_all = data_collect_app_vs_list(bigip_running_config)
 
 spec_validation_list = []
 
@@ -693,9 +829,10 @@ spec_validation_list.append(SpecRouteConfiguration(SPEC_ITEM_INEXROUTER_CONF, de
 spec_validation_list.append(SpecHAConfiguration(SPEC_ITEM_HASETTINGS_CONF, device_info[0], device_info[1], bigip_running_config))
 spec_validation_list.append(SpecFailoverSetting(SPEC_ITEM_FAILOVERS_CHECK, device_info[0], device_info[1], bigip_running_config))
 
-spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECTIONS, device_info[0], device_info[1], bigip_running_config))
-spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, device_info[0], device_info[1], bigip_running_config))
-spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, device_info[0], device_info[1], bigip_running_config))
+spec_validation_list.append(SpecApp(SPEC_ITEM_TCP_CONNECTIONS, device_info[0], device_info[1], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECTIONS, device_info[0], device_info[1], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, device_info[0], device_info[1], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, device_info[0], device_info[1], bigip_running_config, vs_list_all))
 
 #for spec in spec_validation_list:
 #    spec.write_to_excel()
