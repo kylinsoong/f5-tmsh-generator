@@ -4,7 +4,16 @@ import sys
 import ast
 import re
 import socket
+import ipaddress
 
+'''
+The Administrator and Auditor user roles that you can assign to a BIG-IP user account:
+    
+    Administrator          - This is the most powerful user role on the system and grants users complete access to all objects on the system. 
+    Auditor                - This is a powerful role that grants read-only access to all configuration data on the system, except for ARP data, archives, 
+                             and support tools. Users with this role cannot have other user roles on the system but can change their own user account password. 
+                             When granted terminal access, a user with this role has access to TMSH, but not the advanced shell.
+'''
 def spec_user_management_validation(data_all):
     auth_user_data = re.findall(r'auth user\s+\S+',data_all, re.I)
     user_list = []
@@ -274,6 +283,10 @@ def spec_secure_acl_validation(data_all):
 
 
 
+
+def net_interface_not_disabled(text):
+    return "disabled" not in text
+
 def spec_interface_configuration_validation(data_all):
     interface_validation_list = []
     net_trunk_data = re.findall(r'net trunk\s+\S+',data_all, re.I)
@@ -312,7 +325,27 @@ def spec_interface_configuration_validation(data_all):
     else:
         interface_validation_list.append((18, SEPC_INTERFACE_HA_ON_BUSINESS_TRUNK, SPEC_BASELINE_YES, [""], True))
 
-    interface_validation_list.append((19, "", SPEC_BASELINE_NO, ["TODO--"], False))
+    net_interface_unused = []
+    net_interface_data = find_content_from_start_end(data_all, "net interface", "net interface mgmt")
+    net_interface_list = net_interface_data.split("}")
+    for text in net_interface_list:
+        if "bundle-speed" not in text and "media-active" not in text:
+            net_interface_unused.append(text)
+    
+    net_interface_disable_list = []
+    net_interface_undisabled = list(filter(net_interface_not_disabled, net_interface_unused))
+    for text in net_interface_undisabled:
+        lines = text.strip().splitlines()
+        if len(lines) > 0:
+            net_interface = lines[0]
+            net_interface = net_interface.strip().rstrip("{").strip()
+            tmsh_disable_interface = "tmsh modify " + net_interface + " disabled"
+            net_interface_disable_list.append(tmsh_disable_interface)
+          
+    if len(net_interface_disable_list) > 0 :
+        interface_validation_list.append((19, SPEC_INTERFACE_UNUSED_UNDISABLED, SPEC_BASELINE_NO, net_interface_disable_list, False))
+    else:
+        interface_validation_list.append((19, "", SPEC_BASELINE_YES, [], False))
 
     return interface_validation_list
 
@@ -321,10 +354,7 @@ def spec_interface_configuration_validation(data_all):
 def spec_route_configuration_validation(data_all):
 
     route_validation_list = []
-
-    data_start = re.search("sys management-route default", data_all,re.I).start()
-    data_end = re.search("sys ntp", data_all[data_start:],re.I).start()
-    mgmt_route_data = data_all[data_start:][:data_end]
+    mgmt_route_data = find_content_from_start_end(data_all, "sys management-route default", "sys ntp")
     gateways = re.search(r'gateway\s+(\S+)', mgmt_route_data, re.I)
     if gateways:
         management_route = gateways.group()
@@ -333,11 +363,114 @@ def spec_route_configuration_validation(data_all):
     else:
         route_validation_list.append((20, "", SPEC_BASELINE_NO, ["tmsh create sys  management-route default gateway xxx.xxx.xxx.xxx"], True))
 
-    route_validation_list.append((21, "", SPEC_BASELINE_NO, ["TODO--"], False))
+    net_self_all = []
+    net_self_data = find_content_from_start_end(data_all, "net self", "net self-allow")
+    net_self_list = net_self_data.split("net self")
+    for i in net_self_list:
+        net_self_results = re.search(r'address\s+(\S+)', i, re.I)
+        if net_self_results:
+            net_self_raw = net_self_results.group()
+            net_self = net_self_raw.lstrip("address").strip()
+            net_self_all.append(net_self)
+
+    network_objects = []
+    for i in net_self_all:
+        cidr = ipaddress.ip_network(i, False)
+        network_objects.append(cidr)
+
+    unique_networks = set(network_objects)
+
+    net_route_all = []
+    net_route_data = find_content_from_start_end(data_all, "net route", "net route-domain")
+    net_route_list = net_route_data.split("net route")
+    for i in net_route_list:
+        results = re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}\b|\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b", i)
+        if(len(results) > 0):
+            net_route_all.append(results[0])
+
+    if len(net_route_all) == 0:
+        route_validation_list.append((21, SPEC_ROUTE_DEFAULT_GATEWAY, SPEC_BASELINE_NO, ["tmsh create net route default gw xxx.xxx.xxx.xxx"], True))
+    
+    invalid_route_list = []
+    for ip in net_route_all:
+        ip_addr = ipaddress.ip_address(ip)
+        if not any(ip_addr in network for network in unique_networks):
+            invalid_route_list.append(ip)
+
+    if len(invalid_route_list) > 0:
+        route_validation_list.append((21, SPEC_ROUTE_DEFAULT_GATEWAY_NEXT_HOP, SPEC_BASELINE_NO, invalid_route_list, True))
+    else:
+        route_validation_list.append((21, "", SPEC_BASELINE_YES, net_route_all, True))
 
     return route_validation_list
 
 
+
+def spec_ha_configuration_validation(data_all):
+
+    ha_validation_list = []
+  
+    ha_devices_list = []
+    ha_devices_data = find_content_from_start_end(data_all, "cm device", "cm device-group")
+    ha_devices = ha_devices_data.split("cm device")
+    for device in ha_devices:
+        if len(device) > 10:
+            lines = device.splitlines()
+            configsync_ip = None
+            failover_state = None
+            hostname = None 
+            management_ip = None
+            self_device = None
+            time_zone = None
+            version = None
+            unicast_address = []
+            unicast_port = None
+            for l in lines:
+                line = l.strip()
+                if line.startswith("configsync-ip"):
+                    configsync_ip = trip_prefix(line, "configsync-ip")
+                elif line.startswith("failover-state"):
+                    failover_state = trip_prefix(line, "failover-state")
+                elif line.startswith("hostname"):
+                    hostname = trip_prefix(line, "hostname")
+                elif line.startswith("management-ip"):
+                    management_ip = trip_prefix(line, "management-ip")
+                elif line.startswith("self-device"):
+                    self_device = trip_prefix(line, "self-device")
+                elif line.startswith("time-zone"):
+                    time_zone = trip_prefix(line, "time-zone")
+                elif line.startswith("version"):
+                    version = trip_prefix(line, "version")
+            unicast_addres_data = find_content_from_start_end(device, "unicast-address", "version")
+            unicast_lines = unicast_addres_data.splitlines()
+            for unicast in unicast_lines:
+                address = unicast.strip()
+                if address.startswith("effective-ip"):
+                    unicast_address.append(trip_prefix(address, "effective-ip"))
+                elif address.startswith("effective-port"):
+                    unicast_port = convert_servicename_to_port(trip_prefix(address, "effective-port"))
+                elif address.startswith("ip"):
+                    unicast_address.append(trip_prefix(address, "ip"))
+            ha_devices_list.append(BIGIPDevice(configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, unicast_address, unicast_port, version))
+
+    for i in ha_devices_list:
+        print(i.configsync_ip, i.failover_state, i.hostname, i.management_ip, i.self_device, i.time_zone, i.unicast_address, i.unicast_port, i.version)
+
+    return ha_validation_list
+
+
+
+class BIGIPDevice:
+    def __init__(self, configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, unicast_address, unicast_port, version):
+        self.configsync_ip = configsync_ip
+        self.failover_state = failover_state
+        self.hostname = hostname
+        self.management_ip = management_ip
+        self.self_device = self_device
+        self.time_zone = time_zone
+        self.unicast_address = unicast_address
+        self.unicast_port = unicast_port
+        self.version = version
 
 class Spec:
     def __init__(self, name, hostname, management_ip, data):
@@ -401,7 +534,8 @@ class SpecRouteConfiguration(Spec):
 
 class SpecHAConfiguration(Spec):
     def parse(self):
-        print(self.management_ip, self.hostname, self.name)
+        validation_results = spec_ha_configuration_validation(self.data)
+        self.spec_basic.extend(validation_results)
 
 class SpecFailoverSetting(Spec):
     def parse(self):
@@ -418,6 +552,21 @@ class SpecSNATConfiguration(Spec):
 class SpecHTTPRstActionDownSetting(Spec):
     def parse(self):
         print(self.management_ip, self.hostname, self.name)
+
+
+
+def trip_prefix(line, prefix):
+    if len(line) > 0 and prefix in line:
+        return line.strip().lstrip(prefix).strip()
+    else:
+        return line
+
+
+
+def find_content_from_start_end(data, start_str, end_str):
+    data_start = re.search(start_str, data, re.I).start()
+    data_end = re.search(end_str, data[data_start:], re.I).start()
+    return data[data_start:][:data_end] 
 
 
 
@@ -457,7 +606,6 @@ def data_collect_system_extract_hostname(data_all):
 
     return (hostname, management_ip)
     
-
 
 
 def load_bigip_running_config(fileconfig):
@@ -523,6 +671,9 @@ SPEC_LOGIN_METHODS_ALLOW_DEFAULT = "业务口 allow default"
 SPEC_LOGIN_METHODS_TIMEOUT_NO_12_MINS = "超时时间不是 12 分钟"
 SPEC_NTP_SETTINGS_TIMEZONE_WRONG = "时区设定非中国时区"
 SEPC_INTERFACE_HA_ON_BUSINESS_TRUNK = "HA 基于业务 trunk"
+SPEC_INTERFACE_UNUSED_UNDISABLED = "未被定义使用的物理端口没有disable"
+SPEC_ROUTE_DEFAULT_GATEWAY = "没有默认路由配置"
+SPEC_ROUTE_DEFAULT_GATEWAY_NEXT_HOP = "路由下一跳不是对外exernal vlan在交换机上的网关地址"
 
 bigip_running_config = load_bigip_running_config(fileconfig)
 f5_services_dict = load_f5_services_as_map()
@@ -546,5 +697,5 @@ spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECT
 spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, device_info[0], device_info[1], bigip_running_config))
 spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, device_info[0], device_info[1], bigip_running_config))
 
-for spec in spec_validation_list:
-    spec.write_to_excel()
+#for spec in spec_validation_list:
+#    spec.write_to_excel()
