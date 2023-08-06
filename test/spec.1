@@ -8545,6 +8545,36 @@ ltm snatpool snat_22.230.88.43 {
 ltm tacdb licenseddb licensed-tacdb {
     partition none
 }
+ltm virtual test_http {
+    creation-time 2020-08-18:13:04:31
+    destination 22.230.88.119:tproxy
+    ip-protocol tcp
+    last-modified-time 2023-08-06:16:05:27
+    mask 255.255.255.255
+    persist {
+        cookie {
+            default yes
+        }
+    }
+    pool pool_NGinx
+    profiles {
+        decommpress { }
+        http { }
+        serverssl {
+            context serverside
+        }
+        tcp { }
+    }
+    serverssl-use-sni disabled
+    service-down-immediate-action reset
+    source 0.0.0.0/0
+    source-address-translation {
+        type automap
+    }
+    translate-address enabled
+    translate-port enabled
+    vs-index 72
+}
 ltm virtual BaoBiaoYingYong_6102_WSL_VS {
     destination 22.230.88.119:synchronet-upd
     ip-protocol tcp

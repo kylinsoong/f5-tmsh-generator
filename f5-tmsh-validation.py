@@ -586,11 +586,28 @@ class BIGIPDevice:
         self.unicast_port = unicast_port
         self.version = version
 
+class BIGIPVS:
+    def __init__(self, vs_name, vs_ip, vs_port, vs_mask, ip_protocol, pool, profiles, rules, persist, serviceDownReset, vlans, snatpool, snatType):
+        self.vs_name = vs_name
+        self.vs_ip = vs_ip
+        self.vs_port = vs_port
+        self.vs_mask = vs_mask
+        self.ip_protocol = ip_protocol
+        self.pool = pool
+        self.profiles = profiles
+        self.rules = rules
+        self.persist = persist
+        self.serviceDownReset = serviceDownReset
+        self.vlans = vlans
+        self.snatpool = snatpool
+        self.snatType = snatType
+
 class Spec:
-    def __init__(self, name, hostname, management_ip, data):
+    def __init__(self, name, hostname, management_ip, software_version, data):
         self.name = name
         self.hostname = hostname
         self.management_ip = management_ip
+        self.software_version = software_version
         self.data = data
         self.spec_basic = []
         self.spec_supplementary = []
@@ -657,22 +674,41 @@ class SpecFailoverSetting(Spec):
         self.spec_basic.extend(validation_results)
 
 class SpecApp(Spec):
-    def __init__(self, name, hostname, management_ip, data, vs_list):
-        super().__init__(name, hostname, management_ip, data)
+    def __init__(self, name, hostname, management_ip, software_version, data, vs_list):
+        super().__init__(name, hostname, management_ip, software_version, data)
         self.vs_list = vs_list
 
 class SpecTCPConnectionConfiguration(SpecApp):
     def parse(self):
-        print(self.management_ip, self.hostname, self.name)
+        fastl4_list = extract_fastl4_profile(self.data)
+        print(fastl4_list)
+        print(self.management_ip, self.hostname, self.name, self.software_version)
 
 class SpecSNATConfiguration(SpecApp):
     def parse(self):
-        print(self.management_ip, self.hostname, self.name)
+        snatpool_list = extract_snatpool(self.data)
+        print(self.management_ip, self.hostname, self.name, self.software_version)
 
 class SpecHTTPRstActionDownSetting(SpecApp):
     def parse(self):
-        print(self.management_ip, self.hostname, self.name)
+        http_list = extract_http_profile(self.data)
+        print(http_list)
+        print(self.management_ip, self.hostname, self.name, self.software_version)
 
+class Profile:
+    def __init__(self, name, parent):
+        self.name = name
+        self.parent = parent
+
+class ProfileFastl4(Profile):
+    def __init__(self, name, parent, idle_timeout, tcp_handshake_timeout):
+        super().__init__(name, parent)
+        self.idle_timeout = idle_timeout
+        self.tcp_handshake_timeout = tcp_handshake_timeout
+
+class ProfileHttp(Profile):
+    def __init__(self, name, parent, xff):
+        self.xff = xff
 
 
 def trip_prefix(line, prefix):
@@ -722,15 +758,233 @@ def data_collect_system_extract_hostname(data_all):
             hostname_raw = hostname_list.group()
             hostname = hostname_raw.lstrip("hostname").strip()
 
-    return (hostname, management_ip)
+    ha_devices_data = find_content_from_start_end(data_all, "cm device", "cm device-group")
+    ha_devices = ha_devices_data.split("cm device")
+    version = None
+    for device in ha_devices:
+        if len(device) > 10:
+            lines = device.splitlines()
+            version = None
+            for l in lines:
+                line = l.strip()
+                if line.startswith("version"):
+                    version = trip_prefix(line, "version")
+
+    return (hostname, management_ip, version)
 
 
+def extract_snatpool(data_all):
+    snatpool_results = []
+    pattern = r'ltm snatpool\s+\S+'
+    results = extract_profiles(data_all, pattern)
+    for i in results:
+        print(snatpool_data)
 
+    return snatpool_results
+
+def extract_http_profile(data_all):
+    http_profile_results = []
+    pattern = r'ltm profile http\s+\S+'
+    results = extract_profiles(data_all, pattern)
+    for i in results:
+        profile = i.lstrip("ltm profile http").replace("{", "").replace("}", "") 
+        lines = profile.splitlines()
+        profile_name = lines[0].strip()
+        profile_parent = None
+        profile_xff = None
+        for l in lines:
+            line = l.strip()
+            if line.startswith("defaults-from"):
+                profile_parent = trip_prefix(line, "defaults-from")
+            elif line.startswith("insert-xforwarded-for"):
+                profile_xff = trip_prefix(line, "insert-xforwarded-for")
+        http_profile_results.append(ProfileHttp(profile_name, profile_parent, profile_xff))
+    return http_profile_results
+
+def extract_fastl4_profile(data_all):
+    fastl4_profile_results = []
+    pattern = r'ltm profile fastl4\s+\S+'
+    results = extract_profiles(data_all, pattern)
+    for i in results:
+        profile = i.lstrip("ltm profile fastl4").replace("{", "").replace("}", "") 
+        lines = profile.splitlines()
+        profile_name = lines[0].strip()
+        profile_parent = None
+        profile_idle_timeout = None
+        profile_handshake_timeout = None
+        for l in lines:
+            line = l.strip()
+            if line.startswith("defaults-from"):
+                profile_parent = trip_prefix(line, "defaults-from")
+            elif line.startswith("idle-timeout"):
+                profile_idle_timeout = trip_prefix(line, "idle-timeout")
+            elif line.startswith("tcp-handshake-timeout"):
+                profile_handshake_timeout = trip_prefix(line, "tcp-handshake-timeou")
+        fastl4_profile_results.append(ProfileFastl4(profile_name, profile_parent, profile_idle_timeout, profile_handshake_timeout))
+    return fastl4_profile_results
+
+
+def extract_profiles(data_all, pattern):
+    results = []
+    profiles_list = []
+    profiles_data = re.findall(pattern, data_all, re.I)
+    for i in profiles_data:
+        profiles_list.append(i)
+
+    for i, num in zip(profiles_data, range(len(profiles_data))):
+        if num < len(profiles_list) - 1:
+            data_start = re.search(i, data_all, re.I).start()
+            data_end = re.search(profiles_list[num+1], data_all[data_start:]).start()
+            data_detail = data_all[data_start:][:data_end]
+        else:
+            data_start = re.search(i, data_all, re.I).start()
+            data_end = re.search(r'}', data_all[data_start:]).start()
+            data_detail = data_all[data_start:][:data_end]
+        results.append(data_detail)
+
+    return results
+
+'''
+Parse all VS data as list start, related functions:
+
+    data_collect_app_vs_list()
+    extract_snat_attributes()
+    extract_vs_attributes()
+    convert_profiles_rules_to_list()
+
+'''
 def data_collect_app_vs_list(data_all):
     vs_list = []
 
+    va_data_all = find_content_from_start_end(data_all, "ltm virtual", "net cos")
+    va_data_list = va_data_all.split("ltm virtual")
+    for i in va_data_list:
+        if len(i) > 0:
+            vs_name = None
+            vs_ip = None
+            vs_port = None
+            vs_mask = None
+            ip_protocol = None
+            pool = None
+            profiles = None
+            rules = None
+            snatpool = None
+            snatType = None
+            vs_data = i.strip()
+            vs_attributes = None
+            snat_attributes = None
+            snat_search_results = re.search("source-address-translation", vs_data,re.I)
+            if snat_search_results:
+                snat_start = snat_search_results.start()
+                vs_data_header = vs_data[0:snat_start]
+                vs_data_tail = vs_data[snat_start:]
+                vs_attributes = extract_vs_attributes(vs_data_header)
+                snat_attributes = extract_snat_attributes(vs_data_tail)
+            else:
+                vs_attributes = extract_vs_attributes(vs_data)
+
+            vs_name = vs_attributes[0]
+            vs_ip = vs_attributes[1]
+            vs_port = vs_attributes[2]
+            vs_mask = vs_attributes[3]
+            ip_protocol = vs_attributes[4]
+            pool = vs_attributes[5]
+            profiles = vs_attributes[6]
+            rules = vs_attributes[7]
+            persist = vs_attributes[8]
+            serviceDownReset = vs_attributes[9]
+            vlans = vs_attributes[10]
+            snatpool = None
+            snatType = None
+            if snat_attributes is not None:
+                snatpool = snat_attributes[0]
+                snatType = snat_attributes[1]
+
+            vs_list.append(BIGIPVS(vs_name, vs_ip, vs_port, vs_mask, ip_protocol, pool, profiles, rules, persist, serviceDownReset, vlans, snatpool, snatType))
+
     return vs_list
-    
+
+def extract_snat_attributes(data_all):
+
+    snatpool = None
+    snatType = None
+
+    data_lines = data_all.splitlines()
+    for data_line in data_lines:
+        line = data_line.strip()
+        if line.startswith("pool"):
+            snatpool = trip_prefix(line, "pool")
+        elif line.startswith("type"):
+            snatType = trip_prefix(line, "type")
+
+    return (snatpool, snatType)
+
+def extract_vs_attributes(data_all):
+
+    vs_name = None
+    vs_ip = None
+    vs_port = None
+    vs_mask = None
+    ip_protocol = None
+    pool = None
+    profiles = None
+    rules = None
+    serviceDownReset = None
+    vlans = None
+    persist = None
+
+    lines = data_all.splitlines()
+    vs_name = lines[0].replace("{", "").strip()
+    for l in lines:
+        line = l.strip()
+        if line.startswith("destination"):
+            destination = trip_prefix(line, "destination")
+            destination_array = destination.split(":")
+            vs_ip = destination_array[0]
+            vs_port = convert_servicename_to_port(destination_array[1])
+        elif line.startswith("ip-protocol"):
+            ip_protocol = trip_prefix(line, "ip-protocol")
+        elif line.startswith("pool"):
+            pool = trip_prefix(line, "pool")
+        elif line.startswith("mask"):
+            vs_mask = trip_prefix(line, "mask")
+        elif line.startswith("service-down-immediate-action"):
+            serviceDownReset = trip_prefix(line, "service-down-immediate-action")
+
+    profiles_data = find_content_from_start_end(data_all, "profiles", "source")
+    rules_search_results = re.search("rules", profiles_data, re.I)
+    if rules_search_results:
+        rules_data_start = rules_search_results.start()
+        profiles_raw = profiles_data[:rules_data_start]
+        rules_raw = profiles_data[rules_data_start:]
+        profiles = convert_profiles_rules_to_list(profiles_raw, "profiles")
+        rules = convert_profiles_rules_to_list(rules_raw, "rules")
+    else:
+        profiles = convert_profiles_rules_to_list(profiles_data, "profiles")
+
+    if "vlans" in data_all:
+        vlans_search_results = find_content_from_start_end(data_all, "vlans", "}")
+        if vlans_search_results:
+            vlans = convert_profiles_rules_to_list(vlans_search_results, "vlans")
+
+    if "persist" in data_all:
+        persist_search_results = find_content_from_start_end(data_all, "persist", "}")
+        if persist_search_results:
+            persist_list = convert_profiles_rules_to_list(persist_search_results, "persist")
+            if len(persist_list) >= 1:
+                persist = persist_list[0]
+
+    return(vs_name, vs_ip, vs_port, vs_mask, ip_protocol, pool, profiles, rules, persist, serviceDownReset, vlans)
+
+def convert_profiles_rules_to_list(data_all, item):
+    results = []
+    data_origin = data_all[:data_all.rfind("}")]
+    results_raw = data_origin.strip().lstrip(item).replace("default yes", "").replace("context serverside", "").replace("context clientside", "").replace("{", "").replace("}", "").splitlines()
+    for l in results_raw:
+        line = l.strip()
+        if len(line) > 0:
+            results.append(line)
+    return results
 
 
 def load_bigip_running_config(fileconfig):
@@ -746,6 +1000,9 @@ def load_bigip_running_config(fileconfig):
     fo.close()
     return data_all
 
+'''
+Parse all VS data as list - end
+'''
 
 
 def load_f5_services_as_map():
@@ -815,24 +1072,26 @@ f5_services_dict = load_f5_services_as_map()
 device_info = data_collect_system_extract_hostname(bigip_running_config)
 vs_list_all = data_collect_app_vs_list(bigip_running_config)
 
+#for v in vs_list_all:
+#    print(v.vs_name, v.vs_ip, v.vs_port, v.vs_mask, v.ip_protocol, v.pool, v.profiles, v.rules, v.persist, v.serviceDownReset, v.vlans, v.snatpool, v.snatType)
+
 spec_validation_list = []
 
-spec_validation_list.append(SpecUserManagement(SPEC_ITEM_USER_MANAGEMENT, device_info[0], device_info[1], bigip_running_config))
-spec_validation_list.append(SpecLoginMethods(SPEC_ITEM_EXLOGIN_METHODS, device_info[0], device_info[1], bigip_running_config))
-spec_validation_list.append(SpecNTPSyncSetting(SPEC_ITEM_NTPSYN_SETTINGS, device_info[0], device_info[1], bigip_running_config))
-spec_validation_list.append(SpecSNMPManagement(SPEC_ITEM_SNMP_MANAGEMENT, device_info[0], device_info[1], bigip_running_config))
-spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, device_info[0], device_info[1], bigip_running_config))
-spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, device_info[0], device_info[1], bigip_running_config))
+spec_validation_list.append(SpecUserManagement(SPEC_ITEM_USER_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecLoginMethods(SPEC_ITEM_EXLOGIN_METHODS, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecNTPSyncSetting(SPEC_ITEM_NTPSYN_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecSNMPManagement(SPEC_ITEM_SNMP_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, device_info[0], device_info[1], device_info[2], bigip_running_config))
 
-spec_validation_list.append(SpecInterfaceConfiguration(SPEC_ITEM_INTERFACES_CONF, device_info[0], device_info[1], bigip_running_config))
-spec_validation_list.append(SpecRouteConfiguration(SPEC_ITEM_INEXROUTER_CONF, device_info[0], device_info[1], bigip_running_config))
-spec_validation_list.append(SpecHAConfiguration(SPEC_ITEM_HASETTINGS_CONF, device_info[0], device_info[1], bigip_running_config))
-spec_validation_list.append(SpecFailoverSetting(SPEC_ITEM_FAILOVERS_CHECK, device_info[0], device_info[1], bigip_running_config))
+spec_validation_list.append(SpecInterfaceConfiguration(SPEC_ITEM_INTERFACES_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecRouteConfiguration(SPEC_ITEM_INEXROUTER_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecHAConfiguration(SPEC_ITEM_HASETTINGS_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecFailoverSetting(SPEC_ITEM_FAILOVERS_CHECK, device_info[0], device_info[1], device_info[2], bigip_running_config))
 
-spec_validation_list.append(SpecApp(SPEC_ITEM_TCP_CONNECTIONS, device_info[0], device_info[1], bigip_running_config, vs_list_all))
-spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECTIONS, device_info[0], device_info[1], bigip_running_config, vs_list_all))
-spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, device_info[0], device_info[1], bigip_running_config, vs_list_all))
-spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, device_info[0], device_info[1], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECTIONS, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
 
 #for spec in spec_validation_list:
 #    spec.write_to_excel()
