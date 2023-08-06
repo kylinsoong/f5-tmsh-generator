@@ -602,6 +602,26 @@ class BIGIPVS:
         self.snatpool = snatpool
         self.snatType = snatType
 
+class BIGIPProfile:
+    def __init__(self, name, parent):
+        self.name = name
+        self.parent = parent
+
+class BIGIPProfileFastl4(BIGIPProfile):
+    def __init__(self, name, parent, idle_timeout, tcp_handshake_timeout):
+        super().__init__(name, parent)
+        self.idle_timeout = idle_timeout
+        self.tcp_handshake_timeout = tcp_handshake_timeout
+
+class BIGIPProfileHttp(BIGIPProfile):
+    def __init__(self, name, parent, xff):
+        self.xff = xff
+
+class BIGIPSnatPool:
+    def __init__(self, name, members):
+        self.name = name
+        self.members = members
+
 class Spec:
     def __init__(self, name, hostname, management_ip, software_version, data):
         self.name = name
@@ -675,18 +695,41 @@ class SpecFailoverSetting(Spec):
 
 class SpecApp(Spec):
     def __init__(self, name, hostname, management_ip, software_version, data, vs_list):
-        super().__init__(name, hostname, management_ip, software_version, data)
         self.vs_list = vs_list
+        super().__init__(name, hostname, management_ip, software_version, data)
 
 class SpecTCPConnectionConfiguration(SpecApp):
+
+    profiles = []
+
     def parse(self):
         fastl4_list = extract_fastl4_profile(self.data)
-        print(fastl4_list)
-        print(self.management_ip, self.hostname, self.name, self.software_version)
+        for i in fastl4_list:
+            self.profiles.append(i.name)
+   
+        l4_vs_list = list(filter(self.is_tcp_application, self.vs_list))
+        for vs in l4_vs_list:
+            timeout = self.extract_timeout(vs.profiles, fastl4_list) 
+            print(timeout)
+  
+        #print(self.name, len(self.data), self.vs_list )
+    def extract_timeout(self, profiles, list):
+        for i in list:
+            if i.name == profiles[0]:
+                return i.idle_timeout
+        return 0
+
+    def is_tcp_application(self, vs):
+        #print(vs.profiles, self.profiles)
+        if vs.profiles is not None:
+            for profile in vs.profiles:
+                return profile in self.profiles
+        return False 
 
 class SpecSNATConfiguration(SpecApp):
     def parse(self):
         snatpool_list = extract_snatpool(self.data)
+        print(snatpool_list)
         print(self.management_ip, self.hostname, self.name, self.software_version)
 
 class SpecHTTPRstActionDownSetting(SpecApp):
@@ -694,21 +737,6 @@ class SpecHTTPRstActionDownSetting(SpecApp):
         http_list = extract_http_profile(self.data)
         print(http_list)
         print(self.management_ip, self.hostname, self.name, self.software_version)
-
-class Profile:
-    def __init__(self, name, parent):
-        self.name = name
-        self.parent = parent
-
-class ProfileFastl4(Profile):
-    def __init__(self, name, parent, idle_timeout, tcp_handshake_timeout):
-        super().__init__(name, parent)
-        self.idle_timeout = idle_timeout
-        self.tcp_handshake_timeout = tcp_handshake_timeout
-
-class ProfileHttp(Profile):
-    def __init__(self, name, parent, xff):
-        self.xff = xff
 
 
 def trip_prefix(line, prefix):
@@ -778,7 +806,17 @@ def extract_snatpool(data_all):
     pattern = r'ltm snatpool\s+\S+'
     results = extract_profiles(data_all, pattern)
     for i in results:
-        print(snatpool_data)
+        snat_data = i.replace("ltm snatpool", "").strip()
+        lines = snat_data.splitlines()
+        snat_name = lines[0].strip().rstrip("{").strip()
+        snat_members_raw = snat_data.replace(snat_name, "").replace("members", "").replace("{", "").replace("}", "")
+        snat_members = []
+        snat_members_list = snat_members_raw.splitlines()
+        for snat in snat_members_list:
+            snat_member = snat.strip()
+            if len(snat_member) > 0:
+                snat_members.append(snat_member)
+        snatpool_results.append(BIGIPSnatPool(snat_name, snat_members))
 
     return snatpool_results
 
@@ -798,7 +836,7 @@ def extract_http_profile(data_all):
                 profile_parent = trip_prefix(line, "defaults-from")
             elif line.startswith("insert-xforwarded-for"):
                 profile_xff = trip_prefix(line, "insert-xforwarded-for")
-        http_profile_results.append(ProfileHttp(profile_name, profile_parent, profile_xff))
+        http_profile_results.append(BIGIPProfileHttp(profile_name, profile_parent, profile_xff))
     return http_profile_results
 
 def extract_fastl4_profile(data_all):
@@ -806,7 +844,7 @@ def extract_fastl4_profile(data_all):
     pattern = r'ltm profile fastl4\s+\S+'
     results = extract_profiles(data_all, pattern)
     for i in results:
-        profile = i.lstrip("ltm profile fastl4").replace("{", "").replace("}", "") 
+        profile = i[len("ltm profile fastl4"):].replace("{", "").replace("}", "") 
         lines = profile.splitlines()
         profile_name = lines[0].strip()
         profile_parent = None
@@ -820,7 +858,7 @@ def extract_fastl4_profile(data_all):
                 profile_idle_timeout = trip_prefix(line, "idle-timeout")
             elif line.startswith("tcp-handshake-timeout"):
                 profile_handshake_timeout = trip_prefix(line, "tcp-handshake-timeou")
-        fastl4_profile_results.append(ProfileFastl4(profile_name, profile_parent, profile_idle_timeout, profile_handshake_timeout))
+        fastl4_profile_results.append(BIGIPProfileFastl4(profile_name, profile_parent, profile_idle_timeout, profile_handshake_timeout))
     return fastl4_profile_results
 
 

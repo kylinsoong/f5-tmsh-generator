@@ -34,6 +34,10 @@ class Cat(Animal):
     def call_external_function(self):
         external_function(self.name)
 
+class ChinaCat(Cat):
+    def show_color(self):
+        print(self.color)
+
 dog = Dog("Buddy")
 cat = Cat("Whiskers", "Black")
 
@@ -48,3 +52,8 @@ cat.show_color()
 
 print(dog.name, cat.name, cat.color)
 print(Cat.__name__, Cat.__dict__, Cat.__doc__)
+
+print("-----")
+
+t = ChinaCat("Boo", "Yellow")
+t.show_color()
