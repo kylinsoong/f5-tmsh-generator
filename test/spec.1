@@ -8566,7 +8566,6 @@ ltm virtual test_http {
         tcp { }
     }
     serverssl-use-sni disabled
-    service-down-immediate-action reset
     source 0.0.0.0/0
     source-address-translation {
         type automap

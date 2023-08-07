@@ -41,41 +41,49 @@ def spec_user_management_validation(data_all):
     user_config_note = []
     user_config_spec = SPEC_BASELINE_YES
     user_config_tmsh = []
+    user_config_rollback_tmsh = []
     if "psbc" not in user_role_dict:
         user_config_note.append(SPEC_USER_MANAGEMENT_PSBC_NOT_EXIST)
         user_config_spec = SPEC_BASELINE_NO
         user_config_tmsh.append("tmsh create auth user psbc password PSBC@BJ*sc*sjzx2022 partition-access add { all-partitions { role admin } } shell bash")
+        user_config_rollback_tmsh.append("tmsh delete auth user psbc")
     if "view" not in user_role_dict:
         user_config_note.append(SPEC_USER_MANAGEMENT_VIEW_NOT_EXIST)
         user_config_spec = SPEC_BASELINE_NO
         user_config_tmsh.append("tmsh create auth user view password Viewmon@2020 partition-access add { all-partitions { role auditor } } shell tmsh")
+        user_config_rollback_tmsh.append("tmsh delete auth user view")
 
-    user_validation_list.append((1, user_config_note, user_config_spec, user_config_tmsh, False))
+    user_validation_list.append((1, user_config_note, user_config_spec, user_config_tmsh,user_config_rollback_tmsh,  False))
 
     default_user_note = ""
     default_user_spec = SPEC_BASELINE_YES
     default_user_tmsh = ""
+    default_user_rollback_tmsh = ""
     if "admin" in user_role_dict:
         default_user_note = SPEC_USER_MANAGEMENT_ADMIN_NOT_DELETE
         default_user_spec = SPEC_BASELINE_NO
-        default_user_tmsh = " tmsh modify sys db systemauth.primaryadminuser value psbc"
+        default_user_tmsh = "tmsh modify sys db systemauth.primaryadminuser value psbc"
+        default_user_rollback_tmsh = "tmsh modify sys db systemauth.primaryadminuser value admin"
 
-    user_validation_list.append((2, default_user_note, default_user_spec, default_user_tmsh, False))
+    user_validation_list.append((2, default_user_note, default_user_spec, default_user_tmsh, default_user_rollback_tmsh, False))
 
     user_role_config_note = []
     user_role_config_spec = SPEC_BASELINE_YES
     user_role_config_tmsh = []
+    user_role_config_rollback_tmsh = []
     if "psbc" in user_role_dict and user_role_dict['psbc'] != "admin":
         user_role_config_note.append(SPEC_USER_MANAGEMENT_PSBC_NO_EXPECT_RIGHT)
         user_role_config_spec = SPEC_BASELINE_NO
         user_role_config_tmsh.append("tmsh modify auth user psbc partition-access modify { all-partitions { role admin }}")
+        user_role_config_rollback_tmsh.append("tmsh modify auth user psbc partition-access modify { all-partitions { role " + user_role_dict['psbc'] + " }}")
 
     if "view" in user_role_dict and user_role_dict['view'] != "auditor":
         user_role_config_note.append(SPEC_USER_MANAGEMENT_VIEW_NO_EXPECT_RIGHT)
         user_role_config_spec = SPEC_BASELINE_NO
         user_role_config_tmsh.append("tmsh modify auth user view partition-access modify { all-partitions { role auditor }}")
+        user_role_config_rollback_tmsh.append("tmsh modify auth user view partition-access modify { all-partitions { role " + user_role_dict['view'] + " }}")
 
-    user_validation_list.append((3, user_role_config_note, user_role_config_spec, user_role_config_tmsh, False))
+    user_validation_list.append((3, user_role_config_note, user_role_config_spec, user_role_config_tmsh, user_role_config_rollback_tmsh, False))
 
     return user_validation_list
 
@@ -90,6 +98,7 @@ def spec_login_methods_validation(data_all):
     self_allow_default_note = ""
     self_allow_default_spec = SPEC_BASELINE_YES
     self_allow_default_tmsh = []
+    self_allow_default_rollback_tmsh = []
     for i,num in zip(user_login_data,range(len(self_name_list))):
         if num < len(self_name_list)-1:
             user_login_data_start = re.search(i, data_all, re.I).start()
@@ -114,14 +123,17 @@ def spec_login_methods_validation(data_all):
                 self_allow_default_note = SPEC_LOGIN_METHODS_ALLOW_DEFAULT
                 self_allow_default_spec = SPEC_BASELINE_NO
                 tmsh = "tmsh modify net self " + self_name + " allow-service none"
+                tmsh_rollback = "tmsh modify net self " + self_name + " allow-service default"
                 self_allow_default_tmsh.append(tmsh)
+                self_allow_default_rollback_tmsh.append(tmsh_rollback)
 
-    user_login_validation_list.append((4, self_allow_default_note, self_allow_default_spec, self_allow_default_tmsh, False))
-    user_login_validation_list.append((5, self_allow_default_note, self_allow_default_spec, self_allow_default_tmsh, False))
+    user_login_validation_list.append((4, self_allow_default_note, self_allow_default_spec, self_allow_default_tmsh, self_allow_default_rollback_tmsh, False))
+    user_login_validation_list.append((5, self_allow_default_note, self_allow_default_spec, self_allow_default_tmsh, self_allow_default_rollback_tmsh, False))
 
     timeout_validation_note = ""
     timeout_validation_spec = SPEC_BASELINE_YES
     timeout_validation_tmsh = []
+    timeout_validation_rollback_tmsh = []
     sshd_data_start = re.search(r'sys sshd\s+(\S+)', data_all,re.I).start()
     sshd_timeout_start = re.search(r'inactivity-timeout\s+(\S+)', data_all[sshd_data_start:],re.I).start()
     sshd_timeout_end = re.search(r'}', data_all[sshd_data_start:][sshd_timeout_start:]).start()
@@ -131,6 +143,7 @@ def spec_login_methods_validation(data_all):
         timeout_validation_note = SPEC_LOGIN_METHODS_TIMEOUT_NO_12_MINS
         timeout_validation_spec = SPEC_BASELINE_NO
         timeout_validation_tmsh.append("tmsh modify sys sshd inactivity-timeout 720")
+        timeout_validation_rollback_tmsh.append("tmsh modify sys sshd inactivity-timeout " + sshd_timeout)
 
     httpd_data_start = re.search(r'sys httpd\s+(\S+)', data_all,re.I).start()
     httpd_timeout_start = re.search(r'auth-pam-idle-timeout\s+(\S+)', data_all[httpd_data_start:],re.I).start()
@@ -142,8 +155,9 @@ def spec_login_methods_validation(data_all):
         timeout_validation_note = SPEC_LOGIN_METHODS_TIMEOUT_NO_12_MINS
         timeout_validation_spec = SPEC_BASELINE_NO
         timeout_validation_tmsh.append("tmsh modify sys httpd auth-pam-idle-timeout 720")
+        timeout_validation_rollback_tmsh.append("tmsh modify sys httpd auth-pam-idle-timeout " + httpd_timeout)
 
-    user_login_validation_list.append((6, timeout_validation_note, timeout_validation_spec, timeout_validation_tmsh, False))
+    user_login_validation_list.append((6, timeout_validation_note, timeout_validation_spec, timeout_validation_tmsh, timeout_validation_rollback_tmsh, False))
     
     return user_login_validation_list
 
@@ -159,17 +173,19 @@ def spec_ntp_settings_validation(data_all):
     timezone_validation_note = ""
     timezone_validation_spec = SPEC_BASELINE_YES
     timezone_validation_tmsh = []
+    timezone_validation_rollback_tmsh = []
     if timezone != "Asia/Shanghai" :
         timezone_validation_note = SPEC_NTP_SETTINGS_TIMEZONE_WRONG
         timezone_validation_spec = SPEC_BASELINE_NO
         timezone_validation_tmsh.append("tmsh modify sys  ntp { timezone  Asia/Shanghai}")
+        timezone_validation_rollback_tmsh.append("tmsh modify sys  ntp { timezone  " + timezone + "}")
     ntp_validation_list.append((7, timezone_validation_note, timezone_validation_spec, timezone_validation_tmsh, False))
 
     servers_start = re.search("servers", ntp_data,re.I).start()
     servers_end = re.search("}", ntp_data[servers_start:],re.I).start()
     servers = ntp_data[servers_start:][:servers_end]
     servers = servers.replace("{ ", "")
-    ntp_validation_list.append((8, "", SPEC_BASELINE_YES, ["ntp " + servers], True))
+    ntp_validation_list.append((8, "", SPEC_BASELINE_YES, ["ntp " + servers], [], True))
     return ntp_validation_list
 
 
@@ -180,11 +196,11 @@ def spec_snmp_management_validation(data_all):
     snmp_data_end = re.search("sys software image", data_all[snmp_data_start:],re.I).start()
     snmp_data = data_all[snmp_data_start:][:snmp_data_end]
 
-    snmp_validation_list.append((9, "", SPEC_BASELINE_YES, [], False))
-    snmp_validation_list.append((10, "", SPEC_BASELINE_YES, ["v2c"], False))
+    snmp_validation_list.append((9, "", SPEC_BASELINE_YES, [], [], False))
+    snmp_validation_list.append((10, "", SPEC_BASELINE_YES, ["v2c"], [], False))
 
     if "psbcread" not in snmp_data:
-        snmp_validation_list.append((11, "", SPEC_BASELINE_NO, ["tmsh modify sys snmp communities add { XXXXX { community-name psbcread source default oid-subset 1 access ro } }"], False))
+        snmp_validation_list.append((11, "", SPEC_BASELINE_NO, ["tmsh modify sys snmp communities add { XXXXX { community-name psbcread source default oid-subset 1 access ro } }"], [], False))
 
     snmp_traps_data_start = re.search("traps {", snmp_data, re.I).start()
     snmp_traps_data = snmp_data[snmp_traps_data_start:]
@@ -212,9 +228,9 @@ def spec_snmp_management_validation(data_all):
             snmp_trap_host_port_list.append(tmsh)
 
     if len(snmp_trap_host_port_list) > 0:
-        snmp_validation_list.append((12, "", SPEC_BASELINE_YES, snmp_trap_host_port_list, True))
+        snmp_validation_list.append((12, "", SPEC_BASELINE_YES, snmp_trap_host_port_list, [], True))
     else:
-        snmp_validation_list.append((12, "", SPEC_BASELINE_NO, ["tmsh modify sys snmp traps add { XXXXX  { version 2c community psbcread host XX.XX.XX.XX  port XXX } } "], True))
+        snmp_validation_list.append((12, "", SPEC_BASELINE_NO, ["tmsh modify sys snmp traps add { XXXXX  { version 2c community psbcread host XX.XX.XX.XX  port XXX } } "], [], True))
 
     return snmp_validation_list
 
@@ -230,11 +246,11 @@ def spec_syslog_settings_validation(data_all):
     syslog_data_end = re.search("sys turboflex profile-config", data_all[syslog_data_start:],re.I).start()
     syslog_data = data_all[syslog_data_start:][:syslog_data_end]
     if len(syslog_data) > 30:
-        syslog_validation_list.append((13, "", SPEC_BASELINE_YES, [syslog_data], True))
+        syslog_validation_list.append((13, "", SPEC_BASELINE_YES, [syslog_data], [], True))
     else:
-        syslog_validation_list.append((13, "", SPEC_BASELINE_NO, ["tmsh modify sys syslog remote-servers add { XXXX { host XXX.XXX.XXX.XXX remote-port XXX local-ip XXX.XXX.XXX.XXX } }"], True))
+        syslog_validation_list.append((13, "", SPEC_BASELINE_NO, ["tmsh modify sys syslog remote-servers add { XXXX { host XXX.XXX.XXX.XXX remote-port XXX local-ip XXX.XXX.XXX.XXX } }"], [], True))
 
-    syslog_validation_list.append((14, "", SPEC_BASELINE_YES, ["tmsh  modify  sys  syslog  local6-from notice"], False))
+    syslog_validation_list.append((14, "", SPEC_BASELINE_YES, ["tmsh  modify  sys  syslog  local6-from notice"], [], False))
     return syslog_validation_list
 
 
@@ -265,19 +281,19 @@ def spec_secure_acl_validation(data_all):
     secure_acl_validation_list = []
 
     if len(httpd_allow) > 20:
-        secure_acl_validation_list.append((15, "", SPEC_BASELINE_YES, [httpd_allow], True))
+        secure_acl_validation_list.append((15, "", SPEC_BASELINE_YES, [httpd_allow], [], True))
     else:
-        secure_acl_validation_list.append((15, "", SPEC_BASELINE_NO, ["tmsh modify sys httpd allow add { xxx.xxx.xxx.xxx/xx }"], True))
+        secure_acl_validation_list.append((15, "", SPEC_BASELINE_NO, ["tmsh modify sys httpd allow add { xxx.xxx.xxx.xxx/xx }"], [], True))
 
     if len(sshd_allow) > 20:
-        secure_acl_validation_list.append((16, "", SPEC_BASELINE_YES, [sshd_allow], True))
+        secure_acl_validation_list.append((16, "", SPEC_BASELINE_YES, [sshd_allow], [], True))
     else:
-        secure_acl_validation_list.append((16, "", SPEC_BASELINE_NO, ["tmsh modify sys sshd allow add { xxx.xxx.xxx.xxx/xx }"], True))
+        secure_acl_validation_list.append((16, "", SPEC_BASELINE_NO, ["tmsh modify sys sshd allow add { xxx.xxx.xxx.xxx/xx }"], [], True))
 
     #if len(snmp_allowed_address) > 30:
-    #   secure_acl_validation_list.append((101, "", SPEC_BASELINE_YES, [snmp_allowed_address], True))
+    #   secure_acl_validation_list.append((101, "", SPEC_BASELINE_YES, [snmp_allowed_address], [], True))
     #else:
-    #   secure_acl_validation_list.append((101, "", SPEC_BASELINE_NO, ["tmsh modify sys snmp allowed-addresses add { xxx.xxx.xxx.xxx  }"], True))
+    #   secure_acl_validation_list.append((101, "", SPEC_BASELINE_NO, ["tmsh modify sys snmp allowed-addresses add { xxx.xxx.xxx.xxx  }"], [], True))
 
     return secure_acl_validation_list
 
@@ -314,16 +330,16 @@ def spec_interface_configuration_validation(data_all):
         inter_data_detail = data_detail[inter_data_start:][:inter_data_end + 1]
         inter_data_detail = trunk_name + " " + inter_data_detail
 
-        interface_validation_list.append((17, "", SPEC_BASELINE_YES, [inter_data_detail], False))
+        interface_validation_list.append((17, "", SPEC_BASELINE_YES, [inter_data_detail], [], False))
 
         if "lacp enabled" in data_detail:
-            interface_validation_list.append((17, "", SPEC_BASELINE_NO, [trunk_disable_tmsh], False))
+            interface_validation_list.append((17, "", SPEC_BASELINE_NO, [trunk_disable_tmsh], [], False))
 
     if len(interface_validation_list) <= 0:
-        interface_validation_list.append((17, "", SPEC_BASELINE_NO, ["tmsh create net trunk XXXX interfaces add { X.X }"], False))
-        interface_validation_list.append((18, "", SPEC_BASELINE_NO, ["tmsh create net trunk XXXX interfaces add { X.X }"], True))
+        interface_validation_list.append((17, "", SPEC_BASELINE_NO, ["tmsh create net trunk XXXX interfaces add { X.X }"], [], False))
+        interface_validation_list.append((18, "", SPEC_BASELINE_NO, ["tmsh create net trunk XXXX interfaces add { X.X }"], [], True))
     else:
-        interface_validation_list.append((18, SEPC_INTERFACE_HA_ON_BUSINESS_TRUNK, SPEC_BASELINE_YES, [""], True))
+        interface_validation_list.append((18, SEPC_INTERFACE_HA_ON_BUSINESS_TRUNK, SPEC_BASELINE_YES, [""], [], True))
 
     net_interface_unused = []
     net_interface_data = find_content_from_start_end(data_all, "net interface", "net interface mgmt")
@@ -343,9 +359,9 @@ def spec_interface_configuration_validation(data_all):
             net_interface_disable_list.append(tmsh_disable_interface)
           
     if len(net_interface_disable_list) > 0 :
-        interface_validation_list.append((19, SPEC_INTERFACE_UNUSED_UNDISABLED, SPEC_BASELINE_NO, net_interface_disable_list, False))
+        interface_validation_list.append((19, SPEC_INTERFACE_UNUSED_UNDISABLED, SPEC_BASELINE_NO, net_interface_disable_list, [], False))
     else:
-        interface_validation_list.append((19, "", SPEC_BASELINE_YES, [], False))
+        interface_validation_list.append((19, "", SPEC_BASELINE_YES, [], [], False))
 
     return interface_validation_list
 
@@ -359,9 +375,9 @@ def spec_route_configuration_validation(data_all):
     if gateways:
         management_route = gateways.group()
         management_route = "sys management-route default " + management_route
-        route_validation_list.append((20, "", SPEC_BASELINE_YES, [management_route], True))
+        route_validation_list.append((20, "", SPEC_BASELINE_YES, [management_route], [], True))
     else:
-        route_validation_list.append((20, "", SPEC_BASELINE_NO, ["tmsh create sys  management-route default gateway xxx.xxx.xxx.xxx"], True))
+        route_validation_list.append((20, "", SPEC_BASELINE_NO, ["tmsh create sys  management-route default gateway xxx.xxx.xxx.xxx"], [], True))
 
     net_self_all = []
     net_self_data = find_content_from_start_end(data_all, "net self", "net self-allow")
@@ -389,7 +405,7 @@ def spec_route_configuration_validation(data_all):
             net_route_all.append(results[0])
 
     if len(net_route_all) == 0:
-        route_validation_list.append((21, SPEC_ROUTE_DEFAULT_GATEWAY, SPEC_BASELINE_NO, ["tmsh create net route default gw xxx.xxx.xxx.xxx"], True))
+        route_validation_list.append((21, SPEC_ROUTE_DEFAULT_GATEWAY, SPEC_BASELINE_NO, ["tmsh create net route default gw xxx.xxx.xxx.xxx"], [], True))
     
     invalid_route_list = []
     for ip in net_route_all:
@@ -398,9 +414,9 @@ def spec_route_configuration_validation(data_all):
             invalid_route_list.append(ip)
 
     if len(invalid_route_list) > 0:
-        route_validation_list.append((21, SPEC_ROUTE_DEFAULT_GATEWAY_NEXT_HOP, SPEC_BASELINE_NO, invalid_route_list, True))
+        route_validation_list.append((21, SPEC_ROUTE_DEFAULT_GATEWAY_NEXT_HOP, SPEC_BASELINE_NO, invalid_route_list, [], True))
     else:
-        route_validation_list.append((21, "", SPEC_BASELINE_YES, net_route_all, True))
+        route_validation_list.append((21, "", SPEC_BASELINE_YES, net_route_all, [], True))
 
     return route_validation_list
 
@@ -427,11 +443,11 @@ def spec_ha_configuration_validation(data_all):
                 failsafe_action = trip_prefix(line, "failsafe-action")
                 break
         if failsafe_action == "failover":
-            ha_validation_list.append((23, "", SPEC_BASELINE_YES, [], False))
+            ha_validation_list.append((23, "", SPEC_BASELINE_YES, [], [], False))
         else:
-            ha_validation_list.append((23, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], False))
+            ha_validation_list.append((23, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
     else:
-        ha_validation_list.append((23, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], False))
+        ha_validation_list.append((23, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
 
     ha_devices_list = []
     ha_devices_data = find_content_from_start_end(data_all, "cm device", "cm device-group")
@@ -477,17 +493,17 @@ def spec_ha_configuration_validation(data_all):
             ha_devices_list.append(BIGIPDevice(configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, unicast_address, unicast_port, version))
 
     if len(ha_devices_list) < 2:
-        ha_validation_list.append((24, SPEC_HA_NO_HA_CONF, SPEC_BASELINE_NO, [], False))
+        ha_validation_list.append((24, SPEC_HA_NO_HA_CONF, SPEC_BASELINE_NO, [], [], False))
     elif incorrect_ha_configuration(ha_devices_list):
-        ha_validation_list.append((24, SPEC_HA_HA_CONF_NOT_CORRECT, SPEC_BASELINE_NO, [], False))
+        ha_validation_list.append((24, SPEC_HA_HA_CONF_NOT_CORRECT, SPEC_BASELINE_NO, [], [], False))
     elif incorrect_time_zone(ha_devices_list):
-        ha_validation_list.append((24, SPEC_HA_HA_CONF_NOT_CORRECT_TIMEZONE, SPEC_BASELINE_NO, [], False))
+        ha_validation_list.append((24, SPEC_HA_HA_CONF_NOT_CORRECT_TIMEZONE, SPEC_BASELINE_NO, [], [], False))
     elif incorrect_version(ha_devices_list):
-        ha_validation_list.append((24, SPEC_HA_HA_CONF_NOT_CORRECT_VERSION, SPEC_BASELINE_NO, [], False))
+        ha_validation_list.append((24, SPEC_HA_HA_CONF_NOT_CORRECT_VERSION, SPEC_BASELINE_NO, [], [], False))
     elif len(ha_devices_list[0].unicast_address) <= 1:
-        ha_validation_list.append((24, SPEC_HA_HA_CONF_NO_MULTI_VLAN, SPEC_BASELINE_NO, [], False))
+        ha_validation_list.append((24, SPEC_HA_HA_CONF_NO_MULTI_VLAN, SPEC_BASELINE_NO, [], [], False))
     else:
-        ha_validation_list.append((24, "", SPEC_BASELINE_YES, [], False))
+        ha_validation_list.append((24, "", SPEC_BASELINE_YES, [], [], False))
 
     ha_device_group_sync_list = []
     ha_device_group_data = find_content_from_start_end(data_all, "cm device-group", "cm key")
@@ -497,9 +513,9 @@ def spec_ha_configuration_validation(data_all):
             ha_device_group_sync_list.append(dg)
     
     if len(ha_device_group_sync_list) == 0:
-        ha_validation_list.append((25, SPEC_HA_NO_SYNC_FAILOVER, SPEC_BASELINE_NO, [], True))
+        ha_validation_list.append((25, SPEC_HA_NO_SYNC_FAILOVER, SPEC_BASELINE_NO, [], [], True))
     elif len(ha_device_group_sync_list) > 1:
-        ha_validation_list.append((25, SPEC_HA_MULTI_SYNC_FAILOVER, SPEC_BASELINE_NO, [], True))
+        ha_validation_list.append((25, SPEC_HA_MULTI_SYNC_FAILOVER, SPEC_BASELINE_NO, [], [], True))
     elif len(ha_device_group_sync_list) == 1:
         dg_lines = ha_device_group_sync_list[0].splitlines()
         sync_finished = None
@@ -508,9 +524,9 @@ def spec_ha_configuration_validation(data_all):
             if line.startswith("full-load-on-sync"):
                 sync_finished = trip_prefix(line, "full-load-on-sync")
         if "true" == sync_finished:
-            ha_validation_list.append((25, "", SPEC_BASELINE_YES, [], True))
+            ha_validation_list.append((25, "", SPEC_BASELINE_YES, [], [], True))
         else:
-            ha_validation_list.append((25, SPEC_HA_SYNC_NOT_FINISHED, SPEC_BASELINE_NO, [], True))
+            ha_validation_list.append((25, SPEC_HA_SYNC_NOT_FINISHED, SPEC_BASELINE_NO, [], [], True))
 
     return ha_validation_list
 
@@ -567,9 +583,9 @@ def spec_failover_configuration_validation(data_all):
         if failsafe_timeout_inter > 3:
             failover_validation_list.append((26, "", SPEC_BASELINE_YES, [], False))    
         else:
-            failover_validation_list.append((26, SPEC_FAILOVER_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], False))
+            failover_validation_list.append((26, SPEC_FAILOVER_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
     else:
-        failover_validation_list.append((26, SPEC_FAILOVER_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], False))
+        failover_validation_list.append((26, SPEC_FAILOVER_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
 
     return failover_validation_list
 
@@ -615,6 +631,7 @@ class BIGIPProfileFastl4(BIGIPProfile):
 
 class BIGIPProfileHttp(BIGIPProfile):
     def __init__(self, name, parent, xff):
+        super().__init__(name, parent)
         self.xff = xff
 
 class BIGIPSnatPool:
@@ -708,11 +725,24 @@ class SpecTCPConnectionConfiguration(SpecApp):
             self.profiles.append(i.name)
    
         l4_vs_list = list(filter(self.is_tcp_application, self.vs_list))
+        notes_list = []
+        tmsh_list = []
+        tmsh_rollback_list = []
         for vs in l4_vs_list:
             timeout = self.extract_timeout(vs.profiles, fastl4_list) 
-            print(timeout)
+            if int(timeout) > 300:
+                notes = vs.vs_name + SPEC_APP_TCP_TIEMOUT_LARGER
+                tmsh = "tmsh modify ltm profile fastl4 " + vs.profiles[0] + " idle-timeout 300"
+                tmsh_rollback = "tmsh modify ltm profile fastl4 " + vs.profiles[0] + " idle-timeout " + timeout
+                notes_list.append(notes)
+                tmsh_list.append(tmsh)
+                tmsh_rollback_list.append(tmsh_rollback)
+        
+        if len(tmsh_list) > 0:
+            self.spec_basic.append((27, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
+        else:
+            self.spec_basic.append((27, [], SPEC_BASELINE_YES, [], [], False))
   
-        #print(self.name, len(self.data), self.vs_list )
     def extract_timeout(self, profiles, list):
         for i in list:
             if i.name == profiles[0]:
@@ -720,7 +750,6 @@ class SpecTCPConnectionConfiguration(SpecApp):
         return 0
 
     def is_tcp_application(self, vs):
-        #print(vs.profiles, self.profiles)
         if vs.profiles is not None:
             for profile in vs.profiles:
                 return profile in self.profiles
@@ -729,15 +758,87 @@ class SpecTCPConnectionConfiguration(SpecApp):
 class SpecSNATConfiguration(SpecApp):
     def parse(self):
         snatpool_list = extract_snatpool(self.data)
-        print(snatpool_list)
-        print(self.management_ip, self.hostname, self.name, self.software_version)
+        notes_list = []
+        tmsh_list = []
+        tmsh_rollback_list = [] 
+        for vs in self.vs_list:
+            if vs.vs_port != "0" and vs.snatpool is None and vs.snatType == "automap":
+                notes = vs.vs_name + SPEC_APP_SANT_NO_SANTPOOL
+                tmsh = "tmsh create ltm snatpool XX members add { xx.xx.xx.xx }"
+                tmsh_rollback = "tmsh delete ltm snatpool XX"
+                notes_list.append(notes)
+                tmsh_list.append(tmsh)
+                tmsh_rollback_list.append(tmsh_rollback)
+            elif vs.vs_port != "0" and vs.snatpool is not None:
+                snat_pool_obj = self.extract_from_snatpool_list(snatpool_list, vs.snatpool)
+                if len(snat_pool_obj.members) < 4:
+                    notes = vs.vs_name + SPEC_APP_SANT_SANTPOOL_LESS_FOUR + self.convert_list_to_string(snat_pool_obj.members)
+                    tmsh = "tmsh modify ltm snatpool XX members add { xx.xx.xx.xx }" 
+                    tmsh_rollback = "tmsh modify ltm snatpool XX members delete { xx.xx.xx.xx }"
+                    notes_list.append(notes)
+                    tmsh_list.append(tmsh)
+                    tmsh_rollback_list.append(tmsh_rollback)
+            elif vs.vs_port != "0" and vs.snatpool is None and vs.snatType is None:
+                notes = vs.vs_name + SPEC_APP_SANT_NO_SANTPOOL_NO_AUTOMAP
+                tmsh = "tmsh create ltm snatpool XX members add { xx.xx.xx.xx }"
+                tmsh_rollback = "tmsh delete ltm snatpool XX"
+                notes_list.append(notes)
+                tmsh_list.append(tmsh)
+                tmsh_rollback_list.append(tmsh_rollback)
+
+        if len(tmsh_list) > 0:
+            self.spec_basic.append((28, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
+        else:
+            self.spec_basic.append((28, [], SPEC_BASELINE_YES, [], [], False))
+
+    def convert_list_to_string(self, members):
+        members_str = ' '.join(members)
+        return "[" + members_str + "]"
+
+    def extract_from_snatpool_list(self, snatpool_list, snatpool):
+        for i in snatpool_list:
+            if i.name == snatpool:
+                return i
 
 class SpecHTTPRstActionDownSetting(SpecApp):
     def parse(self):
-        http_list = extract_http_profile(self.data)
-        print(http_list)
-        print(self.management_ip, self.hostname, self.name, self.software_version)
+        http_profiles = []
+        fastl4_profiles = []
 
+        fastl4_list = extract_fastl4_profile(self.data)
+        for i in fastl4_list:
+            fastl4_profiles.append(i.name)
+        fastl4_profiles.append("fastL4")
+
+        http_list = extract_http_profile(self.data)
+        for i in http_list:
+            http_profiles.append(i.name)
+        http_profiles.append("http")
+
+        notes_list = []
+        tmsh_list = []
+        tmsh_rollback_list = []
+        for vs in self.vs_list:
+            vs_profiles_list = vs.profiles
+            fastL4NotExist = True
+            httpExist = False
+            for profile in vs_profiles_list:
+                if profile in fastl4_profiles:
+                    fastL4NotExist = False
+                elif profile in http_profiles:
+                    httpExist = True
+            if fastL4NotExist and httpExist and vs.serviceDownReset is None: 
+                notes = vs.vs_name + SPEC_APP_HTTP_SERVICE_DOWN_REST
+                tmsh = "tmsh modify ltm virtual " + vs.vs_name + " service-down-immediate-action reset"
+                tmsh_rollback = "tmsh modify ltm virtual " + vs.vs_name + " service-down-immediate-action none"
+                notes_list.append(notes)
+                tmsh_list.append(tmsh)
+                tmsh_rollback_list.append(tmsh_rollback)
+
+        if len(tmsh_list) > 0:
+            self.spec_basic.append((29, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
+        else:
+            self.spec_basic.append((29, [], SPEC_BASELINE_YES, [], [], False))
 
 def trip_prefix(line, prefix):
     if len(line) > 0 and prefix in line:
@@ -1104,6 +1205,11 @@ SPEC_HA_NO_SYNC_FAILOVER = "无sync-failover配置同步与流量切换配置"
 SPEC_HA_MULTI_SYNC_FAILOVER = "多个sync-failover配置同步与流量切换设备组"
 SPEC_HA_SYNC_NOT_FINISHED = "设备组中的配置不同步"
 SPEC_FAILOVER_FAILSAFE_ERROR = "切换条件检测检测失败"
+SPEC_APP_TCP_TIEMOUT_LARGER = " 超时时长大于300秒"
+SPEC_APP_SANT_NO_SANTPOOL = " 没有关联 snat pool，而是配置了automap"
+SPEC_APP_SANT_SANTPOOL_LESS_FOUR = " snat pool 中地址小于 4, "
+SPEC_APP_SANT_NO_SANTPOOL_NO_AUTOMAP = " 没有关联 snat pool"
+SPEC_APP_HTTP_SERVICE_DOWN_REST = " 未设置后台服务不可用时发rst"
 
 bigip_running_config = load_bigip_running_config(fileconfig)
 f5_services_dict = load_f5_services_as_map()
@@ -1131,5 +1237,5 @@ spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECT
 spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
 spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
 
-#for spec in spec_validation_list:
-#    spec.write_to_excel()
+for spec in spec_validation_list:
+    spec.write_to_excel()
