@@ -6,6 +6,8 @@ import re
 import socket
 import ipaddress
 
+from f5bigip import configParse
+
 from pypinyin import pinyin, Style
 
 def listToString(s):
@@ -472,127 +474,8 @@ def generateNewVirtualServer(dict):
     generate_save_sync(dict, sync_group_name)
 
 
-
-def manually_mapping(input):
-    if input == 'any':
-        return '0'
-    else:
-        print(input)
-        return '0'
-
-def convert_servicename_to_port(input):
-    result = "";
-    if isinstance(input, str):
-        if input.isdigit():
-            return input
-        try:
-            result = socket.getservbyname(input)
-        except OSError:
-            return manually_mapping(input)
-    else:
-        result = input
-    return str(result)
-
-def convert_servicename_to_port_f5(input):
-
-    if input in f5_services_dict:
-        return f5_services_dict[input]
-    else:
-        return convert_servicename_to_port(input)
-
-
-def data_collect_snat(data_all, vs_data_detail):
-    vs_snatpool_name = ""
-    snatpool_members_detail_list = []
-    vs_snat_detail_list = re.search(r'source-address-translation\s+(\S+)', vs_data_detail, re.I)
-    if vs_snat_detail_list:
-        vs_snat_start = re.search(vs_snat_detail_list.group(), vs_data_detail, re.I).start()
-        vs_snat_end = re.search("}", vs_data_detail[vs_snat_start:]).start()
-        vs_snat_detail = vs_data_detail[vs_snat_start:][:vs_snat_end + 1]
-        vs_snatpool_name_list = re.search(r'pool\s+(\S+)', vs_snat_detail, re.I)
-        if vs_snatpool_name_list:
-            vs_snatpool_name = vs_snatpool_name_list.group(1)
-            vs_snatpool_data_start = re.search(r'ltm snatpool\s+'+vs_snatpool_name, data_all, re.I).start()
-            vs_snatpool_data_end = re.search(r'}\s+}', data_all[vs_snatpool_data_start:]).start()
-            vs_snatpool_data_detail = data_all[vs_snatpool_data_start:][:vs_snatpool_data_end + 1]
-            snatpool_members_list = re.search(r'members\s+(\S+)', vs_snatpool_data_detail, re.I)
-            if snatpool_members_list:
-                vs_snatpool_data_detail = vs_snatpool_data_detail[snatpool_members_list.start():]
-                snatpool_members_detail_list = re.findall(r'(\d+\.\d+\.\d+\.\d+)', vs_snatpool_data_detail, re.I)
-            else:
-                snatpool_members_detail_list = None
-        else:
-            vs_snatpool_name = None
-            snatpool_members_detail_list = None
-    else:
-        vs_snatpool_name = None
-        snatpool_members_detail_list = None
-
-    return (vs_snatpool_name, snatpool_members_detail_list)
-
-
-def append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict):
-    if vs_snatpool_name is not None:
-        info_dict['snatpoolname'] = vs_snatpool_name
-    if snatpool_members_detail_list is not None and len(snatpool_members_detail_list) > 0:
-        info_dict['snatpool'] = snatpool_members_detail_list
-
-def data_collect_device_group(data_all):
-    sync_group_name_data = re.findall(r'cm device-group\s+\S+',data_all, re.I)
-    sync_group_list = []
-    for i in sync_group_name_data:
-        sync_group_list.append(i)
-
-    sync_group_name = None
-    for i,num in zip(sync_group_name_data, range(len(sync_group_name_data))):
-        if num < len(sync_group_list) - 1:
-            sync_group_data_start = re.search(i, data_all, re.I).start()
-            sync_group_data_end = re.search(sync_group_list[num+1], data_all[sync_group_data_start:]).start()
-            sync_group_data_detail = data_all[sync_group_data_start:][:sync_group_data_end]
-        else:
-            sync_group_data_start = re.search(i, data_all, re.I).start()
-            sync_group_data_end = re.search(r'cm key', data_all[sync_group_data_start:]).start()
-            sync_group_data_detail = data_all[sync_group_data_start:][:sync_group_data_end]
-        if "sync-failover" in sync_group_data_detail:
-            sync_group_name = sync_group_list[num]
-            sync_group_name = sync_group_name[len("cm device-group"):]
-            sync_group_name = sync_group_name.strip()
-            break
-    return sync_group_name
-
-def trip_prefix(line, prefix):
-    if len(line) > 0 and prefix in line:
-        return line.strip().lstrip(prefix).strip()
-    else:
-        return line
-
-def find_content_from_start_end(data, start_str, end_str):
-    data_start = re.search(start_str, data, re.I).start() 
-    data_end = re.search(end_str, data[data_start:], re.I).start()
-    return data[data_start:][:data_end]
-
-def data_collect_system_extract_version(data_all):
-    ha_devices_data = find_content_from_start_end(data_all, "cm device", "cm device-group")
-    ha_devices = ha_devices_data.split("cm device")
-    version = None
-    for device in ha_devices:
-        if len(device) > 10:
-            lines = device.splitlines()
-            version = None
-            for l in lines:
-                line = l.strip()
-                if line.startswith("version"):
-                    version = trip_prefix(line, "version")
-
-    return version
-
-def data_collect(filepath):
-
-    info_list = []
-    vs_list = []
-    net_list = []
-
-    with open(filepath, 'r') as fo:
+def load_bigip_running_config(fileconfig):
+    with open(fileconfig, 'r') as fo:
         data_all = fo.read()
 
     data_all = data_all.replace('[m','')
@@ -602,126 +485,8 @@ def data_collect(filepath):
         error1 = '[7m---(less '+i
         data_all = data_all.replace(error1, '')
     fo.close()
+    return data_all
 
-    net_name_data = re.findall(r'net self\s+\S+',data_all, re.I)
-    for i in net_name_data:
-        net_self_data_start = re.search(i, data_all, re.I).start()
-        net_self_data_end = re.search('address', data_all[net_self_data_start:]).start()
-        net_self_data = data_all[net_self_data_start:][:net_self_data_end + 40]
-        #net_self_address = re.search(r'address\s+(\d+\.\d+\.\d+\.\d+)', net_self_data, re.I)
-        net_self_address_list = re.search(r'address\s+((\d){1,3}\.){3}\d{1,3}(\/(\d{1,2}))?', net_self_data, re.I)
-        if net_self_address_list:
-            net_self_address = net_self_address_list.group(0)
-            net_self_address = net_self_address.lstrip('address').strip()
-            net_addr = ipaddress.ip_network(net_self_address, False)
-            net_list.append(str(net_addr))
-    net_list = list(dict.fromkeys(net_list))
-
-    vs_name_data = re.findall(r'ltm virtual\s+\S+',data_all, re.I)
-    for i in vs_name_data:
-        vs_list.append(i)
-
-    for i,num  in zip(vs_name_data,range(len(vs_name_data))):
-        if num < len(vs_list)-1:
-            vs_data_start = re.search(i, data_all, re.I).start()
-            vs_data_end = re.search(vs_list[num+1], data_all[vs_data_start:]).start()
-            vs_data_detail = data_all[vs_data_start:][:vs_data_end]
-        else:
-            vs_data_start = re.search(i, data_all, re.I).start()
-            vs_data_end = re.search(r'net interface', data_all[vs_data_start:]).start()
-            vs_data_detail = data_all[vs_data_start:][:vs_data_end]
-
-        vs_name_detail_list = re.search(r'ltm virtual\s+(\S+)', vs_data_detail,re.I)
-        vs_name_detail = vs_name_detail_list.group(1)
-        
-        vs_ip_detail_list = re.search(r'destination\s+(\d+\.\d+\.\d+\.\d+)', vs_data_detail, re.I)
-        vs_ip_detail = vs_ip_detail_list.group(1)
-
-        vs_port_detail_list = re.search(r'destination\s+\d+\.\d+\.\d+\.\d+:(\S+)', vs_data_detail, re.I)
-        vs_port_detail = vs_port_detail_list.group(1)
-        vs_port_detail = convert_servicename_to_port_f5(vs_port_detail)
-
-        snatpool_results = data_collect_snat(data_all, vs_data_detail)
-        vs_snatpool_name = snatpool_results[0]
-        snatpool_members_detail_list = snatpool_results[1]
-
-        vs_pool_detail_list = re.search(r'pool\s+(\S+)', vs_data_detail, re.I)
-        if vs_pool_detail_list:
-            vs_pool_detail = vs_pool_detail_list.group(1)
-
-            if vs_pool_detail == "{" :
-                tmp_list = re.findall(r'pool\s+(\S+)', vs_data_detail, re.I)
-                vs_pool_detail = tmp_list[1]
-
-            # The re.search(r'pool\s+(\S+)', vs_data_detail, re.I) search may get both pool and snatpool
-            #   If vs has pool, then the vs_pool_detail is the name of pool
-            #   if vs don't has pool, then the vs_pool_detail may be the snatpool name
-            #
-            # If pool name equals snatpool name, should skip the pool match parse
-            #        VS has snatpool, but no has pool
-            if vs_pool_detail == vs_snatpool_name:
-                info_dict = {
-                    'vsname': vs_name_detail,
-                    'vsip': vs_ip_detail,
-                    'vsport': vs_port_detail
-                }
-                append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
-                info_list.append(info_dict)
-            else:
-                pool_data_start = re.search(r'ltm pool\s+'+vs_pool_detail, data_all, re.I).start()
-                pool_data_end = re.search(r'}\s+}', data_all[pool_data_start:]).start()
-                pool_data_detail = data_all[pool_data_start:][:pool_data_end]
-                pool_ip_port_detail_list = re.findall(r'(\d+\.\d+\.\d+\.\d+):(\S+)\s+{', pool_data_detail, re.I)
-                if pool_ip_port_detail_list:
-                    members = []
-                    for i,j in pool_ip_port_detail_list:
-                        member_dict = {
-                            'ip': i,
-                            'port': convert_servicename_to_port_f5(j)
-                        }
-                        members.append(member_dict)
-
-                    info_dict = {
-                        'vsname': vs_name_detail,
-                        'vsip': vs_ip_detail,
-                        'vsport': vs_port_detail,
-                        'poolname': vs_pool_detail,
-                        'pool': members
-                    }
-                    append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
-                    info_list.append(info_dict)
-                else:    # VS has pool, but the pool does not has member                    
-                    info_dict = {
-                        'vsname': vs_name_detail,
-                        'vsip': vs_ip_detail,
-                        'vsport': vs_port_detail,
-                        'poolname': vs_pool_detail
-                    }
-                    append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
-                    info_list.append(info_dict)
-        else: # VS does not has a pool
-            info_dict = {
-                'vsname': vs_name_detail,
-                'vsip': vs_ip_detail,
-                'vsport': vs_port_detail
-            }
-            append_snat_info(vs_snatpool_name, snatpool_members_detail_list, info_dict)
-            info_list.append(info_dict)
-            
-    sync_group_name_result = data_collect_device_group(data_all)
-
-    software_version = data_collect_system_extract_version(data_all)
-
-    return (net_list, info_list, sync_group_name_result, software_version)
-
-def load_f5_services_as_map(): 
-    all_dict = {}
-    with open("f5-services") as myfile:
-        for line in myfile: 
-            name, var = line.partition(" ")[::2]
-            all_dict[name.strip()] = var.strip()
-    myfile.close()
-    return all_dict 
 
 
 if not sys.argv[2:]:
@@ -745,45 +510,6 @@ k_external = 'external地址'
 k_externalvlan = 'externalvlan'
 k_externaltrunk = 'externaltrunk'
 
-BIGIP_TMOS_VERSION = 0
-
-f5_services_dict = load_f5_services_as_map()
-
-with open(fileadd, "r") as file:
-    config_results = data_collect(fileconfig)
-
-    software_version = config_results[3]
-    if software_version.startswith("10"):
-        BIGIP_TMOS_VERSION = 10
-    elif software_version.startswith("11"):
-        BIGIP_TMOS_VERSION = 11
-    elif software_version.startswith("12"):
-        BIGIP_TMOS_VERSION = 12
-    elif software_version.startswith("13"):
-        BIGIP_TMOS_VERSION = 13
-    elif software_version.startswith("14"):
-        BIGIP_TMOS_VERSION = 14
-    elif software_version.startswith("15"):
-        BIGIP_TMOS_VERSION = 15
-    elif software_version.startswith("16"):
-        BIGIP_TMOS_VERSION = 16
-    elif software_version.startswith("17"):
-        BIGIP_TMOS_VERSION = 17
-
-    for line in file:
-        line = line.replace('[', '{').replace(']', '}')
-        dict = ast.literal_eval(line)
-        config = {'name': dict[k_name], 'ip': dict[k_vip], 'port': dict[k_vport], 'protocol': dict[k_protocol]}
-        config['serverlist'] = format_ip_addr_list(dict[k_serveraddr])
-        config['serverport'] = dict[k_serverport]
-        config['snatpoollist'] = format_ip_addr_list(dict[k_snataddr])
-        config['internal'] = dict[k_internal]
-        config['internalvlan'] = dict[k_internalvlan]
-        config['internaltrunk'] = dict[k_internaltrunk]
-        config['external'] = dict[k_external]
-        config['externalvlan'] = dict[k_externalvlan]
-        config['externaltrunk'] = dict[k_externaltrunk]
-        config['netlist'] = config_results[0]
-        config['infolist'] = config_results[1]
-        config['syncgroup'] = config_results[2]
-        generateNewVirtualServer(config)
+running_config = load_bigip_running_config(fileconfig)
+testresults = configParse.parse(running_config)
+print(testresults[1])
