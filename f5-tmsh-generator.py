@@ -162,9 +162,9 @@ def snat_generator_modify_add_memebers(snat_name, dict, rollback_tmsh_list):
 def profileGenerator(protocol):
     if protocol == "tcp":
         return "profiles add { fastL4 { } }"
-    elif protocol == "http" and BIGIP_TMOS_VERSION >= 13:
+    elif protocol == "http" and BIGIP_TMOS_VERSION >= 12:
         return "profiles add { http { } } service-down-immediate-action reset"
-    elif protocol == "http" and BIGIP_TMOS_VERSION < 13:
+    elif protocol == "http" and BIGIP_TMOS_VERSION < 12:
         return "profiles add { http { } }"
     else:
         return "profiles add { fastL4 { } }"
