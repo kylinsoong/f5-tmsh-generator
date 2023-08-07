@@ -162,8 +162,10 @@ def snat_generator_modify_add_memebers(snat_name, dict, rollback_tmsh_list):
 def profileGenerator(protocol):
     if protocol == "tcp":
         return "profiles add { fastL4 { } }"
-    elif protocol == "http":
+    elif protocol == "http" and BIGIP_TMOS_VERSION >= 13:
         return "profiles add { http { } } service-down-immediate-action reset"
+    elif protocol == "http" and BIGIP_TMOS_VERSION < 13:
+        return "profiles add { http { } }"
     else:
         return "profiles add { fastL4 { } }"
 
@@ -563,6 +565,32 @@ def data_collect_device_group(data_all):
             break
     return sync_group_name
 
+def trip_prefix(line, prefix):
+    if len(line) > 0 and prefix in line:
+        return line.strip().lstrip(prefix).strip()
+    else:
+        return line
+
+def find_content_from_start_end(data, start_str, end_str):
+    data_start = re.search(start_str, data, re.I).start() 
+    data_end = re.search(end_str, data[data_start:], re.I).start()
+    return data[data_start:][:data_end]
+
+def data_collect_system_extract_version(data_all):
+    ha_devices_data = find_content_from_start_end(data_all, "cm device", "cm device-group")
+    ha_devices = ha_devices_data.split("cm device")
+    version = None
+    for device in ha_devices:
+        if len(device) > 10:
+            lines = device.splitlines()
+            version = None
+            for l in lines:
+                line = l.strip()
+                if line.startswith("version"):
+                    version = trip_prefix(line, "version")
+
+    return version
+
 def data_collect(filepath):
 
     info_list = []
@@ -686,7 +714,10 @@ def data_collect(filepath):
             info_list.append(info_dict)
             
     sync_group_name_result = data_collect_device_group(data_all)
-    return (net_list, info_list, sync_group_name_result)
+
+    software_version = data_collect_system_extract_version(data_all)
+
+    return (net_list, info_list, sync_group_name_result, software_version)
 
 
 if not sys.argv[2:]:
@@ -710,8 +741,29 @@ k_external = 'external地址'
 k_externalvlan = 'externalvlan'
 k_externaltrunk = 'externaltrunk'
 
+BIGIP_TMOS_VERSION = 0
+
 with open(fileadd, "r") as file:
     config_results = data_collect(fileconfig)
+
+    software_version = config_results[3]
+    if software_version.startswith("10"):
+        BIGIP_TMOS_VERSION = 10
+    elif software_version.startswith("11"):
+        BIGIP_TMOS_VERSION = 11
+    elif software_version.startswith("12"):
+        BIGIP_TMOS_VERSION = 12
+    elif software_version.startswith("13"):
+        BIGIP_TMOS_VERSION = 13
+    elif software_version.startswith("14"):
+        BIGIP_TMOS_VERSION = 14
+    elif software_version.startswith("15"):
+        BIGIP_TMOS_VERSION = 15
+    elif software_version.startswith("16"):
+        BIGIP_TMOS_VERSION = 16
+    elif software_version.startswith("17"):
+        BIGIP_TMOS_VERSION = 17
+
     for line in file:
         line = line.replace('[', '{').replace(']', '}')
         dict = ast.literal_eval(line)

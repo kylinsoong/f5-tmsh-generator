@@ -1165,7 +1165,6 @@ if not sys.argv[2:]:
 fileconfig = sys.argv[1]
 fileadd = sys.argv[2]
 
-#data_collect(fileconfig)
 
 SPEC_ITEM_USER_MANAGEMENT = "用户管理"
 SPEC_ITEM_EXLOGIN_METHODS = "登录方式"
@@ -1216,8 +1215,6 @@ f5_services_dict = load_f5_services_as_map()
 device_info = data_collect_system_extract_hostname(bigip_running_config)
 vs_list_all = data_collect_app_vs_list(bigip_running_config)
 
-#for v in vs_list_all:
-#    print(v.vs_name, v.vs_ip, v.vs_port, v.vs_mask, v.ip_protocol, v.pool, v.profiles, v.rules, v.persist, v.serviceDownReset, v.vlans, v.snatpool, v.snatType)
 
 spec_validation_list = []
 
