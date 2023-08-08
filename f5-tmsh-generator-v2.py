@@ -512,4 +512,3 @@ k_externaltrunk = 'externaltrunk'
 
 running_config = load_bigip_running_config(fileconfig)
 testresults = configParse.parse(running_config)
-print(testresults[1])
