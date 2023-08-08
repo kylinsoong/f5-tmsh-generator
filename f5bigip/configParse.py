@@ -18,6 +18,15 @@ class BIGIPDevice:
         self.unicast_port = unicast_port
         self.version = version
 
+class BIGIPDeviceGroup:
+    def __init__(self, name, autosync, devices, fullloadonsync, networkfailover, type):
+        self.name = name 
+        self.autosync = autosync 
+        self.devices = devices 
+        self.fullloadonsync = fullloadonsync
+        self.networkfailover = networkfailover
+        self.type = type
+
 class BIGIPAuthUser:
     def __init__(self, name, role, shell):
         self.name = name
@@ -185,43 +194,6 @@ def split_content_to_list(data_all, pattern, end_str):
         results.append(data_detail)
 
     return results
-
-
-
-def data_collect_system_extract_hostname(data_all):
-
-    management_ip = None
-    hostname = None
-
-    matches = re.search(r'sys management-ip\s+(\S+)', data_all, re.I)
-    if matches:
-        management_ipr_raw = matches.group()
-        management_ip = management_ipr_raw.lstrip("sys management-ip").strip()        
-
-    pattern = r"sys global-settings(.*?)}"
-    blocks = re.findall(pattern, data_all, re.DOTALL)
-    if len(blocks) >= 1:
-        content = blocks[0]
-        hostname_list = re.search(r'hostname\s+(\S+)', content, re.I)
-        if hostname_list:
-            hostname_raw = hostname_list.group()
-            hostname = hostname_raw.lstrip("hostname").strip()
-
-    ha_devices_data = find_content_from_start_end(data_all, "cm device", "cm device-group")
-    ha_devices = ha_devices_data.split("cm device")
-    version = None
-    for device in ha_devices:
-        if len(device) > 10:
-            lines = device.splitlines()
-            version = None
-            for l in lines:
-                line = l.strip()
-                if line.startswith("version"):
-                    version = trip_prefix(line, "version")
-
-    return (hostname, management_ip, version)
-
-
 
 
 '''
@@ -596,6 +568,89 @@ def data_collect_auth_user(data_all):
     return auth_user_list
 
 
+
+def data_collect_cm_device_group(data_all):
+
+    cm_device_group_lists = [] 
+    
+    cm_device_group_end_str = "cm key"
+    cm_device_group_list = split_content_to_list(data_all, r'cm device-group\s+\S+', cm_device_group_end_str)
+    for dg in cm_device_group_list:
+        device_group_data = dg[len("cm device-group"):]
+        lines = device_group_data.splitlines()
+        dg_name = trip_prefix(replace_with_patterns(lines[0], "{"), None)
+        autosync = None 
+        devices = [] 
+        fullloadonsync = None 
+        networkfailover = None 
+        type = None
+        for l in lines:
+            line = l.strip()
+            if line.startswith("auto-sync"):
+                autosync = trip_prefix(line, "auto-sync")
+            elif line.startswith("full-load-on-sync"):
+                fullloadonsync = trip_prefix(line, "full-load-on-sync")
+            elif line.startswith("network-failover"):
+                networkfailover = trip_prefix(line, "network-failover")
+            elif line.startswith("type"):
+                type = trip_prefix(line, "type")
+            elif "{" in line and "}" in line:
+                device = trip_prefix(replace_with_patterns(line, ["{", "}"]), None)
+                devices.append(device)
+        cm_device_group_lists.append(BIGIPDeviceGroup(dg_name, autosync, devices, fullloadonsync, networkfailover, type))
+    
+    return cm_device_group_lists
+
+
+def data_collect_cm_device(data_all):
+
+    cm_device_list = []
+
+    cm_device_data = find_content_from_start_end(data_all, "cm device", "cm device-group")
+    cm_device = cm_device_data.split("cm device")
+    for device in cm_device:
+        if len(device) > 10:
+            lines = device.splitlines()
+            configsync_ip = None
+            failover_state = None
+            hostname = None 
+            management_ip = None
+            self_device = None
+            time_zone = None
+            version = None
+            unicast_address = []
+            unicast_port = None
+            for l in lines:
+                line = l.strip()
+                if line.startswith("configsync-ip"):
+                    configsync_ip = trip_prefix(line, "configsync-ip")
+                elif line.startswith("failover-state"):
+                    failover_state = trip_prefix(line, "failover-state")
+                elif line.startswith("hostname"):
+                    hostname = trip_prefix(line, "hostname")
+                elif line.startswith("management-ip"):
+                    management_ip = trip_prefix(line, "management-ip")
+                elif line.startswith("self-device"):
+                    self_device = trip_prefix(line, "self-device")
+                elif line.startswith("time-zone"):
+                    time_zone = trip_prefix(line, "time-zone")
+                elif line.startswith("version"):
+                    version = trip_prefix(line, "version")
+            unicast_addres_data = find_content_from_start_end(device, "unicast-address", "version")
+            unicast_lines = unicast_addres_data.splitlines()
+            for unicast in unicast_lines:
+                address = unicast.strip()
+                if address.startswith("effective-ip"):
+                    unicast_address.append(trip_prefix(address, "effective-ip"))
+                elif address.startswith("effective-port"):
+                    unicast_port = convert_servicename_to_port(trip_prefix(address, "effective-port"))
+                elif address.startswith("ip"):
+                    unicast_address.append(trip_prefix(address, "ip"))
+            cm_device_list.append(BIGIPDevice(configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, unicast_address, unicast_port, version))
+
+    return cm_device_list
+
+
 def load_f5_services_as_map():
     all_dict = {}
     with open("f5-services") as myfile:
@@ -606,6 +661,12 @@ def load_f5_services_as_map():
     return all_dict
 
 f5_services_dict = load_f5_services_as_map() 
+f5_config_dict = {
+    "header": ["auth password-policy", "auth remote-role", "auth remote-user", "auth source", "auth user", "cli admin-partitions", "cli global-settings", "cli preference", "cm cert", "cm device", "cm device-group", "cm key", "cm traffic-group", "cm trust-domain"],
+    "ltm": ["ltm data-group", "ltm default-node-monitor", "ltm dns", "ltm global-settings", "ltm monitor", "ltm node", "ltm persistence", "ltm policy", "ltm pool", "ltm profile", "ltm rule", "ltm snat-translation", "ltm snatpool", "ltm tacdb", "ltm virtual"],
+    "net": ["net cos", "net dag-globals", "net fdb", "net interface", "net ipsec ike-daemon", "net lldp-globals", "net multicast-globals", "net packet-filter-trusted", "net route", "net route-domain", "net self", "net self-allow", "net stp-globals", "net trunk", "net tunnels", "net vlan"],
+    "tail": ["sys config-sync", "sys aom", "sys autoscale-group", "sys daemon-log-settings", "sys datastor", "sys diags", "sys disk", "sys dns", "sys failover", "sys dynad key", "sys dynad", "sys feature-module", "sys file", "sys folder", "sys fpga", "sys global-settings", "sys httpd", "sys icontrol-soap", "sys log-rotate", "sys management-dhcp", "sys management-ip", "sys management-ovsdb", "sys management-route", "sys ntp", "sys outbound-smtp", "sys provision", "sys scriptd", "sys sflow", "sys snmp", "sys software", "sys sshd", "sys state-mirroring", "sys syslog ", "sys turboflex", "sys url-db"]
+}
 
 def split_data_all(data_all):
 
@@ -643,10 +704,8 @@ def parse(data_all):
     profile_fastl4_list = extract_fastl4_profile(data_all_list[1])
     profile_http_list = extract_http_profile(data_all_list[1])
 
-    print(len(vs_list), len(pool_list), len(snatpool_list), len(node_list), len(profile_fastl4_list), len(profile_http_list))
-
- 
     auth_user_list = data_collect_auth_user(data_all_list[0])
-    print(auth_user_list)
+    cm_device_list = data_collect_cm_device(data_all_list[0])
+    cm_device_group_list = data_collect_cm_device_group(data_all_list[0])
 
-    return (vs_list, pool_list, snatpool_list, node_list, profile_fastl4_list, profile_http_list)
+    return {"vs": vs_list, "pool": pool_list, "snatpool": snatpool_list, "node": node_list, "fastl4": profile_fastl4_list, "http": profile_http_list, "auth-user": auth_user_list, "device": cm_device_list, "device-group": cm_device_group_list}
