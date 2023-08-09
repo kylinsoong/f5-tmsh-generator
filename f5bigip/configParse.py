@@ -204,6 +204,18 @@ def split_content_to_list(data_all, pattern, end_str):
     return results
 
 
+
+def find_end_str(data_all, start_str, items):
+    isStart = False
+    for i in items:
+        if i == start_str:
+            isStart = True
+            continue
+        if isStart and i in data_all:
+            return i
+    return None
+
+
 '''
 [f5bigip % configParse.py] Parse running config data to form profiles related functions:
 
@@ -326,13 +338,7 @@ def data_collect_pool_list(data_all):
     pool_list = []
 
     pool_start_str = "ltm pool"
-    pool_end_str = "ltm virtual"
-    if "ltm profile" in data_all:
-        vs_end_str = "ltm profile"
-    elif "ltm rule" in data_all:
-        vs_end_str = "ltm rule"
-    elif "ltm tacdb" in data_all:
-        vs_end_str = "ltm tacdb"
+    pool_end_str = find_end_str(data_all, pool_start_str, f5_config_dict['ltm'])
 
     pool_data_all = find_content_from_start_end(data_all, pool_start_str, pool_end_str)
     pool_data_list = pool_data_all.split("ltm pool")
@@ -372,9 +378,9 @@ def data_collect_pool_list(data_all):
 
 
 def extract_poolmember_attributes(data_all):
-    if "\x1b" in data_all:
-        data_all = data_all.replace("\x1b", "")
-        data_all = trip_prefix(data_all, None)
+    #if "\x1b" in data_all:
+    #    data_all = data_all.replace("\x1b", "")
+    #    data_all = trip_prefix(data_all, None)
     members = trip_prefix(data_all, None)
     lines = members.splitlines()
     member = None
@@ -385,7 +391,7 @@ def extract_poolmember_attributes(data_all):
     connectionlimit = None
     if len(lines) > 0 and len(lines[0]) >= 10:
         array = split_destination(lines[0])
-        member = array[0] + ":" + array[1]
+        member = str(array[0]) + ":" + str(array[1])
         port = array[1]
     for l in lines:
         line = trip_prefix(l, None)
@@ -712,6 +718,8 @@ f5_config_dict = {
 }
 
 def split_data_all(data_all):
+ 
+    data_all = replace_with_patterns(data_all, ["\x1b", "\x1b7", "\x1b6", "\x1b5"])
 
     ltm_start_str = "ltm default-node-monitor"
     if "ltm data-group" in data_all:
@@ -770,14 +778,15 @@ def form_pool_members(memebers, name):
         for member in memebers:
             if name == member.name:
                 for m in member.members:
-                    pool_members.append(m.address + ":" + m.port)
+                    pool_members.append(str(m.address) + ":" +str(m.port))
                 return pool_members
     return pool_members
 
 def form_self_list(net_self_list):
     net_list = []
     for i in net_self_list:
-        net_list.append(ipaddress.ip_network(i.address, False))
+        if i.address is not None:
+            net_list.append(ipaddress.ip_network(i.address, False))
     return set(net_list)    
 
 def form_sys_list(devices, device_groups):
@@ -845,10 +854,12 @@ def existinfolist(data_all):
     for vs in vs_list:
         info_list.append((vs.vs_name, vs.vs_ip, vs.vs_port, vs.pool, form_pool_members(pool_list, vs.pool), vs.snatpool, form_snat_members(snatpool_list, vs.snatpool)))
 
-#    print(len(vs_list), len(pool_list), len(snatpool_list), len(cm_device_list), len(cm_device_group_list), len(net_self_list))
-#    for i in info_list:
-#        print(i)
-#    print(net_set)
-#    print(sys_list)
-
+    """
+    print(len(vs_list), len(pool_list), len(snatpool_list), len(cm_device_list), len(cm_device_group_list), len(net_self_list))
+    for i in info_list:
+        print(i)
+    print(net_set)
+    print(sys_list)
+    print("==============")
+    """
     return (info_list, net_set, sys_list)
