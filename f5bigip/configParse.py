@@ -5,6 +5,7 @@ import ast
 import re
 import socket
 import ipaddress
+import os
 
 class BIGIPDevice:
     def __init__(self, configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, unicast_address, unicast_port, version):
@@ -701,7 +702,9 @@ def data_collect_cm_device(data_all):
 
 def load_f5_services_as_map():
     all_dict = {}
-    with open("f5-services") as myfile:
+    current_directory = os.path.dirname(os.path.abspath(__file__))
+    services_file_path = os.path.join(current_directory,  'f5-services')
+    with open(services_file_path) as myfile:
         for line in myfile:
             name, var = line.partition(" ")[::2]
             all_dict[name.strip()] = var.strip()
