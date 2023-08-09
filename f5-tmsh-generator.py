@@ -786,4 +786,9 @@ with open(fileadd, "r") as file:
         config['netlist'] = config_results[0]
         config['infolist'] = config_results[1]
         config['syncgroup'] = config_results[2]
-        generateNewVirtualServer(config)
+
+        print(config_results[0])
+        print(config_results[1])
+        print(config_results[2])
+         
+#        generateNewVirtualServer(config)

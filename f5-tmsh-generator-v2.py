@@ -511,4 +511,6 @@ k_externalvlan = 'externalvlan'
 k_externaltrunk = 'externaltrunk'
 
 running_config = load_bigip_running_config(fileconfig)
-testresults = configParse.parse(running_config)
+testresults = configParse.existinfolist(running_config)
+
+print(configParse.convert_servicename_to_port("tproxy"))

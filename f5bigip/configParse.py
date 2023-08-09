@@ -33,6 +33,13 @@ class BIGIPAuthUser:
         self.role = role
         self.shell = shell
 
+class BIGIPNetL3:
+    def __init__(self, name, address, allowservice, trafficgroup, vlan):
+        self.name = name
+        self.address = address
+        self.allowservice = allowservice
+        self.trafficgroup = trafficgroup
+        self.vlan = vlan
 
 class BIGIPVS:
     def __init__(self, vs_name, vs_ip, vs_port, vs_mask, ip_protocol, pool, profiles, rules, persist, serviceDownReset, vlans, snatpool, snatType):
@@ -143,6 +150,7 @@ def replace_with_patterns(data, patterns):
 
 
 def convert_servicename_to_port(input):
+    input = trip_prefix(input, None)
     if input in f5_services_dict:
         return f5_services_dict[input]
     elif input == 'any':
@@ -348,12 +356,14 @@ def data_collect_pool_list(data_all):
                 pool_members = find_content_from_start(pool_members, separator)
                 pool_monitor = find_line_content_from_start_str(pool_members[len(pool_members):], "monitor") 
             
-            if pool_members is not None:
+            if pool_members is not None :
                 pool_members = replace_with_patterns(pool_members, ["members", "{"])            
                 pool_members = pool_members.split("}")
                 for m in pool_members: 
+                    if len(trip_prefix(m, None)) <= 10:
+                        continue 
                     pool_member = extract_poolmember_attributes(m)   
-                    if pool_member is not None:
+                    if pool_member is not None :
                         pool_members_list.append(pool_member)
 
             pool_list.append(BIGIPPool(pool_name, pool_lb, pool_members_list, pool_monitor))
@@ -362,6 +372,9 @@ def data_collect_pool_list(data_all):
 
 
 def extract_poolmember_attributes(data_all):
+    if "\x1b" in data_all:
+        data_all = data_all.replace("\x1b", "")
+        data_all = trip_prefix(data_all, None)
     members = trip_prefix(data_all, None)
     lines = members.splitlines()
     member = None
@@ -370,7 +383,7 @@ def extract_poolmember_attributes(data_all):
     session = None
     state = None 
     connectionlimit = None
-    if len(lines) > 0:
+    if len(lines) > 0 and len(lines[0]) >= 10:
         array = split_destination(lines[0])
         member = array[0] + ":" + array[1]
         port = array[1]
@@ -569,6 +582,35 @@ def data_collect_auth_user(data_all):
 
 
 
+def data_collect_net_self(data_all):
+
+    net_self_list = []
+
+    net_self_data_list = split_content_to_list(data_all, r'net self\s+\S+', "net self-allow")
+    for data in net_self_data_list:
+        self_data = trip_prefix(data[len("net self"):], None)
+        lines = self_data.splitlines()
+        self_name = trip_prefix(replace_with_patterns(lines[0], "{"), None)
+        self_address = None
+        self_allow_service = trip_prefix(replace_with_patterns(find_content_from_start_end(self_data, "allow-service", "}"), ["allow-service", "{"] ), None)
+        self_trafficgroup = None 
+        self_vlan = None
+        for l in lines:
+            line = l.strip()
+            if line.startswith("address"):
+                self_address = trip_prefix(line, "address")
+            elif line.startswith("traffic-group"):
+                self_trafficgroup = trip_prefix(line, "traffic-group")
+            elif line.startswith("vlan"):
+                self_vlan = trip_prefix(line, "vlan")
+
+        net_self_list.append(BIGIPNetL3(self_name, self_address, self_allow_service, self_trafficgroup, self_vlan))
+
+
+    return net_self_list
+
+
+
 def data_collect_cm_device_group(data_all):
 
     cm_device_group_lists = [] 
@@ -660,6 +702,7 @@ def load_f5_services_as_map():
     myfile.close()
     return all_dict
 
+
 f5_services_dict = load_f5_services_as_map() 
 f5_config_dict = {
     "header": ["auth password-policy", "auth remote-role", "auth remote-user", "auth source", "auth user", "cli admin-partitions", "cli global-settings", "cli preference", "cm cert", "cm device", "cm device-group", "cm key", "cm traffic-group", "cm trust-domain"],
@@ -695,6 +738,7 @@ def split_data_all(data_all):
 
 
 def parse(data_all):
+
     data_all_list  = split_data_all(data_all)
 
     vs_list = data_collect_vs_list(data_all_list[1])
@@ -708,4 +752,103 @@ def parse(data_all):
     cm_device_list = data_collect_cm_device(data_all_list[0])
     cm_device_group_list = data_collect_cm_device_group(data_all_list[0])
 
+    net_sel_list = data_collect_net_self(data_all_list[2])
+
     return {"vs": vs_list, "pool": pool_list, "snatpool": snatpool_list, "node": node_list, "fastl4": profile_fastl4_list, "http": profile_http_list, "auth-user": auth_user_list, "device": cm_device_list, "device-group": cm_device_group_list}
+
+
+def form_snat_members(memebers, name):
+    if name is not None:
+        for member in memebers:
+            if name == member.name:
+                return member.members
+    return []
+    
+def form_pool_members(memebers, name):
+    pool_members = []
+    if name is not None:
+        for member in memebers:
+            if name == member.name:
+                for m in member.members:
+                    pool_members.append(m.address + ":" + m.port)
+                return pool_members
+    return pool_members
+
+def form_self_list(net_self_list):
+    net_list = []
+    for i in net_self_list:
+        net_list.append(ipaddress.ip_network(i.address, False))
+    return set(net_list)    
+
+def form_sys_list(devices, device_groups):
+    version = 0
+    for device in devices:
+        if device.version.startswith("10"):
+            version = 10
+        elif device.version.startswith("11"):
+            version = 11
+        elif device.version.startswith("12"):
+            version = 12
+        elif device.version.startswith("13"):
+            version = 13
+        elif device.version.startswith("14"):
+            version = 14
+        elif device.version.startswith("15"):
+            version = 15
+        elif device.version.startswith("16"):
+            version = 16
+        elif device.version.startswith("17"):
+            version = 17 
+
+    device_group = None
+    for d in device_groups:
+        if d.type == "sync-failover":
+            device_group = d.name
+            break
+
+    return (version, device_group)
+
+
+'''
+The exist info list contains 3 list:
+
+    info_list: each item represent a list, represent a vs, vs list item:
+        0 - vs name
+        1 - vs ip
+        2 - vs port
+        3 - pool name
+        4 - pool members
+        5 - snatpool name
+        6 - snatpool members
+
+    net_set: all exist networks
+        eg , {IPv4Network('10.1.10.0/24'), IPv4Network('10.1.20.0/24')}
+
+    sys_list: contain 2 str items:
+        0 - software version
+        1 - sync group name 
+'''
+def existinfolist(data_all):
+
+    data_all_list  = split_data_all(data_all)
+
+    vs_list = data_collect_vs_list(data_all_list[1])
+    pool_list = data_collect_pool_list(data_all_list[1])
+    snatpool_list = data_collect_snatpool_list(data_all_list[1])
+    cm_device_list = data_collect_cm_device(data_all_list[0])
+    cm_device_group_list = data_collect_cm_device_group(data_all_list[0])
+    net_self_list = data_collect_net_self(data_all_list[2])
+
+    info_list = []
+    net_set = form_self_list(net_self_list)
+    sys_list = form_sys_list(cm_device_list, cm_device_group_list)
+    for vs in vs_list:
+        info_list.append((vs.vs_name, vs.vs_ip, vs.vs_port, vs.pool, form_pool_members(pool_list, vs.pool), vs.snatpool, form_snat_members(snatpool_list, vs.snatpool)))
+
+#    print(len(vs_list), len(pool_list), len(snatpool_list), len(cm_device_list), len(cm_device_group_list), len(net_self_list))
+#    for i in info_list:
+#        print(i)
+#    print(net_set)
+#    print(sys_list)
+
+    return (info_list, net_set, sys_list)
