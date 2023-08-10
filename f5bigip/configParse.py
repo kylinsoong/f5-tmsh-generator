@@ -112,6 +112,13 @@ def trip_prefix(line, prefix):
     else:
         return line.strip()
 
+def find_first_line(data_all):
+    first_line_end = data_all.find('\n')
+    if first_line_end != -1:
+        return data_all[:first_line_end]
+    else:
+        return data_all
+
 def find_content_from_start_end(data, start_str, end_str):
 
     if start_str not in data:
@@ -122,8 +129,6 @@ def find_content_from_start_end(data, start_str, end_str):
         return data[data_start:]
     data_end = re.search(end_str, data, re.I).start()
     return data[data_start:data_end]
-    #data_end = re.search(end_str, data[data_start:], re.I).start()
-    #return data[data_start:][:data_end] 
 
 def find_content_from_start(data, start_str):
     data_start = re.search(start_str, data, re.I).start()
@@ -148,7 +153,6 @@ def replace_with_patterns(data, patterns):
     for pattern in patterns:
         data = data.replace(pattern, "")
     return data
-
 
 def convert_servicename_to_port(input):
     input = trip_prefix(input, None)
@@ -186,7 +190,7 @@ and the end_str is
 
 The final return results is ['ltm node 192.168.32.158 { }', 'ltm node 192.168.32.174 { }', ltm node 192.168.33.46 { }]
 '''
-def split_content_to_list(data_all, pattern, end_str):
+def split_content_to_list_pattern(data_all, pattern, end_str):
     results = []
     content_list = []
     content_data = re.findall(pattern, data_all, re.I)
@@ -203,6 +207,37 @@ def split_content_to_list(data_all, pattern, end_str):
         results.append(data_detail)
 
     return results
+
+
+'''
+Split a large content to small block base on re pattern, return each blocks as a content list.
+
+    data_all - original data
+    pattern  - re pattern
+    end_str  - the end of big blok
+
+
+Compare with split_content_to_list_pattern(), split_content_to_list_split() has good performance, the following is the test data statistics(test each function 5 times):
+
+    .search performance pattern:
+    1 1.0084559917449951
+    2 1.0131690502166748
+    3 1.0058786869049072
+    4 1.0041730403900146
+    5 1.0054516792297363
+    .search performance split:
+    1 0.006358146667480469
+    2 0.006302356719970703
+    3 0.006287097930908203
+    4 0.006265878677368164
+    5 0.006285905838012695
+
+Refer to  test_configParse.py test_data_search_performance_pattern() and test_data_search_performance_split() for details.
+'''
+def split_content_to_list_split(data_all, start_str, end_str):
+    data = find_content_from_start_end(data_all, start_str, end_str)
+    data_list = data.split(start_str)
+    return data_list[1:]
 
 
 
@@ -225,7 +260,7 @@ def find_end_str(data_all, start_str, items):
 '''
 def extract_http_profile(data_all):
     http_profile_results = []
-    results = split_content_to_list(data_all, r'ltm profile http\s+\S+', "}")
+    results = split_content_to_list_pattern(data_all, r'ltm profile http\s+\S+', "}")
     for i in results:
         profile = i.lstrip("ltm profile http").replace("{", "").replace("}", "") 
         lines = profile.splitlines()
@@ -243,7 +278,7 @@ def extract_http_profile(data_all):
 
 def extract_fastl4_profile(data_all):
     fastl4_profile_results = []
-    results = split_content_to_list(data_all, r'ltm profile fastl4\s+\S+', "}")
+    results = split_content_to_list_pattern(data_all, r'ltm profile fastl4\s+\S+', "}")
     for i in results:
         profile = i[len("ltm profile fastl4"):].replace("{", "").replace("}", "") 
         lines = profile.splitlines()
@@ -330,10 +365,70 @@ def data_collect_node_list(data_all):
 '''
 [f5bigip % configParse.py] Parse all Pool data as list start, related functions:
 
+    collect_ltm_pool()
+
+Deprecated funtions:
+  
     data_collect_pool_list()
     extract_poolmember_attributes()
-
 '''
+def collect_ltm_pool(data_all):
+
+    pool_list = []
+
+    pool_start_str = "ltm pool"
+    pool_end_str = find_end_str(data_all, pool_start_str, f5_config_dict['ltm'])
+    pool_data_list = split_content_to_list_split(data_all, pool_start_str, pool_end_str)
+    for i in pool_data_list:
+        pool_data = trip_prefix(i, None) 
+        pool_name = replace_with_patterns(find_first_line(pool_data), "{")
+        pool_lb_mode, pool_min_active_member, pool_monitor = None, None, None # TODO-- pool_min_active_member not used
+        isMembersStart = False
+        pool_members_list, pool_member_list, poolmembers = [], [], []
+        lines = pool_data.splitlines() 
+        for l in lines:
+            line = trip_prefix(l, None)
+            if line.startswith("load-balancing-mode"):
+                pool_lb_mode = trip_prefix(line, "load-balancing-mode")
+            elif line.startswith("min-active-members"):
+                pool_min_active_member = trip_prefix(line, "min-active-members")
+            elif line.startswith("monitor"):
+                pool_monitor = trip_prefix(line, "monitor")
+            elif line.startswith("members"):
+                isMembersStart = True
+            elif isMembersStart and line != "}":
+                pool_member_list.append(line)
+            elif isMembersStart and line == "}" and len(pool_member_list) > 0:
+                cloned_list = pool_member_list[:]
+                pool_members_list.append(cloned_list)
+                pool_member_list = []
+            elif isMembersStart and line == "}" and len(pool_member_list) == 0:
+                isMembersStart = False
+
+        for m_list in pool_members_list:
+            member, address, port, session, state, connectionlimit = None, None, None, None, None, None
+            if len(m_list) > 0 and len(m_list[0]) >= 12:
+                array = split_destination(replace_with_patterns(m_list[0], "{"))
+                member = str(array[0]) + ":" + str(array[1])
+                port = array[1]
+            for l in m_list:
+                line = trip_prefix(l, None)
+                if line.startswith("address"):
+                    address = trip_prefix(line, "address")
+                elif line.startswith("session"):
+                    session = trip_prefix(line, "session")
+                elif line.startswith("state"):
+                    state = trip_prefix(line, "state")
+                elif line.startswith("connection-limit"):
+                    connectionlimit = trip_prefix(line, "connection-limit")
+            if member is not None:
+                poolmembers.append(BIGIPPoolMember(member, address, port, session, state, connectionlimit))
+            
+        pool_list.append(BIGIPPool(pool_name, pool_lb_mode, pool_members_list, pool_monitor))
+
+    return pool_list
+
+
 def data_collect_pool_list(data_all):
 
     pool_list = []
@@ -570,7 +665,7 @@ def data_collect_auth_user(data_all):
     auth_user_end_str = "cli global-settings"
     if "cli admin-partitions" in data_all:
         auth_user_end_str = "cli admin-partitions"
-    auth_users = split_content_to_list(data_all, r'auth user\s+\S+', auth_user_end_str)
+    auth_users = split_content_to_list_pattern(data_all, r'auth user\s+\S+', auth_user_end_str)
     for auth_user in auth_users:
         user_data = auth_user[len("auth user"):]
         lines = user_data.splitlines()
@@ -593,7 +688,7 @@ def data_collect_net_self(data_all):
 
     net_self_list = []
 
-    net_self_data_list = split_content_to_list(data_all, r'net self\s+\S+', "net self-allow")
+    net_self_data_list = split_content_to_list_pattern(data_all, r'net self\s+\S+', "net self-allow")
     for data in net_self_data_list:
         self_data = trip_prefix(data[len("net self"):], None)
         lines = self_data.splitlines()
@@ -623,7 +718,7 @@ def data_collect_cm_device_group(data_all):
     cm_device_group_lists = [] 
     
     cm_device_group_end_str = "cm key"
-    cm_device_group_list = split_content_to_list(data_all, r'cm device-group\s+\S+', cm_device_group_end_str)
+    cm_device_group_list = split_content_to_list_pattern(data_all, r'cm device-group\s+\S+', cm_device_group_end_str)
     for dg in cm_device_group_list:
         device_group_data = dg[len("cm device-group"):]
         lines = device_group_data.splitlines()
