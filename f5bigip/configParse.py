@@ -104,6 +104,62 @@ class BIGIPSnatPool:
         self.members = members
 
 
+def ltm_pool(data_all):
+
+    pool_list = []
+
+    pool_start_str = "ltm pool"
+    pool_end_str = find_end_str(data_all, pool_start_str, f5_config_dict['ltm'])
+    pool_data_list = split_content_to_list_split(data_all, pool_start_str, pool_end_str)
+    for i in pool_data_list:
+        pool_data = trip_prefix(i, None)
+        pool_name = replace_with_patterns(find_first_line(pool_data), "{")
+        pool_lb_mode, pool_min_active_member, pool_monitor = None, None, None # TODO-- pool_min_active_member not used
+        isMembersStart = False
+        pool_members_list, pool_member_list, poolmembers = [], [], []
+        lines = pool_data.splitlines()
+        for l in lines:
+            line = trip_prefix(l, None)
+            if line.startswith("load-balancing-mode"):
+                pool_lb_mode = trip_prefix(line, "load-balancing-mode")
+            elif line.startswith("min-active-members"):
+                pool_min_active_member = trip_prefix(line, "min-active-members")
+            elif line.startswith("monitor"):
+                pool_monitor = trip_prefix(line, "monitor")
+            elif line.startswith("members"):
+                isMembersStart = True
+            elif isMembersStart and line != "}":
+                pool_member_list.append(line)
+            elif isMembersStart and line == "}" and len(pool_member_list) > 0:
+                cloned_list = pool_member_list[:]
+                pool_members_list.append(cloned_list)
+                pool_member_list = []
+            elif isMembersStart and line == "}" and len(pool_member_list) == 0:
+                isMembersStart = False
+
+        for m_list in pool_members_list:
+            member, address, port, session, state, connectionlimit = None, None, None, None, None, None
+            if len(m_list) > 0 and len(m_list[0]) >= 12:
+                array = split_destination(replace_with_patterns(m_list[0], "{"))
+                member = str(array[0]) + ":" + str(array[1])
+                port = array[1]
+            for l in m_list:
+                line = trip_prefix(l, None)
+                if line.startswith("address"):
+                    address = trip_prefix(line, "address")
+                elif line.startswith("session"):
+                    session = trip_prefix(line, "session")
+                elif line.startswith("state"):
+                    state = trip_prefix(line, "state")
+                elif line.startswith("connection-limit"):
+                    connectionlimit = trip_prefix(line, "connection-limit")
+            if member is not None:
+                poolmembers.append(BIGIPPoolMember(member, address, port, session, state, connectionlimit))
+
+        pool_list.append(BIGIPPool(pool_name, pool_lb_mode, poolmembers, pool_monitor))
+
+    return pool_list
+
 
 
 def trip_prefix(line, prefix):
@@ -363,72 +419,11 @@ def data_collect_node_list(data_all):
 
 
 '''
-[f5bigip % configParse.py] Parse all Pool data as list start, related functions:
-
-    collect_ltm_pool()
-
 Deprecated funtions:
   
     data_collect_pool_list()
     extract_poolmember_attributes()
 '''
-def collect_ltm_pool(data_all):
-
-    pool_list = []
-
-    pool_start_str = "ltm pool"
-    pool_end_str = find_end_str(data_all, pool_start_str, f5_config_dict['ltm'])
-    pool_data_list = split_content_to_list_split(data_all, pool_start_str, pool_end_str)
-    for i in pool_data_list:
-        pool_data = trip_prefix(i, None) 
-        pool_name = replace_with_patterns(find_first_line(pool_data), "{")
-        pool_lb_mode, pool_min_active_member, pool_monitor = None, None, None # TODO-- pool_min_active_member not used
-        isMembersStart = False
-        pool_members_list, pool_member_list, poolmembers = [], [], []
-        lines = pool_data.splitlines() 
-        for l in lines:
-            line = trip_prefix(l, None)
-            if line.startswith("load-balancing-mode"):
-                pool_lb_mode = trip_prefix(line, "load-balancing-mode")
-            elif line.startswith("min-active-members"):
-                pool_min_active_member = trip_prefix(line, "min-active-members")
-            elif line.startswith("monitor"):
-                pool_monitor = trip_prefix(line, "monitor")
-            elif line.startswith("members"):
-                isMembersStart = True
-            elif isMembersStart and line != "}":
-                pool_member_list.append(line)
-            elif isMembersStart and line == "}" and len(pool_member_list) > 0:
-                cloned_list = pool_member_list[:]
-                pool_members_list.append(cloned_list)
-                pool_member_list = []
-            elif isMembersStart and line == "}" and len(pool_member_list) == 0:
-                isMembersStart = False
-
-        for m_list in pool_members_list:
-            member, address, port, session, state, connectionlimit = None, None, None, None, None, None
-            if len(m_list) > 0 and len(m_list[0]) >= 12:
-                array = split_destination(replace_with_patterns(m_list[0], "{"))
-                member = str(array[0]) + ":" + str(array[1])
-                port = array[1]
-            for l in m_list:
-                line = trip_prefix(l, None)
-                if line.startswith("address"):
-                    address = trip_prefix(line, "address")
-                elif line.startswith("session"):
-                    session = trip_prefix(line, "session")
-                elif line.startswith("state"):
-                    state = trip_prefix(line, "state")
-                elif line.startswith("connection-limit"):
-                    connectionlimit = trip_prefix(line, "connection-limit")
-            if member is not None:
-                poolmembers.append(BIGIPPoolMember(member, address, port, session, state, connectionlimit))
-            
-        pool_list.append(BIGIPPool(pool_name, pool_lb_mode, pool_members_list, pool_monitor))
-
-    return pool_list
-
-
 def data_collect_pool_list(data_all):
 
     pool_list = []
@@ -876,7 +871,7 @@ def form_pool_members(memebers, name):
         for member in memebers:
             if name == member.name:
                 for m in member.members:
-                    pool_members.append(str(m.address) + ":" +str(m.port))
+                    pool_members.append(m.member)
                 return pool_members
     return pool_members
 

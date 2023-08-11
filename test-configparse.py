@@ -25,7 +25,10 @@ if not sys.argv[1:]:
 fileconfig = sys.argv[1]
 
 running_config = load_bigip_running_config(fileconfig)
-ltm_pool_list = configParse.collect_ltm_pool(running_config)
+results = configParse.ltm_pool(running_config)
 
-print(len(ltm_pool_list))
+print(len(results))
+for pool in results:
+    for i in pool.members:
+        print(pool.name, i.member)
 

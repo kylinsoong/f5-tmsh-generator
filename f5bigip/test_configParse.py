@@ -14,12 +14,26 @@ def load_config_data(filename):
         with open(file_path, 'r') as file:
             content = file.read()
             file.close()
+            content = content.replace('[m','')
+            content = content.replace('[K', '')
+            error = re.findall(r'\[7m---\(less (\d+)', content)
+            for i in error:
+                error1 = '[7m---(less '+i
+                content = content.replace(error1, '')
             return content
     else:
         return None
 
+def is_valid_ip_network(address):
+    try:
+        ipaddress.ip_network(address, False)
+        return True
+    except ValueError:
+        return False
+
 
 class TestConfigParse(unittest.TestCase):
+
 
     def test_f5_config_dict(self):
         self.assertEqual(len(f5_config_dict['header']), 14)
@@ -42,38 +56,54 @@ class TestConfigParse(unittest.TestCase):
             self.assertTrue("test" in i) 
 
     def test_data_search(self):
-        data = load_config_data("bigip-v11.running-config")
+        data = load_config_data("bigip-v15.running-config")
         if data is not None: 
-            start_time = time.time()
             re_results =  split_content_to_list_pattern(data, r'ltm pool\s+(\S+)', "ltm rule")
-            middle_time = time.time()
             str_results = split_content_to_list_split(data, "ltm pool", "ltm rule")
             self.assertEqual(len(re_results), len(str_results))
-            end_time = time.time()
 
-    def test_data_search_performance_pattern(self):
-        data = load_config_data("bigip-v11.running-config")
-        print("search performance pattern:")
-        if data is not None:
-            for number in range(1, 6):
-                start_time = time.time()
-                re_results =  split_content_to_list_pattern(data, r'ltm pool\s+(\S+)', "ltm rule")
-                end_time = time.time()
-                total_time = end_time - start_time
-                self.assertTrue(total_time > 0)
-                print(number, total_time)            
+    def test_ltm_pool(self):
+        configs = ["bigip-v15.running-config", "bigip-v13.running-config", "bigip-v11.running-config", "bigip-v10.running-config", "bigip-v13-config-clone-pool.1.running-config", "bigip-v13-config-clone-pool.2.running-config", "bigip-v13-f5config.1.running-config", "bigip-v13-f5config.2.running-config", "bigip-v13-f5config.3.running-config", "f5config.3", "f5config.2", "f5config.1", "f5config.0"]
+        for i in configs:
+            count = None
+            if i == "bigip-v15.running-config":
+                count = 8
+            elif i == "bigip-v13.running-config":
+                count = 221
+            elif i == "bigip-v11.running-config":
+                count = 272
+            elif i == "bigip-v10.running-config":
+                count = 15
+            elif i == "bigip-v13-config-clone-pool.1.running-config":
+                count = 133
+            elif i == "bigip-v13-config-clone-pool.2.running-config":
+                count = 37
+            elif i == "bigip-v13-f5config.1.running-config":
+                count = 18
+            elif i == "bigip-v13-f5config.2.running-config":
+                count = 171
+            elif i == "bigip-v13-f5config.3.running-config":
+                count = 18
+            elif i == "f5config.3":
+                count = 5
+            elif i == "f5config.2":
+                count = 2
+            elif i == "f5config.1":
+                count = 3
+            elif i == "f5config.0":
+                count = 3
 
-    def test_data_search_performance_split(self):
-        data = load_config_data("bigip-v11.running-config")
-        print("search performance split:")
-        if data is not None:
-            for number in range(1, 6):
-                start_time = time.time()
-                re_results =  split_content_to_list_split(data, "ltm pool", "ltm rule")
-                end_time = time.time()
-                total_time = end_time - start_time
-                self.assertTrue(total_time > 0)
-                print(number,  total_time)
+            data = load_config_data(i)
+            if data is not None:
+                pool_list = ltm_pool(data)
+                self.assertEqual(len(pool_list), count)
+                for pool in pool_list:
+                    for m in pool.members:
+                        results = split_destination(m.member)
+                        self.assertTrue(is_valid_ip_network(results[0]))
+                        self.assertTrue(int(results[1]) >= 0 and int(results[1]) < 65535)
+ 
+ 
 
 
 if __name__ == '__main__':
