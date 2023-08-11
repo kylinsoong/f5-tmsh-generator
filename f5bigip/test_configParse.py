@@ -24,12 +24,6 @@ def load_config_data(filename):
     else:
         return None
 
-def is_valid_ip_network(address):
-    try:
-        ipaddress.ip_network(address, False)
-        return True
-    except ValueError:
-        return False
 
 
 class TestConfigParse(unittest.TestCase):
@@ -103,9 +97,82 @@ class TestConfigParse(unittest.TestCase):
                         self.assertTrue(is_valid_ip_network(results[0]))
                         self.assertTrue(int(results[1]) >= 0 and int(results[1]) < 65535)
  
- 
+
+    def test_ltm_node(self):
+        configs = ["bigip-v15.running-config", "bigip-v13.running-config", "bigip-v11.running-config", "bigip-v10.running-config", "bigip-v13-config-clone-pool.1.running-config", "bigip-v13-config-clone-pool.2.running-config", "bigip-v13-f5config.1.running-config", "bigip-v13-f5config.2.running-config", "bigip-v13-f5config.3.running-config", "f5config.3", "f5config.2", "f5config.1", "f5config.0"]
+        for i in configs:
+            count = None
+            if i == "bigip-v15.running-config":
+                count = 15
+            elif i == "bigip-v13.running-config":
+                count = 206
+            elif i == "bigip-v11.running-config":
+                count = 311
+            elif i == "bigip-v10.running-config":
+                count = 8
+            elif i == "bigip-v13-config-clone-pool.1.running-config":
+                count = 368
+            elif i == "bigip-v13-config-clone-pool.2.running-config":
+                count = 131
+            elif i == "bigip-v13-f5config.1.running-config":
+                count = 224
+            elif i == "bigip-v13-f5config.2.running-config":
+                count = 256
+            elif i == "bigip-v13-f5config.3.running-config":
+                count = 224
+            elif i == "f5config.3":
+                count = 14
+            elif i == "f5config.2":
+                count = 7
+            elif i == "f5config.1":
+                count = 13
+            elif i == "f5config.0":
+                count = 13
+
+            data = load_config_data(i)
+            if data is not None:
+                node_list = ltm_node(data) 
+                self.assertEqual(len(node_list), count)
+                for n in node_list:
+                    self.assertTrue(is_valid_ip_network(n.name))
+                    if n.address is not None:
+                        self.assertTrue(is_valid_ip_network(n.address))
+
+
+    def test_ltm_snatpool(self):
+        configs = ["bigip-v15.running-config", "bigip-v13.running-config", "bigip-v11.running-config", "bigip-v13-config-clone-pool.1.running-config", "bigip-v13-config-clone-pool.2.running-config", "bigip-v13-f5config.1.running-config", "bigip-v13-f5config.2.running-config", "bigip-v13-f5config.3.running-config", "f5config.3"]
+        for i in configs:
+            count = 0
+            if i == "bigip-v15.running-config":
+                count = 1
+            elif i == "bigip-v13.running-config":
+                count = 33
+            elif i == "bigip-v11.running-config":
+                count = 0
+            elif i == "bigip-v13-config-clone-pool.1.running-config":
+                count = 0
+            elif i == "bigip-v13-config-clone-pool.2.running-config":
+                count = 2
+            elif i == "bigip-v13-f5config.1.running-config":
+                count = 0
+            elif i == "bigip-v13-f5config.2.running-config":
+                count = 0
+            elif i == "bigip-v13-f5config.3.running-config":
+                count = 0
+            elif i == "f5config.3":
+                count = 3
+
+            data = load_config_data(i)
+            if data is not None:
+                snatpool_list = ltm_snatpool(data)
+                self.assertEqual(len(snatpool_list), count)
+                for snat in snatpool_list:
+                    for ip in snat.members:
+                        print(i, ip, len(ip), type(ip))
+                        self.assertTrue(is_valid_ip_network(ip))
+
 
 
 if __name__ == '__main__':
     unittest.main()
-
+is_valid_ip_network

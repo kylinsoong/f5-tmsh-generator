@@ -104,6 +104,36 @@ class BIGIPSnatPool:
         self.members = members
 
 
+
+def ltm_node(data_all):
+
+    node_list = []
+
+    node_start_str = "ltm node"
+    node_end_str = find_end_str(data_all, node_start_str, f5_config_dict['ltm'])
+    node_data_list = split_content_to_list_split(data_all, node_start_str, node_end_str)
+    for i in node_data_list:
+        node_data = trip_prefix(i, None)
+        name = replace_with_patterns(find_first_line(node_data), ["{", "}"])
+        lines = node_data.splitlines()
+        address, monitor, session, state = None, None, None, None
+        for l in lines:
+            line = trip_prefix(l, None)
+            if line.startswith("address"):
+                address = trip_prefix(line, "address")
+            elif line.startswith("monitor"):
+                monitor = trip_prefix(line, "monitor")
+            elif line.startswith("session"):
+                session = trip_prefix(line, "session")
+            elif line.startswith("state"):
+                state = trip_prefix(line, "state")
+
+        node_list.append(BIGIPNode(name, address, monitor, session, state))
+
+    return node_list
+
+
+
 def ltm_pool(data_all):
 
     pool_list = []
@@ -162,6 +192,30 @@ def ltm_pool(data_all):
 
 
 
+def ltm_snatpool(data_all):
+
+    snatpool_results = []
+
+    snatpool_start_str = "ltm snatpool"
+    snatpool_end_str = find_end_str(data_all, snatpool_start_str, f5_config_dict['ltm']) 
+    snatpool_data_list = split_content_to_list_split(data_all, snatpool_start_str, snatpool_end_str)
+    for i in snatpool_data_list:
+        snatpool_data = replace_with_patterns(i, ["members", "{", "}"])
+        snat_name = trip_prefix(find_first_line(snatpool_data), None)
+        lines = snatpool_data.splitlines()
+        snat_members = []
+        for l in lines:
+            line = trip_prefix(l, None)
+            if snat_name not in line and len(line) > 0 and is_valid_ip_network(line) :
+                snat_members.append(line)
+            else:
+                print("ERR: ", line)
+        snatpool_results.append(BIGIPSnatPool(snat_name, snat_members))
+
+    return snatpool_results
+
+
+
 def trip_prefix(line, prefix):
     if len(line) > 0 and prefix is not None and prefix in line:
         return line.strip().lstrip(prefix).strip()
@@ -208,7 +262,7 @@ def split_destination(destination):
 def replace_with_patterns(data, patterns):
     for pattern in patterns:
         data = data.replace(pattern, "")
-    return data
+    return trip_prefix(data, None)
 
 def convert_servicename_to_port(input):
     input = trip_prefix(input, None)
@@ -306,6 +360,20 @@ def find_end_str(data_all, start_str, items):
         if isStart and i in data_all:
             return i
     return None
+
+
+
+def is_valid_ip_network(address):
+    try:
+        ipaddress.ip_network(address, False)
+        return True
+    except ValueError:
+        return False
+
+
+
+
+
 
 
 '''
