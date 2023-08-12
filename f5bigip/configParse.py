@@ -1180,9 +1180,9 @@ def existinfolist(data_all):
 
     data_all_list  = split_data_all(data_all)
 
-    vs_list = data_collect_vs_list(data_all_list[1])
-    pool_list = data_collect_pool_list(data_all_list[1])
-    snatpool_list = data_collect_snatpool_list(data_all_list[1])
+    vs_list = ltm_virtual(data_all_list[1])
+    pool_list = ltm_pool(data_all_list[1])
+    snatpool_list = ltm_snatpool(data_all_list[1])
     cm_device_list = data_collect_cm_device(data_all_list[0])
     cm_device_group_list = data_collect_cm_device_group(data_all_list[0])
     net_self_list = data_collect_net_self(data_all_list[2])
