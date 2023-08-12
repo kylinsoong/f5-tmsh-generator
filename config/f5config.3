@@ -381,9 +381,20 @@ ltm virtual qywx_10.1.10.13_80_vs {
     ip-protocol tcp
     mask 255.255.255.255
     profiles {
+        clientssl {
+            context clientside
+        }
         http { }
+        serverssl {
+            context serverside
+        }
         tcp { }
     }
+    rules {
+        irules_clone
+    }
+    serverssl-use-sni disabled
+    service-down-immediate-action reset
     source 0.0.0.0/0
     source-address-translation {
         pool qywx_10.1.10.13_snat
@@ -412,10 +423,24 @@ ltm virtual sjyh_10.1.10.12_80_vs {
     mask 255.255.255.255
     pool sjyh_10.1.10.12_80_pool
     profiles {
+        clientssl {
+            context clientside
+        }
         http { }
+        serverssl {
+            context serverside
+        }
         tcp { }
     }
+    rules {
+        irules_clone
+    }
+    serverssl-use-sni disabled
+    service-down-immediate-action reset
     source 0.0.0.0/0
+    source-address-translation {
+        type automap
+    }
     translate-address enabled
     translate-port enabled
     vs-index 7

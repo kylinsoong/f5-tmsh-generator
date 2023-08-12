@@ -1,0 +1,18 @@
+ltm virtual vs_ipv6 {
+    creation-time 2022-02-16:09:51:18
+    destination 2001::125.http
+    ip-protocol tcp
+    last-modified-time 2022-02-16:09:51:18
+    profiles {
+        http { }
+        tcp { }
+    }
+    rules {
+        http_reponse_payload
+    }
+    serverssl-use-sni disabled
+    translate-address enabled
+    translate-port enabled
+    vs-index 77
+}
+net cos global-settings { }

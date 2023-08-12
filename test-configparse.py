@@ -25,9 +25,9 @@ if not sys.argv[1:]:
 fileconfig = sys.argv[1]
 
 running_config = load_bigip_running_config(fileconfig)
-results = configParse.ltm_pool(running_config)
+results = configParse.ltm_virtual(running_config)
 
 for i in results:
-    print(i.name, i.lb_methods, i.monitor)
-    for m in i.members:
-        print("    ", m.member, m.address, m.port, m.session, m.state, m.connectionlimit)
+    print(i.vs_ip, configParse.is_valid_ip_network(i.vs_ip), i.vs_port)
+
+#print(configParse.find_ip_from_line("2001::125.http"))

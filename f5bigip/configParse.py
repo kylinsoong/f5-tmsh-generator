@@ -224,6 +224,81 @@ def ltm_snatpool(data_all):
 
 
 
+def ltm_virtual(data_all):
+
+    vs_list = []
+
+    vs_start_str = "ltm virtual"
+    vs_end_str = find_end_str(data_all, vs_start_str, f5_config_dict['net'])
+    vs_data_list = split_content_to_list_split(data_all, vs_start_str, vs_end_str)
+    for i in vs_data_list:
+        vs_data = trip_prefix(i, None)
+        vs_name, vs_ip, vs_port, vs_mask, ip_protocol, pool, profiles, rules, persist, serviceDownReset, vlans, snatpool, snatType = None, None, None, None, None, None, [], [], None, None, [], None, None
+        vs_name = replace_with_patterns(find_first_line(vs_data), "{")
+        lines = vs_data.splitlines()
+        isProfileStart, isProfileEnd, isRulesStart, isSnatpoolStart, isVlanStart, isPersistStart, isPersistEnd = False, False, False, False, False, False, False
+        for l in lines:
+            line = trip_prefix(l, None)
+            if line.startswith("destination"):
+                array = split_destination(trip_prefix(line, "destination"))
+                vs_ip = array[0]
+                vs_port = array[1]
+            elif ~line.startswith("destination") and "destination" in line:
+                vs_ip = find_ip_from_line(line)
+                vs_port = convert_servicename_to_port(trip_prefix(find_content_from_start_end(line, vs_ip, None)[len(vs_ip) + 1:], None))
+            elif line.startswith("ip-protocol"):
+                ip_protocol = trip_prefix(line, "ip-protocol")
+            elif line.startswith("mask"):
+                vs_mask = trip_prefix(line, "mask")
+            elif line.startswith("persist"):
+                isPersistStart = True
+            elif isPersistStart and "{" in line:
+                persist = replace_with_patterns(line, "{")
+                isPersistStart = False 
+            elif line.startswith("pool") and isSnatpoolStart == False:
+                pool = trip_prefix(line, "pool") 
+            elif line.startswith("profiles"):
+                isProfileStart = True
+            elif isProfileStart and isProfileEnd and line == "}":
+                isProfileStart = False
+            elif isProfileStart and "{" in line:
+                isProfileEnd = False
+                proile = trip_prefix(line[0: line.index("{")], None)
+                profiles.append(proile) 
+                if "}" in line: 
+                    isProfileEnd = True 
+            elif line.startswith("rules"):
+                isRulesStart = True
+            elif isRulesStart and "}" in line:
+                isRulesStart = False
+            elif isRulesStart and len(line) > 0:
+                rules.append(trip_prefix(line, None))
+            elif line.startswith("source-address-translation"):
+                isSnatpoolStart = True
+            elif isSnatpoolStart and "}" in line:
+                isSnatpoolStart = False
+            elif isSnatpoolStart and line.startswith("pool"):
+                snatpool = trip_prefix(line, "pool")
+            elif isSnatpoolStart and line.startswith("type"):
+                snatType = trip_prefix(line, "type")
+            elif line.startswith("service-down-immediate-action"):
+                serviceDownReset = trip_prefix(line, "service-down-immediate-action")
+            elif line.startswith("vlans"):
+                isVlanStart = True
+            elif isVlanStart and "}" in line:
+                isVlanStart = False
+            elif isVlanStart and len(line) > 0:
+                vlans.append(line)
+
+        vs_list.append(BIGIPVS(vs_name, vs_ip, vs_port, vs_mask, ip_protocol, pool, profiles, rules, persist, serviceDownReset, vlans, snatpool, snatType))
+
+    return vs_list
+
+
+
+
+
+
 def trip_prefix(line, prefix):
     if len(line) > 0 and prefix is not None and prefix in line:
         return line.strip().lstrip(prefix).strip()
@@ -278,11 +353,26 @@ def find_ip_from_line(line):
         return ipv6_addresses[0]
     return None
 
+def find_port_from_line(line):
+    tcp_port_pattern = r'\b\d{1,5}\b'
+    tcp_ports = re.findall(tcp_port_pattern, line)
+    if len(tcp_ports) > 0:
+        return tcp_ports[0]
+    return None
+
 
 def split_destination(destination):
+    if "any:any" == destination:
+        return ("0.0.0.0", "0")
     destination_array = destination.split(":")
     ip = destination_array[0]
     port = convert_servicename_to_port(destination_array[1])
+    if is_valid_ip_network(ip) == False:
+        ip = find_ip_from_line(destination)
+        if ip is None:
+            destination_array = destination.split(".")
+            ip = destination_array[0]
+            port = convert_servicename_to_port(destination_array[1])
     return (ip, port)
 
 
@@ -363,13 +453,18 @@ def split_content_to_list_split(data_all, start_str, end_str):
 
 
 def find_end_str(data_all, start_str, items):
-    isStart = False
-    for i in items:
-        if i == start_str:
-            isStart = True
-            continue
-        if isStart and i in data_all:
-            return i
+    if start_str not in items:
+        for i in items:
+            if i in data_all:
+                return i
+    else:  
+        isStart = False
+        for i in items:
+            if i == start_str:
+                isStart = True
+                continue
+            if isStart and i in data_all:
+                return i
     return None
 
 
@@ -885,7 +980,7 @@ f5_services_dict = load_f5_services_as_map()
 f5_config_dict = {
     "header": ["auth password-policy", "auth remote-role", "auth remote-user", "auth source", "auth user", "cli admin-partitions", "cli global-settings", "cli preference", "cm cert", "cm device", "cm device-group", "cm key", "cm traffic-group", "cm trust-domain"],
     "ltm": ["ltm data-group", "ltm default-node-monitor", "ltm dns", "ltm global-settings", "ltm monitor", "ltm node", "ltm persistence", "ltm policy", "ltm pool", "ltm profile", "ltm rule", "ltm snat-translation", "ltm snatpool", "ltm tacdb", "ltm virtual"],
-    "net": ["net cos", "net dag-globals", "net fdb", "net interface", "net ipsec ike-daemon", "net lldp-globals", "net multicast-globals", "net packet-filter-trusted", "net route", "net route-domain", "net self", "net self-allow", "net stp-globals", "net trunk", "net tunnels", "net vlan"],
+    "net": ["net address-list", "net cos", "net dag-globals", "net dns-resolver", "net fdb", "net interface", "net ipsec ike-daemon", "net lldp-globals", "net multicast-globals", "net packet-filter-trusted", "net route", "net route-domain", "net self", "net self-allow", "net stp-globals", "net trunk", "net tunnels", "net vlan"],
     "tail": ["sys config-sync", "sys aom", "sys autoscale-group", "sys daemon-log-settings", "sys datastor", "sys diags", "sys disk", "sys dns", "sys failover", "sys dynad key", "sys dynad", "sys feature-module", "sys file", "sys folder", "sys fpga", "sys global-settings", "sys httpd", "sys icontrol-soap", "sys log-rotate", "sys management-dhcp", "sys management-ip", "sys management-ovsdb", "sys management-route", "sys ntp", "sys outbound-smtp", "sys provision", "sys scriptd", "sys sflow", "sys snmp", "sys software", "sys sshd", "sys state-mirroring", "sys syslog ", "sys turboflex", "sys url-db"]
 }
 

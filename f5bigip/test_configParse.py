@@ -32,7 +32,7 @@ class TestConfigParse(unittest.TestCase):
     def test_f5_config_dict(self):
         self.assertEqual(len(f5_config_dict['header']), 14)
         self.assertEqual(len(f5_config_dict['ltm']), 15)
-        self.assertEqual(len(f5_config_dict['net']), 16)
+        self.assertEqual(len(f5_config_dict['net']), 18)
         self.assertEqual(len(f5_config_dict['tail']), 35)
 
     def test_f5_services_dict(self):
@@ -290,7 +290,139 @@ class TestConfigParse(unittest.TestCase):
         self.assertTrue(total_time_pattern > total_time_split)
         self.assertTrue(total_time_pattern/ total_time_split > 100) # split search has better performance, 100 times than search with re pattern
 
+    def test_ltm_virtual(self):
+        data = load_config_data("f5config.3")
+        vs_list = ltm_virtual(data)
+        self.assertEqual(len(vs_list), 4)
+        n1, n2, n3, n4 = "ydbg_10.1.10.11_80_vs", "sjyh_10.1.10.12_80_vs", "qywx_10.1.10.13_80_vs", "qywy_10.1.10.14_80_vs"
+        vs_name_list = []
+        for i in vs_list:
+            vs_name_list.append(i.vs_name)
+            self.assertEqual(i.vs_port, "80")
+            self.assertEqual(i.vs_mask, "255.255.255.255")
+            self.assertEqual(i.ip_protocol, "tcp")
+            self.assertTrue("http" in i.profiles)
+            self.assertTrue("tcp" in i.profiles)
+            if i.vs_name == n1:
+                self.assertEqual(i.vs_ip, "10.1.10.11")
+                self.assertEqual(i.pool, "ydbg_10.1.10.11_80_pool")
+                self.assertEqual(i.snatpool, "ydbg_10.1.10.11_snat")
+                self.assertEqual(i.snatType, "snat")
+            elif i.vs_name == n2:
+                self.assertEqual(i.vs_ip, "10.1.10.12")
+                self.assertEqual(i.pool, "sjyh_10.1.10.12_80_pool")
+                self.assertEqual(i.snatpool, None)
+                self.assertEqual(i.snatType, "automap")
+                self.assertTrue("clientssl" in i.profiles)
+                self.assertTrue("serverssl" in i.profiles)
+                self.assertTrue("irules_clone" in i.rules)
+                self.assertTrue("reset" in i.serviceDownReset)
+            elif i.vs_name == n3:
+                self.assertEqual(i.vs_ip, "10.1.10.13")
+                self.assertEqual(i.pool, None)
+                self.assertEqual(i.snatpool, "qywx_10.1.10.13_snat")
+                self.assertEqual(i.snatType, "snat")
+                self.assertTrue("clientssl" in i.profiles)
+                self.assertTrue("serverssl" in i.profiles)
+                self.assertTrue("irules_clone" in i.rules)
+                self.assertTrue("reset" in i.serviceDownReset)
+            elif i.vs_name == n4:
+                self.assertEqual(i.vs_ip, "10.1.10.14")
+                self.assertEqual(i.pool, None)
+        self.assertTrue(n1 in vs_name_list and n2 in vs_name_list and n3 in vs_name_list and n4 in vs_name_list)
 
+
+
+    def test_ltm_virtual_vlans(self):
+        data = load_config_data("unittest.virtual.vlans")
+        vs_list = ltm_virtual(data)
+        self.assertEqual(len(vs_list), 2)
+        n1, n2 = "MB_forwarding_11.19.8.102_vs", "MB_forwarding_vs"
+        vs_name_list = []
+        for i in vs_list:
+            vs_name_list.append(i.vs_name)
+            self.assertTrue("fastL4" in i.profiles)
+            self.assertEqual(i.vs_port, "0")
+            if i.vs_name == n1:
+                self.assertEqual(i.vs_ip, "11.19.8.102")
+                self.assertTrue("MB_forwarding_11.19.8.40_irules" in i.rules)
+                self.assertTrue("vlan223_external" in i.vlans)
+                self.assertTrue("vlan246_internal" in i.vlans)
+            elif i.vs_name == n2:
+                self.assertEqual(i.vs_ip, "0.0.0.0")
+                self.assertTrue("forwarding-rules" in i.rules)
+                self.assertTrue("vlan112_internal" in i.vlans)
+                self.assertTrue("vlan246_internal" in i.vlans)
+                self.assertTrue("vlan248_internal" in i.vlans)
+        self.assertTrue(n1 in vs_name_list and n2 in vs_name_list)
+
+
+    def test_ltm_virtual_persist(self):
+        data = load_config_data("unittest.virtual.persist")
+        vs_list = ltm_virtual(data)
+        self.assertEqual(len(vs_list), 2)
+        n1, n2 = "test_http", "DSFZF-YZ-tcp-8080-vs"
+        vs_name_list = []
+        for i in vs_list:
+            vs_name_list.append(i.vs_name)
+            if i.vs_name == n1:
+                self.assertEqual(i.vs_ip, "192.168.6.125")
+                self.assertEqual(i.vs_port, "8081")
+                self.assertEqual(i.persist, "cookie")
+                self.assertTrue("decommpress" in i.profiles and "http" in i.profiles and "tcp" in i.profiles and "serverssl" in i.profiles)
+            elif i.vs_name == n2:
+                self.assertEqual(i.vs_ip, "11.6.81.103")
+                self.assertEqual(i.vs_port, "8080")
+                self.assertEqual(i.persist, "source_addr_10M")
+                self.assertTrue("fastL4" in i.profiles)
+        self.assertTrue(n1 in vs_name_list and n2 in vs_name_list)        
+
+
+    def test_ltm_viarual_ipv6(self):
+        data = load_config_data("unittest.virtual.ipv6")
+        vs_list = ltm_virtual(data)
+        self.assertEqual(len(vs_list), 1)
+        self.assertTrue(is_valid_ip_network(vs_list[0].vs_ip))
+
+
+    def test_ltm_viarual_all(self):
+        configs = ["bigip-v15.running-config", "bigip-v13.running-config", "bigip-v11.running-config", "bigip-v10.running-config", "bigip-v13-config-clone-pool.1.running-config", "bigip-v13-config-clone-pool.2.running-config", "bigip-v13-f5config.1.running-config", "bigip-v13-f5config.2.running-config", "bigip-v13-f5config.3.running-config", "f5config.3", "f5config.2", "f5config.1", "f5config.0"]
+        for i in configs:
+            count = None
+            if i == "bigip-v15.running-config":
+                count = 11
+            elif i == "bigip-v13.running-config":
+                count = 151
+            elif i == "bigip-v11.running-config":
+                count = 269
+            elif i == "bigip-v10.running-config":
+                count = 7
+            elif i == "bigip-v13-config-clone-pool.1.running-config":
+                count = 99
+            elif i == "bigip-v13-config-clone-pool.2.running-config":
+                count = 29
+            elif i == "bigip-v13-f5config.1.running-config":
+                count = 15
+            elif i == "bigip-v13-f5config.2.running-config":
+                count = 167
+            elif i == "bigip-v13-f5config.3.running-config":
+                count = 15
+            elif i == "f5config.3":
+                count = 4
+            elif i == "f5config.2":
+                count = 4
+            elif i == "f5config.1":
+                count = 3
+            elif i == "f5config.0":
+                count = 3
+
+            data = load_config_data(i)
+            if data is not None:
+                vs_list = ltm_virtual(data)
+                self.assertEqual(len(vs_list), count)
+                for v in vs_list:
+                    self.assertTrue(is_valid_ip_network(v.vs_ip))
+                
 
 if __name__ == '__main__':
     unittest.main()

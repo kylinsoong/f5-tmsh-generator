@@ -1,0 +1,42 @@
+ltm virtual MB_forwarding_11.19.8.102_vs {
+    destination 11.19.8.102:any
+    ip-forward
+    mask 255.255.255.255
+    profiles {
+        fastL4 { }
+    }
+    rules {
+        MB_forwarding_11.19.8.40_irules
+    }
+    source 0.0.0.0/0
+    translate-address disabled
+    translate-port disabled
+    vlans {
+        vlan223_external
+        vlan246_internal
+    }
+    vlans-enabled
+    vs-index 14
+}
+ltm virtual MB_forwarding_vs {
+    destination 0.0.0.0:any
+    ip-forward
+    mask any
+    profiles {
+        fastL4 { }
+    }
+    rules {
+        forwarding-rules
+    }
+    source 0.0.0.0/0
+    translate-address disabled
+    translate-port disabled
+    vlans {
+        vlan112_internal
+        vlan246_internal
+        vlan248_internal
+    }
+    vlans-enabled
+    vs-index 16
+}
+net cos global-settings { }

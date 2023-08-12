@@ -1,0 +1,53 @@
+ltm virtual test_http {
+    creation-time 2020-08-18:13:04:31
+    destination 192.168.6.125:tproxy
+    ip-protocol tcp
+    last-modified-time 2023-08-07:12:30:22
+    mask 255.255.255.255
+    persist {
+        cookie {
+            default yes
+        }
+    }
+    pool pool_NGinx
+    profiles {
+        decommpress { }
+        http { }
+        serverssl {
+            context serverside
+        }
+        tcp { }
+    }
+    serverssl-use-sni disabled
+    service-down-immediate-action reset
+    source 0.0.0.0/0
+    source-address-translation {
+        type automap
+    }
+    translate-address enabled
+    translate-port enabled
+    vs-index 72
+}
+ltm virtual DSFZF-YZ-tcp-8080-vs {
+    destination 11.6.81.103:webcache
+    ip-protocol tcp
+    mask 255.255.255.255
+    persist {
+        source_addr_10M {
+            default yes
+        }
+    }
+    pool DSFZF-YZ-tcp-8080-pool
+    profiles {
+        fastL4 { }
+    }
+    source 0.0.0.0/0
+    source-address-translation {
+        pool snatpool_11.0.70.0
+        type snat
+    }
+    translate-address enabled
+    translate-port enabled
+    vs-index 44
+}
+net cos global-settings { }
