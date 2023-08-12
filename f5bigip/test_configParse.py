@@ -422,7 +422,25 @@ class TestConfigParse(unittest.TestCase):
                 self.assertEqual(len(vs_list), count)
                 for v in vs_list:
                     self.assertTrue(is_valid_ip_network(v.vs_ip))
-                
+
+
+    def test_ltm_persistence_source_addr(self):
+        data = load_config_data("bigip-v13.running-config")
+        if data is not None:
+            persist_list = ltm_persistence_source_addr(data)
+            self.assertEqual(len(persist_list), 5)
+            name_list = []
+            for i in persist_list:    
+                name_list.append(i.name)
+                self.assertTrue(int(i.timeout) >= 1800)
+
+            self.assertTrue("source_30M" in name_list)
+            self.assertTrue("source_60M" in name_list)
+            self.assertTrue("source_addr_8h" in name_list)
+            self.assertTrue("src_addr_1800s" in name_list)
+            self.assertTrue("src_addr_3600s" in name_list)
+
+
 
 if __name__ == '__main__':
     unittest.main()
