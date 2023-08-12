@@ -129,6 +129,31 @@ class TestConfigParse(unittest.TestCase):
         self.assertTrue(member2 in member_list)
 
 
+    def test_ltm_pool_mess(self):
+        data = load_config_data("unittest.pool.mess")
+        pool_list = ltm_pool(data)
+        self.assertEqual(len(pool_list), 3)
+        name_a, name_b, name_c = "C_LianJiFuWu_duinei_6_pool", "C_LianJiFuWu_duinei_8_pool", "C_LianJiFuWu_duinei_10_pool"
+        names_list = []
+        for i in pool_list:
+            name, lb_methods, members, monitor = i.name, i.lb_methods, i.members, i.monitor
+            names_list.append(name)
+            self.assertEqual(monitor, "gateway_icmp")
+            self.assertEqual(len(members), 1)
+            self.assertEqual(lb_methods, None)
+            if name == name_a:
+                self.assertEqual(members[0].member, "11.109.17.6:0")
+                self.assertEqual(members[0].address, "11.109.17.6")
+            elif name == name_b:
+                self.assertEqual(members[0].member, "11.109.17.8:0")
+                self.assertEqual(members[0].address, "11.109.17.8")
+            elif name == name_c:
+                self.assertEqual(members[0].member, "11.109.17.10:0")
+                self.assertEqual(members[0].address, "11.109.17.10")
+            self.assertEqual(members[0].port, "0")
+            self.assertEqual(members[0].state, "up")
+
+
     def test_ltm_node(self):
         configs = ["bigip-v15.running-config", "bigip-v13.running-config", "bigip-v11.running-config", "bigip-v10.running-config", "bigip-v13-config-clone-pool.1.running-config", "bigip-v13-config-clone-pool.2.running-config", "bigip-v13-f5config.1.running-config", "bigip-v13-f5config.2.running-config", "bigip-v13-f5config.3.running-config", "f5config.3", "f5config.2", "f5config.1", "f5config.0"]
         for i in configs:

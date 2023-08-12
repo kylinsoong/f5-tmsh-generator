@@ -156,27 +156,32 @@ def ltm_pool(data_all):
                 pool_min_active_member = trip_prefix(line, "min-active-members")
             elif line.startswith("monitor"):
                 pool_monitor = trip_prefix(line, "monitor")
-            elif line.startswith("members"):
+            elif line.startswith("members") or "members" in line :
                 isMembersStart = True
-            elif isMembersStart and line != "}":
+            elif isMembersStart and (line != "}" or "}" not in line):
                 pool_member_list.append(line)
-            elif isMembersStart and line == "}" and len(pool_member_list) > 0:
+            elif isMembersStart and (line == "}" or "}" in line )  and len(pool_member_list) > 0:
                 cloned_list = pool_member_list[:]
                 pool_members_list.append(cloned_list)
                 pool_member_list = []
-            elif isMembersStart and line == "}" and len(pool_member_list) == 0:
+            elif isMembersStart and (line == "}" or "}" in line) and len(pool_member_list) == 0:
                 isMembersStart = False
 
         for m_list in pool_members_list:
             member, address, port, session, state, connectionlimit = None, None, None, None, None, None
             if len(m_list) > 0 and len(m_list[0]) >= 12:
                 array = split_destination(replace_with_patterns(m_list[0], "{"))
-                member = str(array[0]) + ":" + str(array[1])
+                if is_valid_ip_network(array[0]):  
+                    member = str(array[0]) + ":" + str(array[1])
+                else:
+                    member = find_ip_from_line(array[0])  + ":" + str(array[1])
                 port = array[1]
             for l in m_list:
                 line = trip_prefix(l, None)
                 if line.startswith("address"):
                     address = trip_prefix(line, "address")
+                elif ~line.startswith("address") and "address" in line:
+                    address = find_ip_from_line(line)
                 elif line.startswith("session"):
                     session = trip_prefix(line, "session")
                 elif line.startswith("state"):

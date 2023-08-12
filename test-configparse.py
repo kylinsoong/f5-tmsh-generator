@@ -25,13 +25,9 @@ if not sys.argv[1:]:
 fileconfig = sys.argv[1]
 
 running_config = load_bigip_running_config(fileconfig)
-results = configParse.ltm_snatpool(running_config)
+results = configParse.ltm_pool(running_config)
 
-print(len(results))
-for n in results:
-    print(n.name, len(n.members))
-    for i in n.members:
-        print("--->", i)
-
-
-#configParse.find_ip_from_line("1231312312313123")
+for i in results:
+    print(i.name, i.lb_methods, i.monitor)
+    for m in i.members:
+        print("    ", m.member, m.address, m.port, m.session, m.state, m.connectionlimit)
