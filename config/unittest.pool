@@ -1,0 +1,19 @@
+ltm pool pool_NGinx {
+    load-balancing-mode least-connections-member
+    members {
+        192.168.6.11:http {
+            address 192.168.6.11
+            connection-limit 4
+            session monitor-enabled
+            state up
+        }
+        192.168.80.40:webcache {
+            address 192.168.80.40
+            session user-disabled
+            state down
+        }
+    }
+    min-active-members 1
+    monitor gateway_icmp and http and tcp
+}
+ltm profile client-ssl

@@ -96,7 +96,38 @@ class TestConfigParse(unittest.TestCase):
                         results = split_destination(m.member)
                         self.assertTrue(is_valid_ip_network(results[0]))
                         self.assertTrue(int(results[1]) >= 0 and int(results[1]) < 65535)
- 
+
+
+    def test_ltm_pool_lb_monitor(self):
+        data = load_config_data("unittest.pool")
+        pool_list = ltm_pool(data)
+        self.assertEqual(len(pool_list), 1)
+        name, lb_methods, members, monitor = pool_list[0].name, pool_list[0].lb_methods, pool_list[0].members, pool_list[0].monitor
+        self.assertEqual(name, "pool_NGinx")
+        self.assertEqual(lb_methods, "least-connections-member")
+        self.assertEqual(len(members), 2)
+        self.assertTrue("gateway_icmp" in monitor)
+        self.assertTrue("http" in monitor)
+        self.assertTrue("tcp" in monitor)
+        member1, member2 = "192.168.6.11:80", "192.168.80.40:8080"
+        member_list = []
+        for m in members:
+            member, address, port, session, state, connectionlimit = m.member, m.address, m.port, m.session, m.state, m.connectionlimit
+            member_list.append(member)
+            if member == member1:
+                self.assertEqual(address, "192.168.6.11")
+                self.assertEqual(port, "80")
+                self.assertEqual(session, "monitor-enabled")
+                self.assertEqual(state, "up")
+                self.assertEqual(connectionlimit, "4")
+            elif member == member2:
+                self.assertEqual(address, "192.168.80.40")
+                self.assertEqual(port, "8080")
+                self.assertEqual(session, "user-disabled")
+                self.assertEqual(state, "down")
+        self.assertTrue(member1 in member_list)
+        self.assertTrue(member2 in member_list)
+
 
     def test_ltm_node(self):
         configs = ["bigip-v15.running-config", "bigip-v13.running-config", "bigip-v11.running-config", "bigip-v10.running-config", "bigip-v13-config-clone-pool.1.running-config", "bigip-v13-config-clone-pool.2.running-config", "bigip-v13-f5config.1.running-config", "bigip-v13-f5config.2.running-config", "bigip-v13-f5config.3.running-config", "f5config.3", "f5config.2", "f5config.1", "f5config.0"]
@@ -168,11 +199,73 @@ class TestConfigParse(unittest.TestCase):
                 self.assertEqual(len(snatpool_list), count)
                 for snat in snatpool_list:
                     for ip in snat.members:
-                        print(i, ip, len(ip), type(ip))
                         self.assertTrue(is_valid_ip_network(ip))
+
+
+    def test_ltm_snatpool_parse_with_mess(self):
+        data = load_config_data("unittest.snatpool")
+        snatpool_list = ltm_snatpool(data)
+        self.assertEqual(len(snatpool_list), 2)
+        name1, name2 = "snatpool_11.0.70.0", "weixinyinhangshangyun_yizhuang_snat"
+        snatpool_names = []
+        for snat in snatpool_list:
+            snatpool_names.append(snat.name)
+            snatpool_members = snat.members
+            if name1 == snat.name:
+                self.assertEqual(len(snatpool_members), 248)
+                self.assertTrue("11.0.70.2" not in snatpool_members)
+                self.assertTrue("11.0.70.3" in snatpool_members)
+                self.assertTrue("11.0.70.4" in snatpool_members)
+            elif name2 == snat.name:
+                self.assertEqual(len(snatpool_members), 19)
+                self.assertTrue("192.168.129.41" not in snatpool_members)
+                self.assertTrue("192.168.129.42" in snatpool_members)
+                self.assertTrue("192.168.129.43" in snatpool_members)
+            for ip in snatpool_members:
+                self.assertTrue(is_valid_ip_network(ip))
+        self.assertTrue(name1 in snatpool_names)
+        self.assertTrue(name2 in snatpool_names)
+
+
+    def test_find_ip_from_line(self):
+        ip1 = find_ip_from_line("IP addresses 192.168.1.1")
+        ip2 = find_ip_from_line("and 2001:0db8:85a3:0000:0000:8a2e:0370:7334.")
+        ip3 = find_ip_from_line("0.0.0.0:0")
+        ip4 = find_ip_from_line("IP addresses 1920.168.1.1")
+        ip5 = find_ip_from_line("and 2001:0db8:85a3:0000:0000:8a2e:0370:733g.")
+        self.assertEqual(ip1, "192.168.1.1")
+        self.assertEqual(ip2, "2001:0db8:85a3:0000:0000:8a2e:0370:7334")
+        self.assertEqual(ip3, "0.0.0.0")
+        self.assertEqual(ip4, None)
+        self.assertEqual(ip5, None)
+
+
+    def test_data_search_performance(self):
+        data = load_config_data("bigip-v11.running-config")
+        total_time_pattern = 0 
+        if data is not None:
+            for number in range(1, 6):
+                start_time = time.time()
+                re_results =  split_content_to_list_pattern(data, r'ltm pool\s+(\S+)', "ltm rule")
+                end_time = time.time()
+                total_time = end_time - start_time
+                total_time_pattern += total_time
+                self.assertTrue(total_time > 0)
+
+        total_time_split = 0
+        if data is not None:
+            for number in range(1, 6):
+                start_time = time.time()
+                re_results =  split_content_to_list_split(data, "ltm pool", "ltm rule")
+                end_time = time.time()
+                total_time = end_time - start_time
+                self.assertTrue(total_time > 0)
+                total_time_split += total_time
+
+        self.assertTrue(total_time_pattern > total_time_split)
+        self.assertTrue(total_time_pattern/ total_time_split > 100) # split search has better performance, 100 times than search with re pattern
 
 
 
 if __name__ == '__main__':
     unittest.main()
-is_valid_ip_network

@@ -200,16 +200,19 @@ def ltm_snatpool(data_all):
     snatpool_end_str = find_end_str(data_all, snatpool_start_str, f5_config_dict['ltm']) 
     snatpool_data_list = split_content_to_list_split(data_all, snatpool_start_str, snatpool_end_str)
     for i in snatpool_data_list:
-        snatpool_data = replace_with_patterns(i, ["members", "{", "}"])
-        snat_name = trip_prefix(find_first_line(snatpool_data), None)
+        snatpool_data = trip_prefix(i, None)
+        snat_name = replace_with_patterns(find_first_line(snatpool_data), "{")
+        snatpool_data = replace_with_patterns(snatpool_data, [snat_name, "members", "{", "}"])
         lines = snatpool_data.splitlines()
         snat_members = []
         for l in lines:
             line = trip_prefix(l, None)
-            if snat_name not in line and len(line) > 0 and is_valid_ip_network(line) :
+            if len(line) > 7 and is_valid_ip_network(line):
                 snat_members.append(line)
             else:
-                print("ERR: ", line)
+               ip = find_ip_from_line(line)
+               if ip is not None:  
+                   snat_members.append(ip)
         snatpool_results.append(BIGIPSnatPool(snat_name, snat_members))
 
     return snatpool_results
@@ -221,6 +224,7 @@ def trip_prefix(line, prefix):
         return line.strip().lstrip(prefix).strip()
     else:
         return line.strip()
+
 
 def find_first_line(data_all):
     first_line_end = data_all.find('\n')
@@ -240,10 +244,12 @@ def find_content_from_start_end(data, start_str, end_str):
     data_end = re.search(end_str, data, re.I).start()
     return data[data_start:data_end]
 
+
 def find_content_from_start(data, start_str):
     data_start = re.search(start_str, data, re.I).start()
     line = data[:data_start]
     return trip_prefix(line, None)
+
 
 def find_line_content_from_start_str(data, prefix):
     lines = data.splitlines()
@@ -253,16 +259,33 @@ def find_line_content_from_start_str(data, prefix):
             return trip_prefix(line, prefix.strip())
     return None
 
+
+def find_ip_from_line(line):
+    if len(line) <= 7:
+        return None
+    ipv4_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
+    ipv4_addresses = re.findall(ipv4_pattern, line)
+    if len(ipv4_addresses) > 0:
+        return ipv4_addresses[0]
+    ipv6_pattern = r'\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b'
+    ipv6_addresses = re.findall(ipv6_pattern, line)
+    if len(ipv6_addresses) > 0 :
+        return ipv6_addresses[0]
+    return None
+
+
 def split_destination(destination):
     destination_array = destination.split(":")
     ip = destination_array[0]
     port = convert_servicename_to_port(destination_array[1])
     return (ip, port)
 
+
 def replace_with_patterns(data, patterns):
     for pattern in patterns:
         data = data.replace(pattern, "")
     return trip_prefix(data, None)
+
 
 def convert_servicename_to_port(input):
     input = trip_prefix(input, None)
@@ -320,29 +343,12 @@ def split_content_to_list_pattern(data_all, pattern, end_str):
 
 
 '''
-Split a large content to small block base on re pattern, return each blocks as a content list.
+Split a large content to small block base on re pattern, return each blocks as a content list, provide same functionality as split_content_to_list_pattern(), but has better performance if the search targe data_all is large, 100 times faster than split_content_to_list_pattern().
 
     data_all - original data
     pattern  - re pattern
     end_str  - the end of big blok
 
-
-Compare with split_content_to_list_pattern(), split_content_to_list_split() has good performance, the following is the test data statistics(test each function 5 times):
-
-    .search performance pattern:
-    1 1.0084559917449951
-    2 1.0131690502166748
-    3 1.0058786869049072
-    4 1.0041730403900146
-    5 1.0054516792297363
-    .search performance split:
-    1 0.006358146667480469
-    2 0.006302356719970703
-    3 0.006287097930908203
-    4 0.006265878677368164
-    5 0.006285905838012695
-
-Refer to  test_configParse.py test_data_search_performance_pattern() and test_data_search_performance_split() for details.
 '''
 def split_content_to_list_split(data_all, start_str, end_str):
     data = find_content_from_start_end(data_all, start_str, end_str)
