@@ -132,12 +132,22 @@ class BIGIPPersistCookie:
         self.default_from = default_from 
         self.expiration = expiration 
         self.method = method 
-   
 
 class BIGIPSnatPool:
     def __init__(self, name, members):
         self.name = name
         self.members = members
+
+class BIGIPSysSSHD:
+    def __init__(self, allow, inactivity_timeout):
+        self.allow = allow
+        self.inactivity_timeout = inactivity_timeout
+
+class BIGIPSysHTTPD:
+    def __init__(self, allow, auth_pam_idle_timeout):
+        self.allow = allow
+        self.auth_pam_idle_timeout = auth_pam_idle_timeout
+
 
 
 def auth_user(data_all):
@@ -609,6 +619,42 @@ def net_vlan(data_all):
         net_vlan_list.append(BIGIPNetL2(vlan_name, failsafe, failsafe_action, failsafe_timeout, fwd_mode, if_index, interfaces, sflow_poll_interval_global, sflow_sampling_rate_global, tag))
 
     return net_vlan_list
+
+
+
+def sys_httpd(data_all):
+    
+    sys_httpd_start_str = "sys httpd"
+    sys_httpd_end_str = find_end_str(data_all, sys_httpd_start_str, f5_config_dict['tail']) 
+    sys_httpd_data = find_content_from_start_end(data_all, sys_httpd_start_str, sys_httpd_end_str)
+    lines = sys_httpd_data.splitlines()
+    allow, auth_pam_idle_timeout = None, None
+    for l in lines:
+        line = l.strip()
+        if line.startswith("allow"):
+            allow = replace_with_patterns(trip_prefix(line, "allow"), ["{", "}"])
+        elif line.startswith("auth-pam-idle-timeout"):
+            auth_pam_idle_timeout = trip_prefix(line, "auth-pam-idle-timeout")
+
+    return BIGIPSysHTTPD(allow, auth_pam_idle_timeout)
+
+
+
+def sys_sshd(data_all):
+
+    sys_sshd_start_str = "sys sshd"
+    sys_sshd_end_str = find_end_str(data_all, sys_sshd_start_str, f5_config_dict['tail'])
+    sys_sshd_data = find_content_from_start_end(data_all, sys_sshd_start_str, sys_sshd_end_str)
+    lines = sys_sshd_data.splitlines()
+    allow, auth_pam_idle_timeout = None, None
+    for l in lines:
+        line = l.strip()
+        if line.startswith("allow"):
+            allow = replace_with_patterns(trip_prefix(line, "allow"), ["{", "}"])
+        elif line.startswith("inactivity-timeout"):
+            auth_pam_idle_timeout = trip_prefix(line, "inactivity-timeout")
+
+    return BIGIPSysSSHD(allow, auth_pam_idle_timeout)
 
 
 

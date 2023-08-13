@@ -1,0 +1,13 @@
+sys httpd {
+    allow { 21.7.20.1 22.231.16.5 22.231.16.8 22.233.121.6 }
+    auth-pam-idle-timeout 600
+    include "
+# CVE-2022-1388
+RequestHeader set connection close "
+}
+sys icontrol-soap { }
+sys sshd {
+    allow { 192.168.1.11 22.233.120.1 22.231.16.5 22.231.16.8 22.231.16.40 22.231.16.9 22.233.121.6 }
+    inactivity-timeout 600
+}
+sys state-mirroring { }

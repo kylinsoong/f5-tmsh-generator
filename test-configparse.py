@@ -29,13 +29,13 @@ running_config = load_bigip_running_config(fileconfig)
 #results = configParse.cm_device(running_config)
 #results = configParse.cm_device_group(running_config)
 #results = configParse.net_self(running_config)
-results = configParse.net_vlan(running_config)
+#results = configParse.net_vlan(running_config)
 
 
-print(len(results))
+#print(len(results))
 
-for i in results:
-    print(i.name, i.fwd_mode, i.if_index, i.interfaces[0].name, i.interfaces[0].tag_mode, i.interfaces[0].tagged, i.sflow_poll_interval_global, i.sflow_sampling_rate_global, i.tag)
+#for i in results:
+#    print(i.name, i.fwd_mode, i.if_index, i.interfaces[0].name, i.interfaces[0].tag_mode, i.interfaces[0].tagged, i.sflow_poll_interval_global, i.sflow_sampling_rate_global, i.tag)
     #if "traffic-group-1" == i.trafficgroup:
     #print(i.name, i.address, i.allowservice, i.floating, i.trafficgroup, i.vlan, "---", i.floating)
     #print(i.name, i.autosync, i.devices, i.fullloadonsync, i.networkfailover, i.type)
@@ -44,3 +44,8 @@ for i in results:
 #print(configParse.find_ip_from_line("2001::125.http"))
 
 #print(configParse.find_end_str(configParse.split_data_all(running_config)[1], "ltm virtual", configParse.f5_config_dict['ltm']))
+
+sys_sshd = configParse.sys_sshd(running_config)
+sys_httpd = configParse.sys_httpd(running_config)
+print(sys_sshd.allow, " - ", sys_sshd.inactivity_timeout)
+print(sys_httpd.allow, " - ", sys_httpd.auth_pam_idle_timeout)

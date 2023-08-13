@@ -569,6 +569,18 @@ class TestConfigParse(unittest.TestCase):
         self.assertEqual(user_list[0].name, "admin")
         self.assertEqual(user_list[0].role, "admin")
 
+    def test_sys_httpd(self):
+        data = load_config_data("unittest.sys.httpd")
+        httpd = sys_httpd(data)
+        self.assertEqual(httpd.auth_pam_idle_timeout, '600')
+        self.assertTrue("22.231.16.8" in httpd.allow)
+
+    def test_sys_sshd(self):
+        data = load_config_data("unittest.sys.httpd")
+        sshd = sys_sshd(data)
+        self.assertEqual(sshd.inactivity_timeout, '600')
+        self.assertTrue("192.168.1.11" in sshd.allow)
+
 
 
 if __name__ == '__main__':

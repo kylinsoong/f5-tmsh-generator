@@ -1,22 +1,12 @@
 #!/usr/bin/python3
 
 import sys
-import ast
 import re
-import socket
-import ipaddress
 
 from f5bigip import configParse
 from f5bigip import tmsh
 
-'''
-The Administrator and Auditor user roles that you can assign to a BIG-IP user account:
-    
-    Administrator          - This is the most powerful user role on the system and grants users complete access to all objects on the system. 
-    Auditor                - This is a powerful role that grants read-only access to all configuration data on the system, except for ARP data, archives, 
-                             and support tools. Users with this role cannot have other user roles on the system but can change their own user account password. 
-                             When granted terminal access, a user with this role has access to TMSH, but not the advanced shell.
-'''
+
 def spec_user_management_validation(data_all):
    
     user_role_dict = {}
@@ -32,13 +22,17 @@ def spec_user_management_validation(data_all):
     if "psbc" not in user_role_dict:
         user_config_note.append(SPEC_USER_MANAGEMENT_PSBC_NOT_EXIST)
         user_config_spec = SPEC_BASELINE_NO
-        user_config_tmsh.append("tmsh create auth user psbc password PSBC@BJ*sc*sjzx2022 partition-access add { all-partitions { role admin } } shell bash")
-        user_config_rollback_tmsh.append("tmsh delete auth user psbc")
+        user_create = tmsh.get('tmsh', 'create.auth.user').replace("${auth.user.name}", "psbc").replace("${auth.user.role}", "admin")
+        user_config_tmsh.append(user_create)
+        user_delete = tmsh.get('tmsh', 'delete.auth.user').replace("${auth.user.name}", "psbc")
+        user_config_rollback_tmsh.append(user_delete)
     if "view" not in user_role_dict:
         user_config_note.append(SPEC_USER_MANAGEMENT_VIEW_NOT_EXIST)
         user_config_spec = SPEC_BASELINE_NO
-        user_config_tmsh.append("tmsh create auth user view password Viewmon@2020 partition-access add { all-partitions { role auditor } } shell tmsh")
-        user_config_rollback_tmsh.append("tmsh delete auth user view")
+        user_create = tmsh.get('tmsh', 'create.auth.user').replace("${auth.user.name}", "view").replace("${auth.user.role}", "auditor")
+        user_config_tmsh.append(user_create)
+        user_delete = tmsh.get('tmsh', 'delete.auth.user').replace("${auth.user.name}", "view")
+        user_config_rollback_tmsh.append(user_delete)
 
     user_validation_list.append((1, user_config_note, user_config_spec, user_config_tmsh,user_config_rollback_tmsh,  False))
 
@@ -49,8 +43,8 @@ def spec_user_management_validation(data_all):
     if "admin" in user_role_dict:
         default_user_note = SPEC_USER_MANAGEMENT_ADMIN_NOT_DELETE
         default_user_spec = SPEC_BASELINE_NO
-        default_user_tmsh = "tmsh modify sys db systemauth.primaryadminuser value psbc"
-        default_user_rollback_tmsh = "tmsh modify sys db systemauth.primaryadminuser value admin"
+        default_user_tmsh = tmsh.get('tmsh', 'modify.sys.db.systemauth').replace("${auth.user.name}", "psbc")
+        default_user_rollback_tmsh = tmsh.get('tmsh', 'modify.sys.db.systemauth').replace("${auth.user.name}", "admin")
 
     user_validation_list.append((2, default_user_note, default_user_spec, default_user_tmsh, default_user_rollback_tmsh, False))
 
@@ -61,14 +55,18 @@ def spec_user_management_validation(data_all):
     if "psbc" in user_role_dict and user_role_dict['psbc'] != "admin":
         user_role_config_note.append(SPEC_USER_MANAGEMENT_PSBC_NO_EXPECT_RIGHT)
         user_role_config_spec = SPEC_BASELINE_NO
-        user_role_config_tmsh.append("tmsh modify auth user psbc partition-access modify { all-partitions { role admin }}")
-        user_role_config_rollback_tmsh.append("tmsh modify auth user psbc partition-access modify { all-partitions { role " + user_role_dict['psbc'] + " }}")
+        user_modify = tmsh.get('tmsh', 'modify.auth.user').replace("${auth.user.name}", "psbc").replace("${auth.user.role}", "admin")
+        user_role_config_tmsh.append(user_modify)
+        user_modify_rollback = tmsh.get('tmsh', 'modify.auth.user').replace("${auth.user.name}", "psbc").replace("${auth.user.role}", user_role_dict['psbc'])
+        user_role_config_rollback_tmsh.append(user_modify_rollback)
 
     if "view" in user_role_dict and user_role_dict['view'] != "auditor":
         user_role_config_note.append(SPEC_USER_MANAGEMENT_VIEW_NO_EXPECT_RIGHT)
         user_role_config_spec = SPEC_BASELINE_NO
-        user_role_config_tmsh.append("tmsh modify auth user view partition-access modify { all-partitions { role auditor }}")
-        user_role_config_rollback_tmsh.append("tmsh modify auth user view partition-access modify { all-partitions { role " + user_role_dict['view'] + " }}")
+        user_modify = tmsh.get('tmsh', 'modify.auth.user').replace("${auth.user.name}", "view").replace("${auth.user.role}", "auditor")
+        user_role_config_tmsh.append(user_modify)
+        user_modify_rollback = tmsh.get('tmsh', 'modify.auth.user').replace("${auth.user.name}", "view").replace("${auth.user.role}", user_role_dict['view'])
+        user_role_config_rollback_tmsh.append(user_modify_rollback)
 
     user_validation_list.append((3, user_role_config_note, user_role_config_spec, user_role_config_tmsh, user_role_config_rollback_tmsh, False))
 
@@ -89,9 +87,9 @@ def spec_login_methods_validation(data_all):
         if i.allowservice == "default":
             self_allow_default_note = SPEC_LOGIN_METHODS_ALLOW_DEFAULT
             self_allow_default_spec = SPEC_BASELINE_NO
-            tmsh = "tmsh modify net self " + i.name + " allow-service none"
-            tmsh_rollback = "tmsh modify net self " + i.name + " allow-service default"
-            self_allow_default_tmsh.append(tmsh)
+            tmsh_modify = tmsh.get('tmsh', 'modify.net.self').replace("${net.self.name}", i.name).replace("${net.self.allow.service}", "none")
+            tmsh_rollback = tmsh.get('tmsh', 'modify.net.self').replace("${net.self.name}", i.name).replace("${net.self.allow.service}", "default")
+            self_allow_default_tmsh.append(tmsh_modify)
             self_allow_default_rollback_tmsh.append(tmsh_rollback)
 
 
@@ -102,28 +100,19 @@ def spec_login_methods_validation(data_all):
     timeout_validation_spec = SPEC_BASELINE_YES
     timeout_validation_tmsh = []
     timeout_validation_rollback_tmsh = []
-    sshd_data_start = re.search(r'sys sshd\s+(\S+)', data_all,re.I).start()
-    sshd_timeout_start = re.search(r'inactivity-timeout\s+(\S+)', data_all[sshd_data_start:],re.I).start()
-    sshd_timeout_end = re.search(r'}', data_all[sshd_data_start:][sshd_timeout_start:]).start()
-    sshd_timeout = data_all[sshd_data_start:][sshd_timeout_start:][:sshd_timeout_end]
-    sshd_timeout = sshd_timeout.lstrip("inactivity-timeout").rstrip("}").strip()
-    if sshd_timeout != "720":
+    sys_sshd = configParse.sys_sshd(data_all)
+    if sys_sshd.inactivity_timeout is not None and sys_sshd.inactivity_timeout != "720":
         timeout_validation_note = SPEC_LOGIN_METHODS_TIMEOUT_NO_12_MINS
         timeout_validation_spec = SPEC_BASELINE_NO
-        timeout_validation_tmsh.append("tmsh modify sys sshd inactivity-timeout 720")
-        timeout_validation_rollback_tmsh.append("tmsh modify sys sshd inactivity-timeout " + sshd_timeout)
+        timeout_validation_tmsh.append(msh.get('tmsh', 'modify.sys.sshd').replace("${sys.sshd.timeout}", "720"))
+        timeout_validation_rollback_tmsh.append(tmsh.get('tmsh', 'modify.sys.sshd').replace("${sys.sshd.timeout}", sys_sshd.inactivity_timeout))
 
-    httpd_data_start = re.search(r'sys httpd\s+(\S+)', data_all,re.I).start()
-    httpd_timeout_start = re.search(r'auth-pam-idle-timeout\s+(\S+)', data_all[httpd_data_start:],re.I).start()
-    httpd_timeout_end = re.search(r'}', data_all[httpd_data_start:][httpd_timeout_start:]).start()
-    httpd_timeout = data_all[httpd_data_start:][httpd_timeout_start:][:httpd_timeout_end]
-    httpd_timeout_line = re.search(r'auth-pam-idle-timeout\s+(\S+)', httpd_timeout, re.I).group()
-    httpd_timeout = httpd_timeout_line.lstrip("auth-pam-idle-timeout").strip()
-    if httpd_timeout != "720":
+    sys_httpd = configParse.sys_httpd(data_all)
+    if sys_httpd.auth_pam_idle_timeout is not None and sys_httpd.auth_pam_idle_timeout != "720":
         timeout_validation_note = SPEC_LOGIN_METHODS_TIMEOUT_NO_12_MINS
         timeout_validation_spec = SPEC_BASELINE_NO
-        timeout_validation_tmsh.append("tmsh modify sys httpd auth-pam-idle-timeout 720")
-        timeout_validation_rollback_tmsh.append("tmsh modify sys httpd auth-pam-idle-timeout " + httpd_timeout)
+        timeout_validation_tmsh.append(tmsh.get('tmsh', 'modify.sys.httpd').replace("${sys.httpd.timeout}", "720"))
+        timeout_validation_rollback_tmsh.append(tmsh.get('tmsh', 'modify.sys.httpd').replace("${sys.httpd.timeout}", sys_httpd.auth_pam_idle_timeout))
 
     user_login_validation_list.append((6, timeout_validation_note, timeout_validation_spec, timeout_validation_tmsh, timeout_validation_rollback_tmsh, False))
     
@@ -204,10 +193,6 @@ def spec_snmp_management_validation(data_all):
 
 
 
-'''
-syslog setting spec:
-
-'''
 def spec_syslog_settings_validation(data_all):
     syslog_validation_list = []
     syslog_data_start = re.search("sys syslog", data_all,re.I).start()
@@ -778,21 +763,21 @@ vs_list_all = configParse.ltm_virtual(bigip_running_config)
 
 spec_validation_list = []
 
-spec_validation_list.append(SpecUserManagement(SPEC_ITEM_USER_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
-spec_validation_list.append(SpecLoginMethods(SPEC_ITEM_EXLOGIN_METHODS, device_info[0], device_info[1], device_info[2], bigip_running_config))
+#spec_validation_list.append(SpecUserManagement(SPEC_ITEM_USER_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
+#spec_validation_list.append(SpecLoginMethods(SPEC_ITEM_EXLOGIN_METHODS, device_info[0], device_info[1], device_info[2], bigip_running_config))
 spec_validation_list.append(SpecNTPSyncSetting(SPEC_ITEM_NTPSYN_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
-spec_validation_list.append(SpecSNMPManagement(SPEC_ITEM_SNMP_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
-spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
-spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, device_info[0], device_info[1], device_info[2], bigip_running_config))
+#spec_validation_list.append(SpecSNMPManagement(SPEC_ITEM_SNMP_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
+#spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
+#spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, device_info[0], device_info[1], device_info[2], bigip_running_config))
 
-spec_validation_list.append(SpecInterfaceConfiguration(SPEC_ITEM_INTERFACES_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
-spec_validation_list.append(SpecRouteConfiguration(SPEC_ITEM_INEXROUTER_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
-spec_validation_list.append(SpecHAConfiguration(SPEC_ITEM_HASETTINGS_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
-spec_validation_list.append(SpecFailoverSetting(SPEC_ITEM_FAILOVERS_CHECK, device_info[0], device_info[1], device_info[2], bigip_running_config))
+#spec_validation_list.append(SpecInterfaceConfiguration(SPEC_ITEM_INTERFACES_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
+#spec_validation_list.append(SpecRouteConfiguration(SPEC_ITEM_INEXROUTER_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
+#spec_validation_list.append(SpecHAConfiguration(SPEC_ITEM_HASETTINGS_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
+#spec_validation_list.append(SpecFailoverSetting(SPEC_ITEM_FAILOVERS_CHECK, device_info[0], device_info[1], device_info[2], bigip_running_config))
 
-spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECTIONS, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
-spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
-spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+#spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECTIONS, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+#spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+#spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
 
 for spec in spec_validation_list:
     spec.write_to_excel()
