@@ -456,5 +456,87 @@ class TestConfigParse(unittest.TestCase):
         self.assertTrue("cookie_rewrite_2" in cookie_names)
 
 
+    def test_cm_device_ha(self):
+        data = load_config_data("bigip-v13.running-config")
+        if data is not None:
+            device_list = cm_device(data)
+            self.assertEqual(len(device_list), 2)
+            failover_state_list, self_device_list, time_zone_list, version_list  = [], [], [], []
+            for i in device_list:
+                 failover_state_list.append(i.failover_state)
+                 self_device_list.append(i.self_device)
+                 time_zone_list.append(i.time_zone)
+                 version_list.append(i.version)
+            self.assertEqual(time_zone_list[0], time_zone_list[1])
+            self.assertEqual(version_list[0], version_list[1])
+            self.assertTrue("active" in failover_state_list and "standby" in failover_state_list)
+            self.assertTrue("true" in self_device_list)
+
+
+    def test_cm_device_standard(self):
+        data = load_config_data("f5config.3")
+        device_list = cm_device(data)
+        self.assertEqual(len(device_list), 1)
+        self.assertEqual(device_list[0].configsync_ip, None)
+        self.assertEqual(device_list[0].failover_state, "active")
+        self.assertEqual(device_list[0].hostname, "bigip1")
+        self.assertEqual(device_list[0].management_ip, "10.1.1.133")
+        self.assertEqual(device_list[0].self_device, "true")
+        self.assertEqual(device_list[0].time_zone, "Asia/Shanghai")
+        self.assertEqual(device_list[0].unicast_address, [])
+        self.assertEqual(device_list[0].unicast_port, None)
+        self.assertEqual(device_list[0].version, "13.1.3")
+
+
+    def test_cm_device_group_ha(self):
+        data = load_config_data("bigip-v13.running-config")
+        if data is not None:
+            device_group_list = cm_device_group(data)
+            self.assertEqual(len(device_group_list), 3)
+            name_list, type_list, fullloadonsync_list = [], [], []
+            for i in device_group_list:
+                name_list.append(i.name)
+                type_list.append(i.type)
+                fullloadonsync_list.append(i.fullloadonsync)
+            self.assertTrue("DG-1" in name_list and "device_trust_group" in name_list and "gtm" in name_list)
+            self.assertTrue("sync-failover" in type_list)
+            self.assertTrue("true" in fullloadonsync_list)
+
+    def test_cm_device_group_standard(self):
+        data = load_config_data("f5config.3")
+        device_group_list = cm_device_group(data)
+        self.assertEqual(len(device_group_list), 2)
+        name_list = ["device_trust_group", "gtm"]
+        self.assertTrue(device_group_list[0].name in name_list)
+        self.assertTrue(device_group_list[1].name in name_list)
+
+    def test_net_self_ha(self):
+        data = load_config_data("bigip-v13.running-config")
+        if data is not None:
+            l3_list = net_self(data)
+            self.assertEqual(len(l3_list), 96)
+            for i in l3_list:
+                self.assertTrue(is_valid_ip_network(i.address))
+                if "traffic-group-1" == i.trafficgroup:
+                    self.assertEqual(i.floating, "enabled") 
+
+
+    def test_net_self_standard(self):
+        data = load_config_data("f5config.3")
+        l3_list = net_self(data)
+        self.assertEqual(len(l3_list), 2)
+        name_list, vlan_list = [], []
+        for i in l3_list:
+            name_list.append(i.name)
+            vlan_list.append(i.vlan)
+            self.assertTrue(is_valid_ip_network(i.address))
+            self.assertEqual(i.allowservice, "default")
+            self.assertEqual(i.floating, None)
+            self.assertEqual(i.trafficgroup, "traffic-group-local-only")
+        self.assertTrue("10.1.10.240" in name_list and "10.1.20.240" in name_list)
+        self.assertTrue("external" in vlan_list and "internal" in vlan_list)
+            
+
+
 if __name__ == '__main__':
     unittest.main()

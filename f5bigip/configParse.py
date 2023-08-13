@@ -35,10 +35,11 @@ class BIGIPAuthUser:
         self.shell = shell
 
 class BIGIPNetL3:
-    def __init__(self, name, address, allowservice, trafficgroup, vlan):
+    def __init__(self, name, address, allowservice, floating, trafficgroup, vlan):
         self.name = name
         self.address = address
         self.allowservice = allowservice
+        self.floating = floating
         self.trafficgroup = trafficgroup
         self.vlan = vlan
 
@@ -118,6 +119,79 @@ class BIGIPSnatPool:
     def __init__(self, name, members):
         self.name = name
         self.members = members
+
+
+
+def cm_device(data_all):
+
+    cm_device_list = []
+
+    cm_device = split_content_to_list_split(data_all, "cm device", "cm device-group")
+    for device in cm_device:
+        if len(device) > 10:
+            lines = device.splitlines()
+            configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, version, unicast_address, unicast_port = None, None, None, None, None, None, None, [], None
+            for l in lines:
+                line = l.strip()
+                if line.startswith("configsync-ip"):
+                    configsync_ip = trip_prefix(line, "configsync-ip")
+                elif line.startswith("failover-state"):
+                    failover_state = trip_prefix(line, "failover-state")
+                elif line.startswith("hostname"):
+                    hostname = trip_prefix(line, "hostname")
+                elif line.startswith("management-ip"):
+                    management_ip = trip_prefix(line, "management-ip")
+                elif line.startswith("self-device"):
+                    self_device = trip_prefix(line, "self-device")
+                elif line.startswith("time-zone"):
+                    time_zone = trip_prefix(line, "time-zone")
+                elif line.startswith("version"):
+                    version = trip_prefix(line, "version")
+            unicast_addres_data = find_content_from_start_end(device, "unicast-address", "version")
+            unicast_lines = unicast_addres_data.splitlines()
+            for unicast in unicast_lines:
+                address = unicast.strip()
+                if address.startswith("effective-ip"):
+                    unicast_address.append(trip_prefix(address, "effective-ip"))
+                elif address.startswith("effective-port"):
+                    unicast_port = convert_servicename_to_port(trip_prefix(address, "effective-port"))
+                elif address.startswith("ip"):
+                    unicast_address.append(trip_prefix(address, "ip"))
+            cm_device_list.append(BIGIPDevice(configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, unicast_address, unicast_port, version))
+
+    return cm_device_list
+
+
+
+
+def cm_device_group(data_all):
+
+    cm_device_group_lists = []
+
+    cm_device_group_end_str = "cm key"
+    cm_device_group_list = split_content_to_list_pattern(data_all, r'cm device-group\s+\S+', cm_device_group_end_str)
+    for dg in cm_device_group_list:
+        device_group_data = dg[len("cm device-group"):]
+        lines = device_group_data.splitlines()
+        dg_name = trip_prefix(replace_with_patterns(lines[0], "{"), None)
+        autosync, devices, fullloadonsync, networkfailover, type = None, [], None, None, None
+        for l in lines:
+            line = l.strip()
+            if line.startswith("auto-sync"):
+                autosync = trip_prefix(line, "auto-sync")
+            elif line.startswith("full-load-on-sync"):
+                fullloadonsync = trip_prefix(line, "full-load-on-sync")
+            elif line.startswith("network-failover"):
+                networkfailover = trip_prefix(line, "network-failover")
+            elif line.startswith("type"):
+                type = trip_prefix(line, "type")
+            elif "{" in line and "}" in line:
+                device = trip_prefix(replace_with_patterns(line, ["{", "}"]), None)
+                devices.append(device)
+        cm_device_group_lists.append(BIGIPDeviceGroup(dg_name, autosync, devices, fullloadonsync, networkfailover, type))
+
+    return cm_device_group_lists
+
 
 
 
@@ -404,6 +478,36 @@ def ltm_virtual(data_all):
         vs_list.append(BIGIPVS(vs_name, vs_ip, vs_port, vs_mask, ip_protocol, pool, profiles, rules, persist, serviceDownReset, vlans, snatpool, snatType))
 
     return vs_list
+
+
+
+
+def net_self(data_all):
+
+    net_self_list = []
+
+    net_self_data_list = split_content_to_list_split(data_all, "net self", "net self-allow")
+    for data in net_self_data_list:
+        self_data = trip_prefix(data, None)
+        self_name = replace_with_patterns(find_first_line(self_data), "{")
+        lines = self_data.splitlines()
+        self_address, floating, self_trafficgroup, self_vlan = None, None, None, None
+        self_allow_service = trip_prefix(replace_with_patterns(find_content_from_start_end(self_data, "allow-service", "}"), ["allow-service", "{"] ), None)
+        for l in lines:
+            line = l.strip()
+            if line.startswith("address"):
+                self_address = trip_prefix(line, "address")
+            elif line.startswith("floating"):
+                floating = trip_prefix(line, "floating")
+            elif line.startswith("traffic-group"):
+                self_trafficgroup = trip_prefix(line, "traffic-group")
+            elif line.startswith("vlan"):
+                self_vlan = trip_prefix(line, "vlan")
+
+        net_self_list.append(BIGIPNetL3(self_name, self_address, self_allow_service, floating, self_trafficgroup, self_vlan))
+
+
+    return net_self_list
 
 
 
@@ -986,7 +1090,7 @@ def data_collect_net_self(data_all):
             elif line.startswith("vlan"):
                 self_vlan = trip_prefix(line, "vlan")
 
-        net_self_list.append(BIGIPNetL3(self_name, self_address, self_allow_service, self_trafficgroup, self_vlan))
+        net_self_list.append(BIGIPNetL3(self_name, self_address, self_allow_service, None, self_trafficgroup, self_vlan))
 
 
     return net_self_list
