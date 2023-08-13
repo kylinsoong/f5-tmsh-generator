@@ -25,9 +25,11 @@ if not sys.argv[1:]:
 fileconfig = sys.argv[1]
 
 running_config = load_bigip_running_config(fileconfig)
-results = configParse.ltm_persistence_source_addr(running_config)
+#results = configParse.ltm_persistence_cookie(running_config)
 
-for i in results:
-    print(i.name, i.timeout)
+#for i in results:
+#    print(i.name)
 
 #print(configParse.find_ip_from_line("2001::125.http"))
+
+print(configParse.find_end_str(configParse.split_data_all(running_config)[1], "ltm virtual", configParse.f5_config_dict['ltm']))

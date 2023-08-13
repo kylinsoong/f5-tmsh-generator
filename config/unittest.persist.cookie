@@ -1,0 +1,21 @@
+ltm persistence cookie cookie_rewrite {
+    always-send disabled
+    app-service none
+    cookie-encryption disabled
+    cookie-name test
+    defaults-from cookie
+    expiration 0
+    method rewrite
+    override-connection-limit disabled
+}
+ltm persistence cookie cookie_rewrite_2 {
+    always-send disabled
+    app-service none
+    cookie-encryption disabled
+    cookie-name test
+    defaults-from cookie
+    expiration 0
+    method rewrite
+    override-connection-limit disabled
+}
+ltm persistence global-settings { }

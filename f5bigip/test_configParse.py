@@ -31,7 +31,7 @@ class TestConfigParse(unittest.TestCase):
 
     def test_f5_config_dict(self):
         self.assertEqual(len(f5_config_dict['header']), 14)
-        self.assertEqual(len(f5_config_dict['ltm']), 15)
+        self.assertEqual(len(f5_config_dict['ltm']), 17)
         self.assertEqual(len(f5_config_dict['net']), 18)
         self.assertEqual(len(f5_config_dict['tail']), 35)
 
@@ -440,6 +440,20 @@ class TestConfigParse(unittest.TestCase):
             self.assertTrue("src_addr_1800s" in name_list)
             self.assertTrue("src_addr_3600s" in name_list)
 
+    def test_ltm_persistence_cookie(self):
+        data = load_config_data("unittest.persist.cookie")
+        persist_list = ltm_persistence_cookie(data)
+        self.assertEqual(len(persist_list), 2)
+        cookie_names = []
+        for i in persist_list:
+            cookie_names.append(i.name)
+            self.assertEqual(persist_list[0].cookie_encryption, "disabled")
+            self.assertEqual(persist_list[0].cookie_name, "test")
+            self.assertEqual(persist_list[0].default_from, "cookie")
+            self.assertEqual(persist_list[0].expiration, "0")
+            self.assertEqual(persist_list[0].method, "rewrite")
+        self.assertTrue("cookie_rewrite" in cookie_names)
+        self.assertTrue("cookie_rewrite_2" in cookie_names)
 
 
 if __name__ == '__main__':

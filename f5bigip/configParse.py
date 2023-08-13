@@ -104,6 +104,16 @@ class BIGIPPersistSourceAddr:
         self.timeout = timeout
         self.default_from = default_from
 
+class BIGIPPersistCookie:
+    def __init__(self, name, cookie_encryption, cookie_name, default_from, expiration, method):
+        self.name = name
+        self.cookie_encryption = cookie_encryption 
+        self.cookie_name = cookie_name
+        self.default_from = default_from 
+        self.expiration = expiration 
+        self.method = method 
+   
+
 class BIGIPSnatPool:
     def __init__(self, name, members):
         self.name = name
@@ -160,6 +170,35 @@ def ltm_persistence_source_addr(data_all):
                 default_from = trip_prefix(line, "defaults-from")
 
         persist_list.append(BIGIPPersistSourceAddr(name, timeout, default_from))
+
+    return persist_list
+
+
+
+def ltm_persistence_cookie(data_all):
+
+    persist_list = []
+
+    persist_end_str = find_end_str(data_all, "ltm persistence cookie", f5_config_dict['ltm'])
+    persist_data_list = split_content_to_list_pattern(data_all, r'ltm persistence cookie\s+\S+', "}")
+    for i in persist_data_list:
+        persist_data = trip_prefix(i, None)
+        name = replace_with_patterns(find_first_line(persist_data), ["{", "ltm persistence cookie"])
+        lines = persist_data.splitlines()
+        cookie_encryption, cookie_name, default_from, expiration, method = None, None, None, None, None
+        for l in lines:
+            line = trip_prefix(l, None)
+            if line.startswith("cookie-encryption"):
+                cookie_encryption = trip_prefix(line, "cookie-encryption")
+            elif line.startswith("cookie-name"):
+                cookie_name = trip_prefix(line, "cookie-name")
+            elif line.startswith("defaults-from"):
+                default_from = trip_prefix(line, "defaults-from")
+            elif line.startswith("expiration"):
+                expiration = trip_prefix(line, "expiration")
+            elif line.startswith("method"):
+                method = trip_prefix(line, "method")
+        persist_list.append(BIGIPPersistCookie(name, cookie_encryption, cookie_name, default_from, expiration, method))
 
     return persist_list
 
@@ -1051,7 +1090,7 @@ def load_f5_services_as_map():
 f5_services_dict = load_f5_services_as_map() 
 f5_config_dict = {
     "header": ["auth password-policy", "auth remote-role", "auth remote-user", "auth source", "auth user", "cli admin-partitions", "cli global-settings", "cli preference", "cm cert", "cm device", "cm device-group", "cm key", "cm traffic-group", "cm trust-domain"],
-    "ltm": ["ltm data-group", "ltm default-node-monitor", "ltm dns", "ltm global-settings", "ltm monitor", "ltm node", "ltm persistence source-addr", "ltm policy", "ltm pool", "ltm profile", "ltm rule", "ltm snat-translation", "ltm snatpool", "ltm tacdb", "ltm virtual"],
+    "ltm": ["ltm data-group", "ltm default-node-monitor", "ltm dns", "ltm global-settings", "ltm monitor", "ltm node", "ltm persistence cookie", "ltm persistence", "ltm persistence source-addr", "ltm policy", "ltm pool", "ltm profile", "ltm rule", "ltm snat-translation", "ltm snatpool", "ltm tacdb", "ltm virtual"],
     "net": ["net address-list", "net cos", "net dag-globals", "net dns-resolver", "net fdb", "net interface", "net ipsec ike-daemon", "net lldp-globals", "net multicast-globals", "net packet-filter-trusted", "net route", "net route-domain", "net self", "net self-allow", "net stp-globals", "net trunk", "net tunnels", "net vlan"],
     "tail": ["sys config-sync", "sys aom", "sys autoscale-group", "sys daemon-log-settings", "sys datastor", "sys diags", "sys disk", "sys dns", "sys failover", "sys dynad key", "sys dynad", "sys feature-module", "sys file", "sys folder", "sys fpga", "sys global-settings", "sys httpd", "sys icontrol-soap", "sys log-rotate", "sys management-dhcp", "sys management-ip", "sys management-ovsdb", "sys management-route", "sys ntp", "sys outbound-smtp", "sys provision", "sys scriptd", "sys sflow", "sys snmp", "sys software", "sys sshd", "sys state-mirroring", "sys syslog ", "sys turboflex", "sys url-db"]
 }
