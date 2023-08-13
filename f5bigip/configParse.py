@@ -1394,9 +1394,9 @@ def existinfolist(data_all):
     vs_list = ltm_virtual(data_all_list[1])
     pool_list = ltm_pool(data_all_list[1])
     snatpool_list = ltm_snatpool(data_all_list[1])
-    cm_device_list = data_collect_cm_device(data_all_list[0])
-    cm_device_group_list = data_collect_cm_device_group(data_all_list[0])
-    net_self_list = data_collect_net_self(data_all_list[2])
+    cm_device_list = cm_device(data_all_list[0])
+    cm_device_group_list = cm_device_group(data_all_list[0])
+    net_self_list = net_self(data_all_list[2])
 
     info_list = []
     net_set = form_self_list(net_self_list)
