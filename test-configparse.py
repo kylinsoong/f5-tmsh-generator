@@ -28,14 +28,16 @@ running_config = load_bigip_running_config(fileconfig)
 #results = configParse.ltm_persistence_cookie(running_config)
 #results = configParse.cm_device(running_config)
 #results = configParse.cm_device_group(running_config)
-results = configParse.net_self(running_config)
+#results = configParse.net_self(running_config)
+results = configParse.net_vlan(running_config)
 
 
 print(len(results))
 
 for i in results:
+    print(i.name, i.fwd_mode, i.if_index, i.interfaces[0].name, i.interfaces[0].tag_mode, i.interfaces[0].tagged, i.sflow_poll_interval_global, i.sflow_sampling_rate_global, i.tag)
     #if "traffic-group-1" == i.trafficgroup:
-    print(i.name, i.address, i.allowservice, i.floating, i.trafficgroup, i.vlan, "---", i.floating)
+    #print(i.name, i.address, i.allowservice, i.floating, i.trafficgroup, i.vlan, "---", i.floating)
     #print(i.name, i.autosync, i.devices, i.fullloadonsync, i.networkfailover, i.type)
     #print(i.configsync_ip, i.failover_state, i.hostname, i.management_ip, i.self_device, i.time_zone, i.unicast_address, i.unicast_port, i.version)
 

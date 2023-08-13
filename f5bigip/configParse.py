@@ -43,6 +43,22 @@ class BIGIPNetL3:
         self.trafficgroup = trafficgroup
         self.vlan = vlan
 
+class BIGIPNetL2:
+    def __init__(self, name, fwd_mode, if_index, interfaces, sflow_poll_interval_global, sflow_sampling_rate_global, tag):
+        self.name = name
+        self.fwd_mode = fwd_mode 
+        self.if_index = if_index 
+        self.interfaces = interfaces 
+        self.sflow_poll_interval_global = sflow_poll_interval_global 
+        self.sflow_sampling_rate_global = sflow_sampling_rate_global 
+        self.tag = tag
+
+class BIGIPNetL2Interface:
+    def __init__(self, name, tag_mode, tagged):
+        self.name = name
+        self.tag_mode = tag_mode
+        self.tagged = tagged 
+
 class BIGIPVS:
     def __init__(self, vs_name, vs_ip, vs_port, vs_mask, ip_protocol, pool, profiles, rules, persist, serviceDownReset, vlans, snatpool, snatType):
         self.vs_name = vs_name
@@ -506,10 +522,62 @@ def net_self(data_all):
 
         net_self_list.append(BIGIPNetL3(self_name, self_address, self_allow_service, floating, self_trafficgroup, self_vlan))
 
-
     return net_self_list
 
 
+
+
+def net_vlan(data_all):
+    
+    net_vlan_list = []
+
+    net_vlan_start_str = "net vlan"
+    net_vlan_end_str = find_end_str(data_all, net_vlan_start_str, f5_config_dict['tail'])
+    net_vlan_data_list = split_content_to_list_split(data_all, net_vlan_start_str, net_vlan_end_str)
+    for data in net_vlan_data_list:
+        vlan_data = trip_prefix(data, None)
+        vlan_name = replace_with_patterns(find_first_line(vlan_data), "{")
+        fwd_mode, if_index, interfaces, sflow_poll_interval_global, sflow_sampling_rate_global, tag = None, None, [], None, None, None
+        lines = vlan_data.splitlines()
+        sflowStart, interfaceStart, interfaceEnd = False, False, False
+        interface_name, interface_tag_mode, interface_tagged = None, None, False
+        for l in lines:
+            line = l.strip()
+            if line.startswith("fwd-mode"):
+                fwd_mode = trip_prefix(line, "fwd-mode")
+            elif line.startswith("if-index"):
+                if_index = trip_prefix(line, "if-index")
+            elif line.startswith("interfaces"):
+                interfaceStart = True
+            elif interfaceStart and interfaceEnd and "}" in line:
+                interfaceStart = False
+            elif interfaceStart and "{" in line:
+                interfaceEnd = False
+                interface_name = replace_with_patterns(line, ["{", "}"] )
+                if "}" in line:
+                    interfaceEnd = True
+                    interfaces.append(BIGIPNetL2Interface(interface_name, interface_tag_mode, interface_tagged))
+            elif interfaceStart and interfaceEnd == False and line.startswith("tag-mode"):
+                interface_tag_mode = trip_prefix(line, "tag-mode")
+            elif interfaceStart and interfaceEnd == False and "tagged" in line:
+                interface_tagged = True
+            elif interfaceStart and "}" in line:
+                interfaceEnd = True
+                interfaces.append(BIGIPNetL2Interface(interface_name, interface_tag_mode, interface_tagged))    
+            elif line.startswith("sflow"):
+                sflowStart = True
+            elif sflowStart and "}" in line:
+                sflowStart = False
+            elif sflowStart and line.startswith("poll-interval-global"):
+                sflow_poll_interval_global = trip_prefix(line, "poll-interval-global")
+            elif sflowStart and line.startswith("sampling-rate-global"):
+                sflow_sampling_rate_global = trip_prefix(line, "sampling-rate-global")
+            elif line.startswith("tag"):
+                tag = trip_prefix(line, "tag")
+    
+        net_vlan_list.append(BIGIPNetL2(vlan_name, fwd_mode, if_index, interfaces, sflow_poll_interval_global, sflow_sampling_rate_global, tag))
+
+    return net_vlan_list
 
 
 

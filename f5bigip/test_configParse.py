@@ -535,7 +535,33 @@ class TestConfigParse(unittest.TestCase):
             self.assertEqual(i.trafficgroup, "traffic-group-local-only")
         self.assertTrue("10.1.10.240" in name_list and "10.1.20.240" in name_list)
         self.assertTrue("external" in vlan_list and "internal" in vlan_list)
-            
+
+    def test_net_vlan_ha(self):
+        data = load_config_data("bigip-v13.running-config")
+        if data is not None:
+            l2_list = net_vlan(data)
+            self.assertEqual(len(l2_list), 48)
+            for i in l2_list:
+                self.assertEqual(i.interfaces[0].name, "trunk")
+                self.assertEqual(i.interfaces[0].tag_mode, "service")
+                self.assertEqual(i.interfaces[0].tagged, True)
+
+
+    def test_net_vlan_standard(self):
+        data = load_config_data("f5config.3")
+        l2_list = net_vlan(data)
+        self.assertEqual(len(l2_list), 2)
+        name_list, interface_list = [], []
+        for i in l2_list:
+            name_list.append(i.name)
+            interface_list.append(i.interfaces[0].name) 
+            self.assertEqual(i.interfaces[0].tag_mode, None)
+            self.assertEqual(i.interfaces[0].tagged, False)
+        self.assertTrue("external" in name_list)
+        self.assertTrue("internal" in name_list)
+        self.assertTrue("1.1" in interface_list)
+        self.assertTrue("1.2" in interface_list)
+
 
 
 if __name__ == '__main__':
