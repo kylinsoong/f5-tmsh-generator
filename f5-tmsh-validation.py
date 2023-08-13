@@ -6,6 +6,9 @@ import re
 import socket
 import ipaddress
 
+from f5bigip import configParse
+from f5bigip import tmsh
+
 '''
 The Administrator and Auditor user roles that you can assign to a BIG-IP user account:
     
@@ -15,28 +18,12 @@ The Administrator and Auditor user roles that you can assign to a BIG-IP user ac
                              When granted terminal access, a user with this role has access to TMSH, but not the advanced shell.
 '''
 def spec_user_management_validation(data_all):
-    auth_user_data = re.findall(r'auth user\s+\S+',data_all, re.I)
-    user_list = []
+   
     user_role_dict = {}
-    for i in auth_user_data:
-        user_list.append(i)
-
-    for i,num in zip(auth_user_data,range(len(user_list))):
-        if num < len(user_list)-1:
-            user_data_start = re.search(i, data_all, re.I).start()
-            user_data_end = re.search(user_list[num+1], data_all[user_data_start:]).start()
-            user_data_detail = data_all[user_data_start:][:user_data_end]
-        else:
-            user_data_start = re.search(i, data_all, re.I).start()
-            user_data_end = re.search(r'cli global-settings', data_all[user_data_start:]).start()
-            user_data_detail = data_all[user_data_start:][:user_data_end]
-
-        user_name_detail_list = re.search(r'auth user\s+(\S+)', user_data_detail,re.I)
-        user_name = user_name_detail_list.group(1)
-        user_role_detail_list = re.search(r'role\s+(\S+)', user_data_detail,re.I)
-        user_role = user_role_detail_list.group(1)
-        user_role_dict[user_name] = user_role
-
+    user_list = configParse.auth_user(data_all)    
+    for i in user_list:
+        user_role_dict[i.name] = i.role    
+    
     user_validation_list = []
     user_config_note = []
     user_config_spec = SPEC_BASELINE_YES
@@ -90,42 +77,23 @@ def spec_user_management_validation(data_all):
 
 
 def spec_login_methods_validation(data_all):
-    user_login_data = re.findall(r'net self\s+\S+',data_all, re.I)
-    self_name_list = []
-    for i in user_login_data:
-        self_name_list.append(i)
+
     user_login_validation_list = []
     self_allow_default_note = ""
     self_allow_default_spec = SPEC_BASELINE_YES
     self_allow_default_tmsh = []
     self_allow_default_rollback_tmsh = []
-    for i,num in zip(user_login_data,range(len(self_name_list))):
-        if num < len(self_name_list)-1:
-            user_login_data_start = re.search(i, data_all, re.I).start()
-            user_login_data_end = re.search(self_name_list[num+1], data_all[user_login_data_start:]).start()
-            user_login_data_detail = data_all[user_login_data_start:][:user_login_data_end]
-        else:
-            user_login_data_start = re.search(i, data_all, re.I).start()
-            user_login_data_end = re.search(r'net self-allow ', data_all[user_login_data_start:]).start()
-            user_login_data_detail = data_all[user_login_data_start:][:user_login_data_end]
 
-        self_name_detail_list = re.search(r'net self\s+(\S+)', user_login_data_detail,re.I)
-        self_name = self_name_detail_list.group(1)
-        allow_service_detail_list = re.search(r'allow-service\s+(\S+)', user_login_data_detail,re.I)
-        if allow_service_detail_list:
-            allow_service_start = allow_service_detail_list.start()
-            allow_service_end = re.search(r'}', user_login_data_detail[allow_service_start:]).start()
-            allow_service_detail = user_login_data_detail[allow_service_start:][:allow_service_end]
-            allow_service_value_start = re.search(r'{\s+(\S+)', allow_service_detail,re.I).start()
-            allow_service_value = allow_service_detail[allow_service_value_start:]
-            allow_service_value = allow_service_value.strip().lstrip("{").strip()
-            if allow_service_value == "default":
-                self_allow_default_note = SPEC_LOGIN_METHODS_ALLOW_DEFAULT
-                self_allow_default_spec = SPEC_BASELINE_NO
-                tmsh = "tmsh modify net self " + self_name + " allow-service none"
-                tmsh_rollback = "tmsh modify net self " + self_name + " allow-service default"
-                self_allow_default_tmsh.append(tmsh)
-                self_allow_default_rollback_tmsh.append(tmsh_rollback)
+    net_self_list = configParse.net_self(data_all)
+    for i in net_self_list:
+        if i.allowservice == "default":
+            self_allow_default_note = SPEC_LOGIN_METHODS_ALLOW_DEFAULT
+            self_allow_default_spec = SPEC_BASELINE_NO
+            tmsh = "tmsh modify net self " + i.name + " allow-service none"
+            tmsh_rollback = "tmsh modify net self " + i.name + " allow-service default"
+            self_allow_default_tmsh.append(tmsh)
+            self_allow_default_rollback_tmsh.append(tmsh_rollback)
+
 
     user_login_validation_list.append((4, self_allow_default_note, self_allow_default_spec, self_allow_default_tmsh, self_allow_default_rollback_tmsh, False))
     user_login_validation_list.append((5, self_allow_default_note, self_allow_default_spec, self_allow_default_tmsh, self_allow_default_rollback_tmsh, False))
@@ -224,7 +192,7 @@ def spec_snmp_management_validation(data_all):
             elif len(line) > 0 and line.startswith("port"):
                  trap_port = line.lstrip("port").strip()
         if len(trap_name) > 0 and len(trap_host) > 0 and len(trap_port):
-            tmsh = "name: " + trap_name + ", host: " + trap_host + ", port: " + convert_servicename_to_port(trap_port)
+            tmsh = "name: " + trap_name + ", host: " + trap_host + ", port: " + configParse.convert_servicename_to_port(trap_port)
             snmp_trap_host_port_list.append(tmsh)
 
     if len(snmp_trap_host_port_list) > 0:
@@ -342,7 +310,7 @@ def spec_interface_configuration_validation(data_all):
         interface_validation_list.append((18, SEPC_INTERFACE_HA_ON_BUSINESS_TRUNK, SPEC_BASELINE_YES, [""], [], True))
 
     net_interface_unused = []
-    net_interface_data = find_content_from_start_end(data_all, "net interface", "net interface mgmt")
+    net_interface_data = configParse.find_content_from_start_end(data_all, "net interface", "net interface mgmt")
     net_interface_list = net_interface_data.split("}")
     for text in net_interface_list:
         if "bundle-speed" not in text and "media-active" not in text:
@@ -370,7 +338,7 @@ def spec_interface_configuration_validation(data_all):
 def spec_route_configuration_validation(data_all):
 
     route_validation_list = []
-    mgmt_route_data = find_content_from_start_end(data_all, "sys management-route default", "sys ntp")
+    mgmt_route_data = configParse.find_content_from_start_end(data_all, "sys management-route default", "sys ntp")
     gateways = re.search(r'gateway\s+(\S+)', mgmt_route_data, re.I)
     if gateways:
         management_route = gateways.group()
@@ -380,7 +348,7 @@ def spec_route_configuration_validation(data_all):
         route_validation_list.append((20, "", SPEC_BASELINE_NO, ["tmsh create sys  management-route default gateway xxx.xxx.xxx.xxx"], [], True))
 
     net_self_all = []
-    net_self_data = find_content_from_start_end(data_all, "net self", "net self-allow")
+    net_self_data = configParse.find_content_from_start_end(data_all, "net self", "net self-allow")
     net_self_list = net_self_data.split("net self")
     for i in net_self_list:
         net_self_results = re.search(r'address\s+(\S+)', i, re.I)
@@ -397,7 +365,7 @@ def spec_route_configuration_validation(data_all):
     unique_networks = set(network_objects)
 
     net_route_all = []
-    net_route_data = find_content_from_start_end(data_all, "net route", "net route-domain")
+    net_route_data = configParse.find_content_from_start_end(data_all, "net route", "net route-domain")
     net_route_list = net_route_data.split("net route")
     for i in net_route_list:
         results = re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}\b|\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b", i)
@@ -426,71 +394,22 @@ def spec_ha_configuration_validation(data_all):
 
     ha_validation_list = []
  
+    net_vlan_list = configParse.net_vlan(data_all)
     vlan_failsafe_list = []
-    vlan_failsafe_data = find_content_from_start_end(data_all, "net vlan", "sys aom")
-    vlan_failsafe_objects = vlan_failsafe_data.split("net vlan")
-    for f in vlan_failsafe_objects:
-       if "failsafe" in f:
-           vlan_failsafe_list.append(f)
-
+    for i in net_vlan_list:
+        if i.failsafe is not None:
+            vlan_failsafe_list.append(i)
+    
     if len(vlan_failsafe_list) > 0:
-        vlan_failsafe = vlan_failsafe_list[0]
-        vlan_failsafe_lines = vlan_failsafe.splitlines()
-        failsafe_action = None
-        for l in vlan_failsafe_lines:
-            line = l.strip()
-            if line.startswith("failsafe-action"):
-                failsafe_action = trip_prefix(line, "failsafe-action")
-                break
-        if failsafe_action == "failover":
-            ha_validation_list.append((23, "", SPEC_BASELINE_YES, [], [], False))
-        else:
-            ha_validation_list.append((23, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
+        for i in vlan_failsafe_list:
+            if i.failsafe_action == "failover": 
+                ha_validation_list.append((23, "", SPEC_BASELINE_YES, [], [], False))
+            else:
+               ha_validation_list.append((23, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
     else:
         ha_validation_list.append((23, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
 
-    ha_devices_list = []
-    ha_devices_data = find_content_from_start_end(data_all, "cm device", "cm device-group")
-    ha_devices = ha_devices_data.split("cm device")
-    for device in ha_devices:
-        if len(device) > 10:
-            lines = device.splitlines()
-            configsync_ip = None
-            failover_state = None
-            hostname = None 
-            management_ip = None
-            self_device = None
-            time_zone = None
-            version = None
-            unicast_address = []
-            unicast_port = None
-            for l in lines:
-                line = l.strip()
-                if line.startswith("configsync-ip"):
-                    configsync_ip = trip_prefix(line, "configsync-ip")
-                elif line.startswith("failover-state"):
-                    failover_state = trip_prefix(line, "failover-state")
-                elif line.startswith("hostname"):
-                    hostname = trip_prefix(line, "hostname")
-                elif line.startswith("management-ip"):
-                    management_ip = trip_prefix(line, "management-ip")
-                elif line.startswith("self-device"):
-                    self_device = trip_prefix(line, "self-device")
-                elif line.startswith("time-zone"):
-                    time_zone = trip_prefix(line, "time-zone")
-                elif line.startswith("version"):
-                    version = trip_prefix(line, "version")
-            unicast_addres_data = find_content_from_start_end(device, "unicast-address", "version")
-            unicast_lines = unicast_addres_data.splitlines()
-            for unicast in unicast_lines:
-                address = unicast.strip()
-                if address.startswith("effective-ip"):
-                    unicast_address.append(trip_prefix(address, "effective-ip"))
-                elif address.startswith("effective-port"):
-                    unicast_port = convert_servicename_to_port(trip_prefix(address, "effective-port"))
-                elif address.startswith("ip"):
-                    unicast_address.append(trip_prefix(address, "ip"))
-            ha_devices_list.append(BIGIPDevice(configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, unicast_address, unicast_port, version))
+    ha_devices_list = configParse.cm_device(data_all)
 
     if len(ha_devices_list) < 2:
         ha_validation_list.append((24, SPEC_HA_NO_HA_CONF, SPEC_BASELINE_NO, [], [], False))
@@ -506,29 +425,23 @@ def spec_ha_configuration_validation(data_all):
         ha_validation_list.append((24, "", SPEC_BASELINE_YES, [], [], False))
 
     ha_device_group_sync_list = []
-    ha_device_group_data = find_content_from_start_end(data_all, "cm device-group", "cm key")
-    ha_device_group_list = ha_device_group_data.split("cm device-group")
-    for dg in ha_device_group_list:
-        if len(dg) > 0 and "sync-failover" in dg:
-            ha_device_group_sync_list.append(dg)
+    cm_device_greoup_list = configParse.cm_device_group(data_all)
+    for i in cm_device_greoup_list:
+        if i.type == "sync-failover":
+            ha_device_group_sync_list.append(i)
     
     if len(ha_device_group_sync_list) == 0:
         ha_validation_list.append((25, SPEC_HA_NO_SYNC_FAILOVER, SPEC_BASELINE_NO, [], [], True))
     elif len(ha_device_group_sync_list) > 1:
         ha_validation_list.append((25, SPEC_HA_MULTI_SYNC_FAILOVER, SPEC_BASELINE_NO, [], [], True))
     elif len(ha_device_group_sync_list) == 1:
-        dg_lines = ha_device_group_sync_list[0].splitlines()
-        sync_finished = None
-        for dg_line in dg_lines:
-            line = dg_line.strip()
-            if line.startswith("full-load-on-sync"):
-                sync_finished = trip_prefix(line, "full-load-on-sync")
-        if "true" == sync_finished:
+        if ha_device_group_sync_list[0].fullloadonsync == "true":
             ha_validation_list.append((25, "", SPEC_BASELINE_YES, [], [], True))
         else:
             ha_validation_list.append((25, SPEC_HA_SYNC_NOT_FINISHED, SPEC_BASELINE_NO, [], [], True))
 
     return ha_validation_list
+
 
 def incorrect_version(ha_devices_list):
     version = ha_devices_list[0].version
@@ -563,24 +476,16 @@ def spec_failover_configuration_validation(data_all):
 
     failover_validation_list = []
 
+    net_vlan_list = configParse.net_vlan(data_all)
     vlan_failsafe_list = []
-    vlan_failsafe_data = find_content_from_start_end(data_all, "net vlan", "sys aom")
-    vlan_failsafe_objects = vlan_failsafe_data.split("net vlan")
-    for f in vlan_failsafe_objects:
-       if "failsafe" in f:
-           vlan_failsafe_list.append(f)
+    for i in net_vlan_list:
+        if i.failsafe is not None:
+            vlan_failsafe_list.append(i)
 
     if len(vlan_failsafe_list) > 0:
         vlan_failsafe = vlan_failsafe_list[0]
-        vlan_failsafe_lines = vlan_failsafe.splitlines()
-        failsafe_timeout = None
-        for l in vlan_failsafe_lines:
-            line = l.strip()
-            if line.startswith("failsafe-timeout"):
-                failsafe_timeout = trip_prefix(line, "failsafe-timeout")
-                break
-        failsafe_timeout_inter = int(failsafe_timeout)
-        if failsafe_timeout_inter > 3:
+        failsafe_timeout = vlan_failsafe_list[0].failsafe_timeout
+        if failsafe_timeout is not None and int(failsafe_timeout) > 3:
             failover_validation_list.append((26, "", SPEC_BASELINE_YES, [], False))    
         else:
             failover_validation_list.append((26, SPEC_FAILOVER_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
@@ -590,54 +495,6 @@ def spec_failover_configuration_validation(data_all):
     return failover_validation_list
 
 
-class BIGIPDevice:
-    def __init__(self, configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, unicast_address, unicast_port, version):
-        self.configsync_ip = configsync_ip
-        self.failover_state = failover_state
-        self.hostname = hostname
-        self.management_ip = management_ip
-        self.self_device = self_device
-        self.time_zone = time_zone
-        self.unicast_address = unicast_address
-        self.unicast_port = unicast_port
-        self.version = version
-
-class BIGIPVS:
-    def __init__(self, vs_name, vs_ip, vs_port, vs_mask, ip_protocol, pool, profiles, rules, persist, serviceDownReset, vlans, snatpool, snatType):
-        self.vs_name = vs_name
-        self.vs_ip = vs_ip
-        self.vs_port = vs_port
-        self.vs_mask = vs_mask
-        self.ip_protocol = ip_protocol
-        self.pool = pool
-        self.profiles = profiles
-        self.rules = rules
-        self.persist = persist
-        self.serviceDownReset = serviceDownReset
-        self.vlans = vlans
-        self.snatpool = snatpool
-        self.snatType = snatType
-
-class BIGIPProfile:
-    def __init__(self, name, parent):
-        self.name = name
-        self.parent = parent
-
-class BIGIPProfileFastl4(BIGIPProfile):
-    def __init__(self, name, parent, idle_timeout, tcp_handshake_timeout):
-        super().__init__(name, parent)
-        self.idle_timeout = idle_timeout
-        self.tcp_handshake_timeout = tcp_handshake_timeout
-
-class BIGIPProfileHttp(BIGIPProfile):
-    def __init__(self, name, parent, xff):
-        super().__init__(name, parent)
-        self.xff = xff
-
-class BIGIPSnatPool:
-    def __init__(self, name, members):
-        self.name = name
-        self.members = members
 
 class Spec:
     def __init__(self, name, hostname, management_ip, software_version, data):
@@ -720,7 +577,7 @@ class SpecTCPConnectionConfiguration(SpecApp):
     profiles = []
 
     def parse(self):
-        fastl4_list = extract_fastl4_profile(self.data)
+        fastl4_list = configParse.ltm_profile_fastl4(self.data)
         for i in fastl4_list:
             self.profiles.append(i.name)
    
@@ -757,7 +614,7 @@ class SpecTCPConnectionConfiguration(SpecApp):
 
 class SpecSNATConfiguration(SpecApp):
     def parse(self):
-        snatpool_list = extract_snatpool(self.data)
+        snatpool_list = configParse.ltm_snatpool(self.data)
         notes_list = []
         tmsh_list = []
         tmsh_rollback_list = [] 
@@ -805,12 +662,12 @@ class SpecHTTPRstActionDownSetting(SpecApp):
         http_profiles = []
         fastl4_profiles = []
 
-        fastl4_list = extract_fastl4_profile(self.data)
+        fastl4_list = configParse.ltm_profile_fastl4(self.data)
         for i in fastl4_list:
             fastl4_profiles.append(i.name)
         fastl4_profiles.append("fastL4")
 
-        http_list = extract_http_profile(self.data)
+        http_list = configParse.ltm_profile_http(self.data)
         for i in http_list:
             http_profiles.append(i.name)
         http_profiles.append("http")
@@ -840,291 +697,11 @@ class SpecHTTPRstActionDownSetting(SpecApp):
         else:
             self.spec_basic.append((29, [], SPEC_BASELINE_YES, [], [], False))
 
-def trip_prefix(line, prefix):
-    if len(line) > 0 and prefix in line:
-        return line.strip().lstrip(prefix).strip()
-    else:
-        return line
-
-
-def find_content_from_start_end(data, start_str, end_str):
-    data_start = re.search(start_str, data, re.I).start()
-    data_end = re.search(end_str, data[data_start:], re.I).start()
-    return data[data_start:][:data_end] 
-
-
-def convert_servicename_to_port(input):
-    if input in f5_services_dict:
-        return f5_services_dict[input]
-    elif input == 'any':
-        return '0'
-    elif isinstance(input, str):
-        try:
-            return socket.getservbyname(input)
-        except OSError:
-            return input
-    else:
-        return input 
-
 
 
 def data_collect_system_extract_hostname(data_all):
-
-    management_ip = None
-    hostname = None
-
-    matches = re.search(r'sys management-ip\s+(\S+)', data_all, re.I)
-    if matches:
-        management_ipr_raw = matches.group()
-        management_ip = management_ipr_raw.lstrip("sys management-ip").strip()        
-
-    pattern = r"sys global-settings(.*?)}"
-    blocks = re.findall(pattern, data_all, re.DOTALL)
-    if len(blocks) >= 1:
-        content = blocks[0]
-        hostname_list = re.search(r'hostname\s+(\S+)', content, re.I)
-        if hostname_list:
-            hostname_raw = hostname_list.group()
-            hostname = hostname_raw.lstrip("hostname").strip()
-
-    ha_devices_data = find_content_from_start_end(data_all, "cm device", "cm device-group")
-    ha_devices = ha_devices_data.split("cm device")
-    version = None
-    for device in ha_devices:
-        if len(device) > 10:
-            lines = device.splitlines()
-            version = None
-            for l in lines:
-                line = l.strip()
-                if line.startswith("version"):
-                    version = trip_prefix(line, "version")
-
-    return (hostname, management_ip, version)
-
-
-def extract_snatpool(data_all):
-    snatpool_results = []
-    pattern = r'ltm snatpool\s+\S+'
-    results = extract_profiles(data_all, pattern)
-    for i in results:
-        snat_data = i.replace("ltm snatpool", "").strip()
-        lines = snat_data.splitlines()
-        snat_name = lines[0].strip().rstrip("{").strip()
-        snat_members_raw = snat_data.replace(snat_name, "").replace("members", "").replace("{", "").replace("}", "")
-        snat_members = []
-        snat_members_list = snat_members_raw.splitlines()
-        for snat in snat_members_list:
-            snat_member = snat.strip()
-            if len(snat_member) > 0:
-                snat_members.append(snat_member)
-        snatpool_results.append(BIGIPSnatPool(snat_name, snat_members))
-
-    return snatpool_results
-
-def extract_http_profile(data_all):
-    http_profile_results = []
-    pattern = r'ltm profile http\s+\S+'
-    results = extract_profiles(data_all, pattern)
-    for i in results:
-        profile = i.lstrip("ltm profile http").replace("{", "").replace("}", "") 
-        lines = profile.splitlines()
-        profile_name = lines[0].strip()
-        profile_parent = None
-        profile_xff = None
-        for l in lines:
-            line = l.strip()
-            if line.startswith("defaults-from"):
-                profile_parent = trip_prefix(line, "defaults-from")
-            elif line.startswith("insert-xforwarded-for"):
-                profile_xff = trip_prefix(line, "insert-xforwarded-for")
-        http_profile_results.append(BIGIPProfileHttp(profile_name, profile_parent, profile_xff))
-    return http_profile_results
-
-def extract_fastl4_profile(data_all):
-    fastl4_profile_results = []
-    pattern = r'ltm profile fastl4\s+\S+'
-    results = extract_profiles(data_all, pattern)
-    for i in results:
-        profile = i[len("ltm profile fastl4"):].replace("{", "").replace("}", "") 
-        lines = profile.splitlines()
-        profile_name = lines[0].strip()
-        profile_parent = None
-        profile_idle_timeout = None
-        profile_handshake_timeout = None
-        for l in lines:
-            line = l.strip()
-            if line.startswith("defaults-from"):
-                profile_parent = trip_prefix(line, "defaults-from")
-            elif line.startswith("idle-timeout"):
-                profile_idle_timeout = trip_prefix(line, "idle-timeout")
-            elif line.startswith("tcp-handshake-timeout"):
-                profile_handshake_timeout = trip_prefix(line, "tcp-handshake-timeou")
-        fastl4_profile_results.append(BIGIPProfileFastl4(profile_name, profile_parent, profile_idle_timeout, profile_handshake_timeout))
-    return fastl4_profile_results
-
-
-def extract_profiles(data_all, pattern):
-    results = []
-    profiles_list = []
-    profiles_data = re.findall(pattern, data_all, re.I)
-    for i in profiles_data:
-        profiles_list.append(i)
-
-    for i, num in zip(profiles_data, range(len(profiles_data))):
-        if num < len(profiles_list) - 1:
-            data_start = re.search(i, data_all, re.I).start()
-            data_end = re.search(profiles_list[num+1], data_all[data_start:]).start()
-            data_detail = data_all[data_start:][:data_end]
-        else:
-            data_start = re.search(i, data_all, re.I).start()
-            data_end = re.search(r'}', data_all[data_start:]).start()
-            data_detail = data_all[data_start:][:data_end]
-        results.append(data_detail)
-
-    return results
-
-'''
-Parse all VS data as list start, related functions:
-
-    data_collect_app_vs_list()
-    extract_snat_attributes()
-    extract_vs_attributes()
-    convert_profiles_rules_to_list()
-
-'''
-def data_collect_app_vs_list(data_all):
-    vs_list = []
-
-    va_data_all = find_content_from_start_end(data_all, "ltm virtual", "net cos")
-    va_data_list = va_data_all.split("ltm virtual")
-    for i in va_data_list:
-        if len(i) > 0:
-            vs_name = None
-            vs_ip = None
-            vs_port = None
-            vs_mask = None
-            ip_protocol = None
-            pool = None
-            profiles = None
-            rules = None
-            snatpool = None
-            snatType = None
-            vs_data = i.strip()
-            vs_attributes = None
-            snat_attributes = None
-            snat_search_results = re.search("source-address-translation", vs_data,re.I)
-            if snat_search_results:
-                snat_start = snat_search_results.start()
-                vs_data_header = vs_data[0:snat_start]
-                vs_data_tail = vs_data[snat_start:]
-                vs_attributes = extract_vs_attributes(vs_data_header)
-                snat_attributes = extract_snat_attributes(vs_data_tail)
-            else:
-                vs_attributes = extract_vs_attributes(vs_data)
-
-            vs_name = vs_attributes[0]
-            vs_ip = vs_attributes[1]
-            vs_port = vs_attributes[2]
-            vs_mask = vs_attributes[3]
-            ip_protocol = vs_attributes[4]
-            pool = vs_attributes[5]
-            profiles = vs_attributes[6]
-            rules = vs_attributes[7]
-            persist = vs_attributes[8]
-            serviceDownReset = vs_attributes[9]
-            vlans = vs_attributes[10]
-            snatpool = None
-            snatType = None
-            if snat_attributes is not None:
-                snatpool = snat_attributes[0]
-                snatType = snat_attributes[1]
-
-            vs_list.append(BIGIPVS(vs_name, vs_ip, vs_port, vs_mask, ip_protocol, pool, profiles, rules, persist, serviceDownReset, vlans, snatpool, snatType))
-
-    return vs_list
-
-def extract_snat_attributes(data_all):
-
-    snatpool = None
-    snatType = None
-
-    data_lines = data_all.splitlines()
-    for data_line in data_lines:
-        line = data_line.strip()
-        if line.startswith("pool"):
-            snatpool = trip_prefix(line, "pool")
-        elif line.startswith("type"):
-            snatType = trip_prefix(line, "type")
-
-    return (snatpool, snatType)
-
-def extract_vs_attributes(data_all):
-
-    vs_name = None
-    vs_ip = None
-    vs_port = None
-    vs_mask = None
-    ip_protocol = None
-    pool = None
-    profiles = None
-    rules = None
-    serviceDownReset = None
-    vlans = None
-    persist = None
-
-    lines = data_all.splitlines()
-    vs_name = lines[0].replace("{", "").strip()
-    for l in lines:
-        line = l.strip()
-        if line.startswith("destination"):
-            destination = trip_prefix(line, "destination")
-            destination_array = destination.split(":")
-            vs_ip = destination_array[0]
-            vs_port = convert_servicename_to_port(destination_array[1])
-        elif line.startswith("ip-protocol"):
-            ip_protocol = trip_prefix(line, "ip-protocol")
-        elif line.startswith("pool"):
-            pool = trip_prefix(line, "pool")
-        elif line.startswith("mask"):
-            vs_mask = trip_prefix(line, "mask")
-        elif line.startswith("service-down-immediate-action"):
-            serviceDownReset = trip_prefix(line, "service-down-immediate-action")
-
-    profiles_data = find_content_from_start_end(data_all, "profiles", "source")
-    rules_search_results = re.search("rules", profiles_data, re.I)
-    if rules_search_results:
-        rules_data_start = rules_search_results.start()
-        profiles_raw = profiles_data[:rules_data_start]
-        rules_raw = profiles_data[rules_data_start:]
-        profiles = convert_profiles_rules_to_list(profiles_raw, "profiles")
-        rules = convert_profiles_rules_to_list(rules_raw, "rules")
-    else:
-        profiles = convert_profiles_rules_to_list(profiles_data, "profiles")
-
-    if "vlans" in data_all:
-        vlans_search_results = find_content_from_start_end(data_all, "vlans", "}")
-        if vlans_search_results:
-            vlans = convert_profiles_rules_to_list(vlans_search_results, "vlans")
-
-    if "persist" in data_all:
-        persist_search_results = find_content_from_start_end(data_all, "persist", "}")
-        if persist_search_results:
-            persist_list = convert_profiles_rules_to_list(persist_search_results, "persist")
-            if len(persist_list) >= 1:
-                persist = persist_list[0]
-
-    return(vs_name, vs_ip, vs_port, vs_mask, ip_protocol, pool, profiles, rules, persist, serviceDownReset, vlans)
-
-def convert_profiles_rules_to_list(data_all, item):
-    results = []
-    data_origin = data_all[:data_all.rfind("}")]
-    results_raw = data_origin.strip().lstrip(item).replace("default yes", "").replace("context serverside", "").replace("context clientside", "").replace("{", "").replace("}", "").splitlines()
-    for l in results_raw:
-        line = l.strip()
-        if len(line) > 0:
-            results.append(line)
-    return results
-
+    devices = configParse.cm_device(data_all)
+    return (devices[0].hostname, devices[0].management_ip, devices[0].version)
 
 def load_bigip_running_config(fileconfig):
     with open(fileconfig, 'r') as fo:
@@ -1138,22 +715,6 @@ def load_bigip_running_config(fileconfig):
         data_all = data_all.replace(error1, '')
     fo.close()
     return data_all
-
-'''
-Parse all VS data as list - end
-'''
-
-
-def load_f5_services_as_map():
-    all_dict = {}
-    with open("f5-services") as myfile:
-        for line in myfile:
-            name, var = line.partition(" ")[::2]
-            all_dict[name.strip()] = var.strip()
-    myfile.close()
-    return all_dict
- 
-
 
 '''
 Main function(start place)
@@ -1211,9 +772,8 @@ SPEC_APP_SANT_NO_SANTPOOL_NO_AUTOMAP = " 没有关联 snat pool"
 SPEC_APP_HTTP_SERVICE_DOWN_REST = " 未设置后台服务不可用时发rst"
 
 bigip_running_config = load_bigip_running_config(fileconfig)
-f5_services_dict = load_f5_services_as_map()
 device_info = data_collect_system_extract_hostname(bigip_running_config)
-vs_list_all = data_collect_app_vs_list(bigip_running_config)
+vs_list_all = configParse.ltm_virtual(bigip_running_config)
 
 
 spec_validation_list = []

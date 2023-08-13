@@ -562,6 +562,13 @@ class TestConfigParse(unittest.TestCase):
         self.assertTrue("1.1" in interface_list)
         self.assertTrue("1.2" in interface_list)
 
+    def test_auth_user(self):
+        data = load_config_data("f5config.3")
+        user_list = auth_user(data)
+        self.assertEqual(len(user_list), 1)
+        self.assertEqual(user_list[0].name, "admin")
+        self.assertEqual(user_list[0].role, "admin")
+
 
 
 if __name__ == '__main__':

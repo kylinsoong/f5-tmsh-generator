@@ -44,8 +44,11 @@ class BIGIPNetL3:
         self.vlan = vlan
 
 class BIGIPNetL2:
-    def __init__(self, name, fwd_mode, if_index, interfaces, sflow_poll_interval_global, sflow_sampling_rate_global, tag):
+    def __init__(self, name, failsafe, failsafe_action, failsafe_timeout, fwd_mode, if_index, interfaces, sflow_poll_interval_global, sflow_sampling_rate_global, tag):
         self.name = name
+        self.failsafe = failsafe
+        self.failsafe_action = failsafe_action
+        self.failsafe_timeout = failsafe_timeout
         self.fwd_mode = fwd_mode 
         self.if_index = if_index 
         self.interfaces = interfaces 
@@ -136,6 +139,28 @@ class BIGIPSnatPool:
         self.name = name
         self.members = members
 
+
+def auth_user(data_all):
+            
+    auth_user_list = []
+    
+    auth_user_end_str = find_end_str(data_all, "auth user", f5_config_dict['header'])
+    auth_users = split_content_to_list_pattern(data_all, r'auth user\s+\S+', auth_user_end_str)
+    for auth_user in auth_users:
+        user_data = auth_user[len("auth user"):]
+        lines = user_data.splitlines()
+        name = trip_prefix(replace_with_patterns(lines[0], "{"), None)
+        role = None
+        shell = None
+        for l in lines:
+            line = l.strip()
+            if line.startswith("role"):
+                role = trip_prefix(line, "role")
+            elif line.startswith("shell"): 
+                shell = trip_prefix(line, "shell")
+        auth_user_list.append(BIGIPAuthUser(name, role, shell))
+            
+    return auth_user_list
 
 
 def cm_device(data_all):
@@ -537,13 +562,19 @@ def net_vlan(data_all):
     for data in net_vlan_data_list:
         vlan_data = trip_prefix(data, None)
         vlan_name = replace_with_patterns(find_first_line(vlan_data), "{")
-        fwd_mode, if_index, interfaces, sflow_poll_interval_global, sflow_sampling_rate_global, tag = None, None, [], None, None, None
+        failsafe, failsafe_action, failsafe_timeout, fwd_mode, if_index, interfaces, sflow_poll_interval_global, sflow_sampling_rate_global, tag = None, None, None, None, None, [], None, None, None
         lines = vlan_data.splitlines()
         sflowStart, interfaceStart, interfaceEnd = False, False, False
         interface_name, interface_tag_mode, interface_tagged = None, None, False
         for l in lines:
             line = l.strip()
-            if line.startswith("fwd-mode"):
+            if line.startswith("failsafe"):
+                failsafe = trip_prefix(line, "failsafe")
+            elif line.startswith("failsafe-action"):
+                failsafe_action = trip_prefix(line, "failsafe-action")
+            elif line.startswith("failsafe-timeout"):
+                failsafe_timeout = trip_prefix(line, "failsafe-timeout")
+            elif line.startswith("fwd-mode"):
                 fwd_mode = trip_prefix(line, "fwd-mode")
             elif line.startswith("if-index"):
                 if_index = trip_prefix(line, "if-index")
@@ -575,7 +606,7 @@ def net_vlan(data_all):
             elif line.startswith("tag"):
                 tag = trip_prefix(line, "tag")
     
-        net_vlan_list.append(BIGIPNetL2(vlan_name, fwd_mode, if_index, interfaces, sflow_poll_interval_global, sflow_sampling_rate_global, tag))
+        net_vlan_list.append(BIGIPNetL2(vlan_name, failsafe, failsafe_action, failsafe_timeout, fwd_mode, if_index, interfaces, sflow_poll_interval_global, sflow_sampling_rate_global, tag))
 
     return net_vlan_list
 
