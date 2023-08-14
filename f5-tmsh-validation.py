@@ -180,16 +180,18 @@ def spec_snmp_management_validation(data_all):
 
 
 def spec_syslog_settings_validation(data_all):
-    syslog_validation_list = []
-    syslog_data_start = re.search("sys syslog", data_all,re.I).start()
-    syslog_data_end = re.search("sys turboflex profile-config", data_all[syslog_data_start:],re.I).start()
-    syslog_data = data_all[syslog_data_start:][:syslog_data_end]
-    if len(syslog_data) > 30:
-        syslog_validation_list.append((13, "", SPEC_BASELINE_YES, [syslog_data], [], True))
-    else:
-        syslog_validation_list.append((13, "", SPEC_BASELINE_NO, ["tmsh modify sys syslog remote-servers add { XXXX { host XXX.XXX.XXX.XXX remote-port XXX local-ip XXX.XXX.XXX.XXX } }"], [], True))
 
-    syslog_validation_list.append((14, "", SPEC_BASELINE_YES, ["tmsh  modify  sys  syslog  local6-from notice"], [], False))
+    syslog_validation_list = []
+    syslog = configParse.sys_syslog(data_all)
+    if syslog.remote_servers is not None and len(syslog.remote_servers) > 0:
+        syslog_validation_list.append((13, "", SPEC_BASELINE_YES, [], [], True))
+    else:
+        tmsh_syslog_add = tmsh.get('tmsh', 'modify.sys.syslog.add').replace("${sys.syslog.name}", "XX").replace("${sys.syslog.host}", "X.X.X.X").replace("${sys.syslog.port}", "XX").replace("${sys.syslog.ip}", "X.X.X.X")
+        tmsh_syslog_del = tmsh.get('tmsh', 'modify.sys.syslog.del').replace("${sys.syslog.name}", "XX")
+        syslog_validation_list.append((13, "", SPEC_BASELINE_NO, [tmsh_syslog_add], [tmsh_syslog_del], True))
+
+    syslog_validation_list.append((14, SPEC_SYSLOG_REMOTE_SERVER_NONE, SPEC_BASELINE_YES, ["tmsh  modify  sys  syslog  local6-from notice"], [], False))
+
     return syslog_validation_list
 
 
@@ -723,6 +725,7 @@ SPEC_SECURE_ACL_ALLOWED_ADDR_DEL = "访问控制列表中允许登录的服务�
 SPEC_SECURE_ACL_ALLOWED_ADDR_NONE = "访问控制列表中允许登录的服务器地址为空"
 SPEC_SNMP_COMMINITY_NOT_EXIST = "未配置只读SNMP community（psbc****）属性"
 SPEC_SNMP_TRAP_NOT_EXIST = "未配置 Trap 网管服务器"
+SPEC_SYSLOG_REMOTE_SERVER_NONE = "未配置SYSLOG服务器"
 SEPC_INTERFACE_HA_ON_BUSINESS_TRUNK = "HA 基于业务 trunk"
 SPEC_INTERFACE_UNUSED_UNDISABLED = "未被定义使用的物理端口没有disable"
 SPEC_ROUTE_DEFAULT_GATEWAY = "没有默认路由配置"
@@ -754,7 +757,7 @@ spec_validation_list.append(SpecUserManagement(SPEC_ITEM_USER_MANAGEMENT, device
 #spec_validation_list.append(SpecLoginMethods(SPEC_ITEM_EXLOGIN_METHODS, device_info[0], device_info[1], device_info[2], bigip_running_config))
 spec_validation_list.append(SpecNTPSyncSetting(SPEC_ITEM_NTPSYN_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
 spec_validation_list.append(SpecSNMPManagement(SPEC_ITEM_SNMP_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
-#spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
 spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, device_info[0], device_info[1], device_info[2], bigip_running_config))
 
 #spec_validation_list.append(SpecInterfaceConfiguration(SPEC_ITEM_INTERFACES_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))

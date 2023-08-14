@@ -606,7 +606,18 @@ class TestConfigParse(unittest.TestCase):
         self.assertEqual(len(snmp.process_monitors), 6)
         self.assertEqual(len(snmp.traps), 5)
 
-
+    def test_sys_syslog(self):
+        data = load_config_data("unittest.sys.syslog")
+        syslog = sys_syslog(data)
+        self.assertEqual(len(syslog.remote_servers), 2)
+        name_list, host_list, loip_list = [], [], []
+        for i in syslog.remote_servers:
+            name_list.append(i.remote_server)
+            host_list.append(i.host)
+            loip_list.append(i.local_ip)
+        self.assertTrue("remotesyslog2" in name_list and "remotesyslog3" in name_list)
+        self.assertTrue("192.168.16.40" in host_list and "192.168.121.14" in host_list)
+        self.assertTrue("192.168.21.143" in loip_list and "192.168.21.144" in loip_list)
 
 
 if __name__ == '__main__':

@@ -191,6 +191,16 @@ class BIGIPSysSNMPTrap:
         self.port = port
         self.privacy_password_encrypted = privacy_password_encrypted
 
+class BIGIPSyslog:
+    def __init__(self, remote_servers):
+        self.remote_servers = remote_servers
+
+class BIGIPSyslogRemoteServers:
+    def __init__(self, remote_server, host, local_ip):
+        self.remote_server = remote_server
+        self.host = host
+        self.local_ip = local_ip    
+
 
 
 def auth_user(data_all):
@@ -641,6 +651,7 @@ def net_vlan(data_all):
                 if "}" in line:
                     interfaceEnd = True
                     interfaces.append(BIGIPNetL2Interface(interface_name, interface_tag_mode, interface_tagged))
+                    interface_name, interface_tag_mode, interface_tagged = None, None, False
             elif interfaceStart and interfaceEnd == False and line.startswith("tag-mode"):
                 interface_tag_mode = trip_prefix(line, "tag-mode")
             elif interfaceStart and interfaceEnd == False and "tagged" in line:
@@ -648,6 +659,7 @@ def net_vlan(data_all):
             elif interfaceStart and "}" in line:
                 interfaceEnd = True
                 interfaces.append(BIGIPNetL2Interface(interface_name, interface_tag_mode, interface_tagged))    
+                interface_name, interface_tag_mode, interface_tagged = None, None, False
             elif line.startswith("sflow"):
                 sflowStart = True
             elif sflowStart and "}" in line:
@@ -810,6 +822,34 @@ def sys_sshd(data_all):
 
     return BIGIPSysSSHD(allow, auth_pam_idle_timeout)
 
+
+def sys_syslog(data_all):
+
+    syslog_start_str = "sys syslog"
+    syslog_end_str = find_end_str(data_all, syslog_start_str, f5_config_dict['tail'])
+    syslog_data = find_content_from_start_end(data_all, syslog_start_str, syslog_end_str)
+    remote_servers, remote_server, host, local_ip = [], None, None, None
+    isRemoteServerStart, isRemoteServerEnd = False, False
+    lines = syslog_data.splitlines()
+    for l in lines:
+        line = l.strip()
+        if line.startswith("remote-servers"):
+            isRemoteServerStart = True
+        elif isRemoteServerStart and isRemoteServerEnd and "}" == line:
+            isRemoteServerStart = False
+        elif isRemoteServerStart and "{" in line:
+            isRemoteServerEnd = False
+            remote_server = replace_with_patterns(line, "{")
+        elif isRemoteServerStart and isRemoteServerEnd == False and line.startswith("host"):
+            host = trip_prefix(line, "host")
+        elif isRemoteServerStart and isRemoteServerEnd == False and line.startswith("local-ip"):
+            local_ip = trip_prefix(line, "local-ip")
+        elif isRemoteServerStart and isRemoteServerEnd == False and "}" == line:
+            isRemoteServerEnd = True
+            remote_servers.append(BIGIPSyslogRemoteServers(remote_server, host, local_ip))
+            remote_server, host, local_ip = None, None, None
+    
+    return BIGIPSyslog(remote_servers)
 
 
 
@@ -1503,7 +1543,7 @@ f5_config_dict = {
     "header": ["auth password-policy", "auth remote-role", "auth remote-user", "auth source", "auth user", "cli admin-partitions", "cli global-settings", "cli preference", "cm cert", "cm device", "cm device-group", "cm key", "cm traffic-group", "cm trust-domain"],
     "ltm": ["ltm data-group", "ltm default-node-monitor", "ltm dns", "ltm global-settings", "ltm monitor", "ltm node", "ltm persistence cookie", "ltm persistence", "ltm persistence source-addr", "ltm policy", "ltm pool", "ltm profile", "ltm rule", "ltm snat-translation", "ltm snatpool", "ltm tacdb", "ltm virtual"],
     "net": ["net address-list", "net cos", "net dag-globals", "net dns-resolver", "net fdb", "net interface", "net ipsec ike-daemon", "net lldp-globals", "net multicast-globals", "net packet-filter-trusted", "net route", "net route-domain", "net self", "net self-allow", "net stp-globals", "net trunk", "net tunnels", "net vlan"],
-    "tail": ["sys config-sync", "sys aom", "sys autoscale-group", "sys daemon-log-settings", "sys datastor", "sys diags", "sys disk", "sys dns", "sys failover", "sys dynad key", "sys dynad", "sys feature-module", "sys file", "sys folder", "sys fpga", "sys global-settings", "sys httpd", "sys icontrol-soap", "sys log-rotate", "sys management-dhcp", "sys management-ip", "sys management-ovsdb", "sys management-route", "sys ntp", "sys outbound-smtp", "sys provision", "sys scriptd", "sys sflow", "sys snmp", "sys software", "sys sshd", "sys state-mirroring", "sys syslog ", "sys turboflex", "sys url-db"]
+    "tail": ["sys config-sync", "sys aom", "sys autoscale-group", "sys daemon-log-settings", "sys datastor", "sys diags", "sys disk", "sys dns", "sys failover", "sys dynad key", "sys dynad", "sys feature-module", "sys file", "sys folder", "sys fpga", "sys global-settings", "sys httpd", "sys icontrol-soap", "sys log-rotate", "sys management-dhcp", "sys management-ip", "sys management-ovsdb", "sys management-route", "sys ntp", "sys outbound-smtp", "sys provision", "sys scriptd", "sys sflow", "sys snmp", "sys software", "sys sshd", "sys state-mirroring", "sys syslog", "sys turboflex", "sys url-db"]
 }
 
 def split_data_all(data_all):

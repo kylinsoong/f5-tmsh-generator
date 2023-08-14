@@ -1,0 +1,13 @@
+sys syslog {
+    remote-servers {
+        remotesyslog2 {
+            host 192.168.16.40
+            local-ip 192.168.21.143
+        }
+        remotesyslog3 {
+            host 192.168.121.14
+            local-ip 192.168.21.144
+        }
+    }
+}
+sys turboflex profile-config
