@@ -636,7 +636,8 @@ def sys_httpd(data_all):
     for l in lines:
         line = l.strip()
         if line.startswith("allow"):
-            allow = replace_with_patterns(trip_prefix(line, "allow"), ["{", "}"])
+            allow_list = replace_with_patterns(trip_prefix(line, "allow"), ["{", "}"])
+            allow = split_to_list(allow_list, " ")
         elif line.startswith("auth-pam-idle-timeout"):
             auth_pam_idle_timeout = trip_prefix(line, "auth-pam-idle-timeout")
 
@@ -671,7 +672,8 @@ def sys_sshd(data_all):
     for l in lines:
         line = l.strip()
         if line.startswith("allow"):
-            allow = replace_with_patterns(trip_prefix(line, "allow"), ["{", "}"])
+            allow_list = replace_with_patterns(trip_prefix(line, "allow"), ["{", "}"])
+            allow = split_to_list(allow_list, " ")
         elif line.startswith("inactivity-timeout"):
             auth_pam_idle_timeout = trip_prefix(line, "inactivity-timeout")
 
@@ -767,6 +769,9 @@ def replace_with_patterns(data, patterns):
         data = data.replace(pattern, "")
     return trip_prefix(data, None)
 
+def convert_list_to_str(data_list):
+    result_string = " ".join(data_list)
+    return result_string
 
 def convert_servicename_to_port(input):
     input = trip_prefix(input, None)

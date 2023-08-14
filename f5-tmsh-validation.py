@@ -213,44 +213,39 @@ def spec_syslog_settings_validation(data_all):
 
 
 def spec_secure_acl_validation(data_all):
-    sshd_allow_data_start = re.search(r'sys sshd\s+(\S+)', data_all,re.I).start()
-    sshd_allow_data_end = re.search(r'inactivity-timeout\s+(\S+)', data_all[sshd_allow_data_start:],re.I).start()
-    sshd_allow = data_all[sshd_allow_data_start:][:sshd_allow_data_end]
-    sshd_allow = sshd_allow.lstrip("sys sshd").strip().lstrip("{").strip()
-    sshd_allow = "sshd " + sshd_allow
 
-    httpd_allow_data_start = re.search(r'sys httpd\s+(\S+)', data_all,re.I).start()
-    httpd_allow_data_end = re.search(r'auth-pam-idle-timeout\s+(\S+)', data_all[httpd_allow_data_start:],re.I).start()
-    httpd_allow = data_all[httpd_allow_data_start:][:httpd_allow_data_end]
-    httpd_allow = httpd_allow.lstrip("sys httpd").strip().lstrip("{").strip()
-    httpd_allow = "https " + httpd_allow
-
-    snmp_data_start = re.search("sys snmp", data_all,re.I).start()
-    snmp_data_end = re.search("sys software image", data_all[snmp_data_start:],re.I).start()
-    snmp_data = data_all[snmp_data_start:][:snmp_data_end]
-    snmp_allowed_address = ""
-    snmp_allowed_address_start = re.search("allowed-addresses", snmp_data,re.I).start()
-    snmp_allowed_address_end = re.search("communities", snmp_data[snmp_allowed_address_start:],re.I).start()
-    snmp_allowed_address_raw = snmp_data[snmp_allowed_address_start:][:snmp_allowed_address_end]
-    if len(snmp_allowed_address_raw) > 20:
-        snmp_allowed_address = "snmp " + snmp_allowed_address_raw
-
+    sys_sshd = configParse.sys_sshd(data_all)
+    sys_httpd = configParse.sys_httpd(data_all)
     secure_acl_validation_list = []
 
-    if len(httpd_allow) > 20:
-        secure_acl_validation_list.append((15, "", SPEC_BASELINE_YES, [httpd_allow], [], True))
+    tmsh_httpd_allow_add = tmsh.get('tmsh', 'modify.sys.httpd.allow.add').replace("${sys.httpd.allow.addr}", "x.x.x.x x.x.x.x")
+    tmsh_httpd_allow_del = tmsh.get('tmsh', 'modify.sys.httpd.allow.del').replace("${sys.httpd.allow.addr}", "x.x.x.x x.x.x.x")
+    if sys_httpd.allow is not None and len(sys_httpd.allow) > 6:
+        tmsh_httpd_allow_replace = tmsh.get('tmsh', 'modify.sys.httpd.allow.repl').replace("${sys.httpd.allow.addr}", configParse.convert_list_to_str(sys_httpd.allow))
+        secure_acl_validation_list.append((15, SPEC_SECURE_ACL_ALLOWED_ADDR_DEL, SPEC_BASELINE_NO, [tmsh_httpd_allow_del], [tmsh_httpd_allow_replace], True))
+    elif sys_httpd.allow is not None and len(sys_httpd.allow) < 6:
+        tmsh_httpd_allow_replace = tmsh.get('tmsh', 'modify.sys.httpd.allow.repl').replace("${sys.httpd.allow.addr}", configParse.convert_list_to_str(sys_httpd.allow))
+        secure_acl_validation_list.append((15, SPEC_SECURE_ACL_ALLOWED_ADDR_ADD, SPEC_BASELINE_NO, [tmsh_httpd_allow_add], [tmsh_httpd_allow_replace], True))
+    elif sys_httpd.allow is not None and len(sys_httpd.allow) == 6:
+        tmsh_httpd_allow_list = tmsh.get('tmsh', 'modify.sys.httpd.allow.list').replace("${sys.httpd.allow.addr}", configParse.convert_list_to_str(sys_httpd.allow))
+        secure_acl_validation_list.append((15, "", SPEC_BASELINE_YES, [tmsh_httpd_allow_list], [], True))
     else:
-        secure_acl_validation_list.append((15, "", SPEC_BASELINE_NO, ["tmsh modify sys httpd allow add { xxx.xxx.xxx.xxx/xx }"], [], True))
+        secure_acl_validation_list.append((15, SPEC_SECURE_ACL_ALLOWED_ADDR_NONE, SPEC_BASELINE_NO, [tmsh_httpd_allow_add], [tmsh_httpd_allow_del], True))
 
-    if len(sshd_allow) > 20:
-        secure_acl_validation_list.append((16, "", SPEC_BASELINE_YES, [sshd_allow], [], True))
+
+    tmsh_sshd_allow_add = tmsh.get('tmsh', 'modify.sys.sshd.allow.add').replace("${sys.sshd.allow.addr}", "x.x.x.x x.x.x.x")
+    tmsh_sshd_allow_del = tmsh.get('tmsh', 'modify.sys.sshd.allow.del').replace("${sys.sshd.allow.addr}", "x.x.x.x x.x.x.x")
+    if sys_sshd.allow is not None and len(sys_sshd.allow) > 6:
+        tmsh_sshd_allow_replace = tmsh.get('tmsh', 'modify.sys.sshd.allow.repl').replace("${sys.sshd.allow.addr}", configParse.convert_list_to_str(sys_sshd.allow))
+        secure_acl_validation_list.append((16, SPEC_SECURE_ACL_ALLOWED_ADDR_DEL, SPEC_BASELINE_NO, [tmsh_sshd_allow_del], [tmsh_sshd_allow_replace], True))
+    elif sys_sshd.allow is not None and len(sys_sshd.allow) < 6:
+        tmsh_sshd_allow_replace = tmsh.get('tmsh', 'modify.sys.sshd.allow.repl').replace("${sys.sshd.allow.addr}", configParse.convert_list_to_str(sys_sshd.allow))
+        secure_acl_validation_list.append((16, SPEC_SECURE_ACL_ALLOWED_ADDR_ADD, SPEC_BASELINE_NO, [tmsh_sshd_allow_add], [tmsh_sshd_allow_replace], True))
+    elif sys_sshd.allow is not None and len(sys_sshd.allow) == 6:
+        tmsh_sshd_allow_list = tmsh.get('tmsh', 'modify.sys.sshd.allow.list').replace("${sys.sshd.allow.addr}", configParse.convert_list_to_str(sys_sshd.allow))
+        secure_acl_validation_list.append((16, "", SPEC_BASELINE_YES, [tmsh_sshd_allow_list], [], True))
     else:
-        secure_acl_validation_list.append((16, "", SPEC_BASELINE_NO, ["tmsh modify sys sshd allow add { xxx.xxx.xxx.xxx/xx }"], [], True))
-
-    #if len(snmp_allowed_address) > 30:
-    #   secure_acl_validation_list.append((101, "", SPEC_BASELINE_YES, [snmp_allowed_address], [], True))
-    #else:
-    #   secure_acl_validation_list.append((101, "", SPEC_BASELINE_NO, ["tmsh modify sys snmp allowed-addresses add { xxx.xxx.xxx.xxx  }"], [], True))
+        secure_acl_validation_list.append((16, SPEC_SECURE_ACL_ALLOWED_ADDR_NONE, SPEC_BASELINE_NO, [tmsh_sshd_allow_add], [tmsh_sshd_allow_del], True))
 
     return secure_acl_validation_list
 
@@ -741,6 +736,9 @@ SPEC_LOGIN_METHODS_ALLOW_DEFAULT = "业务口 allow default"
 SPEC_LOGIN_METHODS_TIMEOUT_NO_12_MINS = "超时时间不是 12 分钟"
 SPEC_NTP_SETTINGS_TIMEZONE_WRONG = "时区设定非中国时区"
 SPEC_NTP_SETTINGS_SERVERS_WRONG = "时区服务器数量不足"
+SPEC_SECURE_ACL_ALLOWED_ADDR_ADD = "访问控制列表中允许登录的服务器地址小于 6"
+SPEC_SECURE_ACL_ALLOWED_ADDR_DEL = "访问控制列表中允许登录的服务器地址大于 6"
+SPEC_SECURE_ACL_ALLOWED_ADDR_NONE = "访问控制列表中允许登录的服务器地址为空"
 SEPC_INTERFACE_HA_ON_BUSINESS_TRUNK = "HA 基于业务 trunk"
 SPEC_INTERFACE_UNUSED_UNDISABLED = "未被定义使用的物理端口没有disable"
 SPEC_ROUTE_DEFAULT_GATEWAY = "没有默认路由配置"
@@ -768,12 +766,12 @@ vs_list_all = configParse.ltm_virtual(bigip_running_config)
 
 spec_validation_list = []
 
-#spec_validation_list.append(SpecUserManagement(SPEC_ITEM_USER_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecUserManagement(SPEC_ITEM_USER_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
 #spec_validation_list.append(SpecLoginMethods(SPEC_ITEM_EXLOGIN_METHODS, device_info[0], device_info[1], device_info[2], bigip_running_config))
-#spec_validation_list.append(SpecNTPSyncSetting(SPEC_ITEM_NTPSYN_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecNTPSyncSetting(SPEC_ITEM_NTPSYN_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
 spec_validation_list.append(SpecSNMPManagement(SPEC_ITEM_SNMP_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
 #spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
-#spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, device_info[0], device_info[1], device_info[2], bigip_running_config))
 
 #spec_validation_list.append(SpecInterfaceConfiguration(SPEC_ITEM_INTERFACES_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
 #spec_validation_list.append(SpecRouteConfiguration(SPEC_ITEM_INEXROUTER_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))

@@ -572,12 +572,14 @@ class TestConfigParse(unittest.TestCase):
     def test_sys_httpd(self):
         data = load_config_data("unittest.sys.httpd")
         httpd = sys_httpd(data)
+        self.assertEqual(len(httpd.allow), 4)
         self.assertEqual(httpd.auth_pam_idle_timeout, '600')
         self.assertTrue("22.231.16.8" in httpd.allow)
 
     def test_sys_sshd(self):
         data = load_config_data("unittest.sys.httpd")
         sshd = sys_sshd(data)
+        self.assertEqual(len(sshd.allow), 7)
         self.assertEqual(sshd.inactivity_timeout, '600')
         self.assertTrue("192.168.1.11" in sshd.allow)
 
