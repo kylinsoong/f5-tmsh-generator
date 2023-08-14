@@ -1,0 +1,91 @@
+sys snmp {
+    agent-addresses { tcp6:161 udp6:161 }
+    allowed-addresses { 127.0.0.0/8 192.168.16.5 192.168.120.1 192.168.121.1 192.168.121.14 192.168.121.31 }
+    communities {
+        comm-public {
+            community-name public
+            source default
+        }
+        iexampleread_1 {
+            community-name exampleread
+            oid-subset .1
+            source default
+        }
+    }
+    disk-monitors {
+        root {
+            minspace 2000
+            path /
+        }
+        var {
+            minspace 10000
+            path /var
+        }
+    }
+    process-monitors {
+        bigd {
+            max-processes infinity
+            process bigd
+        }
+        chmand {
+            process chmand
+        }
+        httpd {
+            max-processes infinity
+            process httpd
+        }
+        mcpd {
+            process mcpd
+        }
+        sod {
+            process sod
+        }
+        tmm {
+            max-processes infinity
+            process tmm
+        }
+    }
+    traps {
+        i192_168_16_5_1 {
+            auth-password-encrypted "****"
+            community exampleread
+            host 192.168.16.5
+            network other
+            port apani3
+            privacy-password-encrypted "****"
+        }
+        i192_168_16_40_1 {
+            auth-password-encrypted "****"
+            community exampleread
+            host 192.168.16.40
+            network other
+            port apani3
+            privacy-password-encrypted "****"
+        }
+        i192.168_121_1_1 {
+            auth-password-encrypted "****"
+            community exampleread
+            host 192.168.121.1
+            network other
+            port apani3
+            privacy-password-encrypted "****"
+        }
+        i192.168_121_14_1 {
+            auth-password-encrypted "****"
+            community exampleread
+            host 192.168.121.14
+            network other
+            port apani3
+            privacy-password-encrypted "****"
+        }
+        i192.168_121_31_1 {
+            auth-password-encrypted "****"
+            community exampleread
+            host 192.168.121.31
+            network other
+            port apani3
+            privacy-password-encrypted "****"
+        }
+    }
+}
+sys software image 

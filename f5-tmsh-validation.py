@@ -153,45 +153,27 @@ def spec_ntp_settings_validation(data_all):
 
 def spec_snmp_management_validation(data_all):
     snmp_validation_list = []
-    snmp_data_start = re.search("sys snmp", data_all,re.I).start()
-    snmp_data_end = re.search("sys software image", data_all[snmp_data_start:],re.I).start()
-    snmp_data = data_all[snmp_data_start:][:snmp_data_end]
+    snmp = configParse.sys_snmp(data_all)
+    communities_name_list = []
+    for i in snmp.communities:
+        communities_name_list.append(i.community_name)
 
     snmp_validation_list.append((9, "", SPEC_BASELINE_YES, [], [], False))
     snmp_validation_list.append((10, "", SPEC_BASELINE_YES, ["v2c"], [], False))
 
-    if "psbcread" not in snmp_data:
-        snmp_validation_list.append((11, "", SPEC_BASELINE_NO, ["tmsh modify sys snmp communities add { XXXXX { community-name psbcread source default oid-subset 1 access ro } }"], [], False))
-
-    snmp_traps_data_start = re.search("traps {", snmp_data, re.I).start()
-    snmp_traps_data = snmp_data[snmp_traps_data_start:]
-    snmp_traps_data = snmp_traps_data.lstrip("traps")
-    snmp_traps_data = snmp_traps_data.replace("{", "")
-    snmp_trap_list = snmp_traps_data.split('}')
-    snmp_trap_host_port_list = []
-    for i in snmp_trap_list:
-        lines = i.splitlines()
-        isFirstLine = True
-        trap_name = ""
-        trap_host = ""
-        trap_port = ""
-        for l in lines:
-            line = l.strip()
-            if len(line) > 0 and isFirstLine:
-                 isFirstLine = False
-                 trap_name = line
-            elif len(line) > 0 and line.startswith("host"):
-                 trap_host = line.lstrip("host").strip()
-            elif len(line) > 0 and line.startswith("port"):
-                 trap_port = line.lstrip("port").strip()
-        if len(trap_name) > 0 and len(trap_host) > 0 and len(trap_port):
-            tmsh = "name: " + trap_name + ", host: " + trap_host + ", port: " + configParse.convert_servicename_to_port(trap_port)
-            snmp_trap_host_port_list.append(tmsh)
-
-    if len(snmp_trap_host_port_list) > 0:
-        snmp_validation_list.append((12, "", SPEC_BASELINE_YES, snmp_trap_host_port_list, [], True))
+    if "psbcread" not in communities_name_list:
+        tmsh_community_add = tmsh.get('tmsh', 'modify.sys.snmp.communities.add').replace("${sys.snmp.community}", "XX").replace("${sys.snmp.community.name}", "XX")
+        tmsh_community_del = tmsh.get('tmsh', 'modify.sys.snmp.communities.del').replace("${sys.snmp.community}", "XX")
+        snmp_validation_list.append((11, SPEC_SNMP_COMMINITY_NOT_EXIST, SPEC_BASELINE_NO, [tmsh_community_add], [tmsh_community_del], False))
     else:
-        snmp_validation_list.append((12, "", SPEC_BASELINE_NO, ["tmsh modify sys snmp traps add { XXXXX  { version 2c community psbcread host XX.XX.XX.XX  port XXX } } "], [], True))
+        snmp_validation_list.append((11, "", SPEC_BASELINE_YES, [], [], False))
+
+    if len(snmp.traps) <= 0:
+        tmsh_trap_add = tmsh.get('tmsh', 'modify.sys.snmp.trap.add').replace("${sys.snmp.trap.name}", "XX").replace("${sys.snmp.trap.community}", "XX").replace("${sys.snmp.trap.host}", "XX").replace("${sys.snmp.trap.port}", "XX")       
+        tmsh_trap_del = tmsh.get('tmsh', 'modify.sys.snmp.trap.del').replace("${sys.snmp.trap.name}", "XX")
+        snmp_validation_list.append((12, SPEC_SNMP_TRAP_NOT_EXIST, SPEC_BASELINE_NO, [tmsh_trap_add], [tmsh_trap_del], True))
+    else:
+        snmp_validation_list.append((12, "", SPEC_BASELINE_YES, [], [], True))
 
     return snmp_validation_list
 
@@ -739,6 +721,8 @@ SPEC_NTP_SETTINGS_SERVERS_WRONG = "时区服务器数量不足"
 SPEC_SECURE_ACL_ALLOWED_ADDR_ADD = "访问控制列表中允许登录的服务器地址小于 6"
 SPEC_SECURE_ACL_ALLOWED_ADDR_DEL = "访问控制列表中允许登录的服务器地址大于 6"
 SPEC_SECURE_ACL_ALLOWED_ADDR_NONE = "访问控制列表中允许登录的服务器地址为空"
+SPEC_SNMP_COMMINITY_NOT_EXIST = "未配置只读SNMP community（psbc****）属性"
+SPEC_SNMP_TRAP_NOT_EXIST = "未配置 Trap 网管服务器"
 SEPC_INTERFACE_HA_ON_BUSINESS_TRUNK = "HA 基于业务 trunk"
 SPEC_INTERFACE_UNUSED_UNDISABLED = "未被定义使用的物理端口没有disable"
 SPEC_ROUTE_DEFAULT_GATEWAY = "没有默认路由配置"

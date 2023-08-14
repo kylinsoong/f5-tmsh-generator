@@ -153,6 +153,45 @@ class BIGIPSysNTP:
         self.servers = servers
         self.timezone = timezone
 
+class BIGIPSysSNMP:
+    def __init__(self, agent_addresses, allowed_addresses, communities, disk_monitors, process_monitors, traps):
+        self.agent_addresses = agent_addresses
+        self.allowed_addresses = allowed_addresses
+        self.communities = communities
+        self.disk_monitors = disk_monitors
+        self.process_monitors = process_monitors
+        self.traps = traps
+
+class BIGIPSysSNMPCommunity:
+    def __init__(self, community, community_name, oid_subset, source):
+        self.community = community
+        self.community_name = community_name
+        self.oid_subset = oid_subset
+        self.source = source
+
+class BIGIPSysSNMPDiskMonitor:
+    def __init__(self, disk_monitor, minspace, path):
+        self.disk_monitor = disk_monitor
+        self.minspace = minspace
+        self.path = path
+
+class BIGIPSysSNMPProcessMonitor:
+    def __init__(self, process_monitor, max_processes, process):
+        self.process_monitor = process_monitor
+        self.max_processes = max_processes
+        self.process = process
+
+class BIGIPSysSNMPTrap:
+    def __init__(self, trap, auth_password_encrypted, community, host, network, port, privacy_password_encrypted):
+        self.trap = trap
+        self.auth_password_encrypted = auth_password_encrypted
+        self.community = community
+        self.host = host
+        self.network = network
+        self.port = port
+        self.privacy_password_encrypted = privacy_password_encrypted
+
+
 
 def auth_user(data_all):
             
@@ -661,6 +700,98 @@ def sys_ntp(data_all):
             timezone = trip_prefix(line, "timezone")
 
     return BIGIPSysNTP(servers, timezone)
+
+
+def sys_snmp(data_all):
+   
+    sys_snmp_start_str = "sys snmp"
+    sys_snmp_end_str = find_end_str(data_all, sys_snmp_start_str, f5_config_dict['tail'])
+    sys_snmp_data = find_content_from_start_end(data_all, sys_snmp_start_str, sys_snmp_end_str)
+    agent_addresses, allowed_addresses, communities, disk_monitors, process_monitors, traps = [], [], [], [], [], []
+    isComminutiesStart, isComminutiesEnd, isDiskMonitorStart, isDiskMonitorEnd, isProcessMonitorStart, isProcessMonitorEnd, isTrapStart, isTrapEnd = False, False, False, False, False, False, False, False
+    community, community_name, oid_subset, source, disk_monitor, minspace, path, process_monitor, max_processes, process, trap, auth_password_encrypted, community, host, network, port, privacy_password_encrypted = None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None
+    lines = sys_snmp_data.splitlines()
+    for l in lines:
+        line = l.strip()
+        if line.startswith("agent-addresses"):
+            agent_addresses_list = replace_with_patterns(trip_prefix(line, "agent-addresses"), ["{", "}"])
+            agent_addresses = split_to_list(agent_addresses_list, " ")
+        elif line.startswith("allowed-addresses"):
+            allowed_addresses_list = replace_with_patterns(trip_prefix(line, "allowed-addresses"), ["{", "}"])
+            allowed_addresses = split_to_list(allowed_addresses_list, " ")
+        elif line.startswith("communities"):
+            isComminutiesStart = True
+        elif isComminutiesStart and isComminutiesEnd and "}" == line:
+            isComminutiesStart = False
+        elif isComminutiesStart and "{" in line:
+            isComminutiesEnd = False
+            community = replace_with_patterns(line, "{")
+        elif isComminutiesStart and isComminutiesEnd == False and line.startswith("community-name"):
+            community_name = trip_prefix(line, "community-name")
+        elif isComminutiesStart and isComminutiesEnd == False and line.startswith("oid-subset"):
+            oid_subset = trip_prefix(line, "oid-subset")
+        elif isComminutiesStart and isComminutiesEnd == False and line.startswith("source"):
+            source = trip_prefix(line, "source")
+        elif isComminutiesStart and isComminutiesEnd == False and "}" == line:
+            isComminutiesEnd = True
+            communities.append(BIGIPSysSNMPCommunity(community, community_name, oid_subset, source))
+            community, community_name, oid_subset, source = None, None, None, None
+        elif line.startswith("disk-monitors"):
+            isDiskMonitorStart = True
+        elif isDiskMonitorStart and isDiskMonitorEnd and "}" == line:
+            isDiskMonitorStart = False
+        elif isDiskMonitorStart and "{" in line:
+            isDiskMonitorEnd = False
+            disk_monitor = replace_with_patterns(line, "{")
+        elif isDiskMonitorStart and isDiskMonitorEnd == False and line.startswith("minspace"):
+            minspace = trip_prefix(line, "minspace")
+        elif isDiskMonitorStart and isDiskMonitorEnd == False and line.startswith("path"):
+            path = trip_prefix(line, "path")
+        elif isDiskMonitorStart and isDiskMonitorEnd == False and "}" == line:
+            isDiskMonitorEnd = True
+            disk_monitors.append(BIGIPSysSNMPDiskMonitor(disk_monitor, minspace, path))
+            disk_monitor, minspace, path = None, None, None
+        elif line.startswith("process-monitors"):
+            isProcessMonitorStart = True
+        elif isProcessMonitorStart and isProcessMonitorEnd and "}" == line:
+            isProcessMonitorStart = False
+        elif isProcessMonitorStart and "{" in line:
+            isProcessMonitorEnd = False
+            process_monitor = replace_with_patterns(line, "{")
+        elif isProcessMonitorStart and isProcessMonitorEnd == False and line.startswith("max-processes"):
+            max_processes = trip_prefix(line, "max-processes")
+        elif isProcessMonitorStart and isProcessMonitorEnd == False and line.startswith("process"):
+            process = trip_prefix(line, "process")
+        elif isProcessMonitorStart and isProcessMonitorEnd == False and "}" == line:
+            isProcessMonitorEnd = True
+            process_monitors.append(BIGIPSysSNMPProcessMonitor(process_monitor, max_processes, process))
+            process_monitor, max_processes, process = None, None, None
+        elif line.startswith("traps"):
+            isTrapStart = True
+        elif isTrapStart and isTrapEnd and "}" == line:
+            isTrapStart = False
+        elif isTrapStart and "{" in line:
+            isTrapEnd = False
+            trap = replace_with_patterns(line, "{")
+        elif isTrapStart and isTrapEnd == False and line.startswith("auth-password-encrypted"):
+            auth_password_encrypted = trip_prefix(line, "auth-password-encrypted")
+        elif isTrapStart and isTrapEnd == False and line.startswith("community"):
+            community = trip_prefix(line, "community")
+        elif isTrapStart and isTrapEnd == False and line.startswith("host"):
+            host = trip_prefix(line, "host")
+        elif isTrapStart and isTrapEnd == False and line.startswith("network"):
+            network = trip_prefix(line, "network")
+        elif isTrapStart and isTrapEnd == False and line.startswith("port"):
+            port = convert_servicename_to_port(trip_prefix(line, "port"))
+        elif isTrapStart and isTrapEnd == False and line.startswith("privacy-password-encrypted"):
+            privacy_password_encrypted = trip_prefix(line, "privacy-password-encrypted")
+        elif isTrapStart and isTrapEnd == False and "}" == line:
+            isTrapEnd = True
+            traps.append(BIGIPSysSNMPTrap(trap, auth_password_encrypted, community, host, network, port, privacy_password_encrypted))
+            trap, auth_password_encrypted, community, host, network, port, privacy_password_encrypted = None, None, None, None, None, None, None
+    
+    return BIGIPSysSNMP(agent_addresses, allowed_addresses, communities, disk_monitors, process_monitors, traps)
+
 
 def sys_sshd(data_all):
 

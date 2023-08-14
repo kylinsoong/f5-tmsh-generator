@@ -591,6 +591,22 @@ class TestConfigParse(unittest.TestCase):
         self.assertTrue("192.168.100.3" in ntp.servers)
         self.assertTrue("192.168.100.5" in ntp.servers)
 
+    def test_sys_snmp(self):
+        data = load_config_data("unittest.sys.snmp")
+        snmp = sys_snmp(data)
+        self.assertTrue("tcp6:161" in snmp.agent_addresses and "udp6:161" in snmp.agent_addresses)
+        self.assertTrue("127.0.0.0/8" in snmp.allowed_addresses and "192.168.120.1" in snmp.allowed_addresses and "192.168.121.14" in snmp.allowed_addresses)
+        communities_name_list = []
+        for i in snmp.communities:
+            self.assertEqual(i.source, "default")
+            communities_name_list.append(i.community_name)
+        self.assertTrue("public" in communities_name_list and "exampleread" in communities_name_list)
+        self.assertEqual(len(snmp.communities), 2)
+        self.assertEqual(len(snmp.disk_monitors), 2)
+        self.assertEqual(len(snmp.process_monitors), 6)
+        self.assertEqual(len(snmp.traps), 5)
+
+
 
 
 if __name__ == '__main__':

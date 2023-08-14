@@ -45,9 +45,22 @@ running_config = load_bigip_running_config(fileconfig)
 
 #print(configParse.find_end_str(configParse.split_data_all(running_config)[1], "ltm virtual", configParse.f5_config_dict['ltm']))
 
-sys_sshd = configParse.sys_sshd(running_config)
-sys_httpd = configParse.sys_httpd(running_config)
-ntp = configParse.sys_ntp(running_config)
-print(sys_sshd, sys_sshd.allow, len(sys_sshd.allow), sys_sshd.inactivity_timeout)
-print(sys_httpd, sys_httpd.allow, len(sys_httpd.allow), sys_httpd.auth_pam_idle_timeout)
-print(ntp, ntp.servers, len(ntp.servers), ntp.timezone)
+#sys_sshd = configParse.sys_sshd(running_config)
+#sys_httpd = configParse.sys_httpd(running_config)
+#ntp = configParse.sys_ntp(running_config)
+#print(sys_sshd, sys_sshd.allow, len(sys_sshd.allow), sys_sshd.inactivity_timeout)
+#print(sys_httpd, sys_httpd.allow, len(sys_httpd.allow), sys_httpd.auth_pam_idle_timeout)
+#print(ntp, ntp.servers, len(ntp.servers), ntp.timezone)
+snmp = configParse.sys_snmp(running_config)
+print(snmp.agent_addresses)
+print(snmp.allowed_addresses)
+for i in snmp.communities:
+    print(i.community, i.community_name, i.oid_subset, i.source)
+for i in snmp.disk_monitors:
+    print(i.disk_monitor, i.minspace, i.path)
+for i in snmp.process_monitors:
+    print(i.process_monitor, i.max_processes, i.process)
+for i in snmp.traps:
+    print(i.trap, i.auth_password_encrypted, i.community, i.host, i.network, i.port, i.privacy_password_encrypted)
+
+
