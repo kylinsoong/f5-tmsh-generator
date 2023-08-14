@@ -75,6 +75,12 @@ class BIGIPNetL2InterfaceDetail:
         self.serial = serial
         self.vendor = vendor
 
+class BIGIPNetRoute:
+    def __init__(self, name, gw, network):
+        self.name = name
+        self.gw = gw
+        self.network = network
+
 class BIGIPNetL2Interface:
     def __init__(self, name, tag_mode, tagged):
         self.name = name
@@ -219,6 +225,12 @@ class BIGIPSyslogRemoteServers:
         self.remote_server = remote_server
         self.host = host
         self.local_ip = local_ip    
+
+class BIGIPSysManagementRoute:
+    def __init__(self, name, gateway, network):
+        self.name = name
+        self.gateway = gateway
+        self.network = network
 
 
 
@@ -633,6 +645,29 @@ def net_interface(data_all):
         net_interface_list.append(BIGIPNetL2InterfaceDetail(name, disabled, mac_address, media_active, mtu, serial, vendor))
 
     return net_interface_list      
+
+
+
+def net_route(data_all):
+
+    net_route_list = []
+    net_route_start_str = "net route"
+    net_route_end_str = find_end_str(data_all, net_route_start_str, f5_config_dict['net'])
+    net_route_data_list = split_content_to_list_split(data_all, net_route_start_str, net_route_end_str)
+    for data in net_route_data_list:
+        route_data = trip_prefix(data, None)
+        name = replace_with_patterns(find_first_line(route_data), "{")
+        gw, network = None, None
+        lines = route_data.splitlines()
+        for l in lines:
+            line = l.strip()
+            if line.startswith("gw"):
+                gw = trip_prefix(line, "gw")
+            elif line.startswith("network"):
+                network = trip_prefix(line, "network")
+        net_route_list.append(BIGIPNetRoute(name, gw, network))
+
+    return net_route_list
         
 
 
@@ -776,6 +811,30 @@ def sys_httpd(data_all):
             auth_pam_idle_timeout = trip_prefix(line, "auth-pam-idle-timeout")
 
     return BIGIPSysHTTPD(allow, auth_pam_idle_timeout)
+
+
+
+def sys_management_route(data_all):
+
+    sys_management_route_list = []
+
+    sys_management_route_start_str = "sys management-route"
+    sys_management_route_end_str = find_end_str(data_all, sys_management_route_start_str, f5_config_dict['tail'])
+    sys_management_route_data_list = split_content_to_list_split(data_all, sys_management_route_start_str, sys_management_route_end_str)
+    for data in sys_management_route_data_list: 
+        management_route_data = trip_prefix(data, None)
+        name = replace_with_patterns(find_first_line(management_route_data), "{")
+        gateway, network = None, None
+        lines = management_route_data.splitlines()
+        for l in lines:
+            line = l.strip()
+            if line.startswith("gateway"):
+                gateway = trip_prefix(line, "gateway")
+            elif line.startswith("network"):
+                network = trip_prefix(line, "network")
+        sys_management_route_list.append(BIGIPSysManagementRoute(name, gateway, network))
+
+    return sys_management_route_list
 
 
 

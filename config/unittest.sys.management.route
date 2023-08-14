@@ -1,0 +1,10 @@
+sys management-route log {
+    gateway 192.168.21.190
+    network 192.168.121.14/32
+}
+sys management-route default {
+    description configured-statically
+    gateway 192.168.21.190
+    network default
+}
+sys ntp {

@@ -2,6 +2,7 @@
 
 import sys
 import re
+import ipaddress
 
 from f5bigip import configParse
 from f5bigip import tmsh
@@ -235,10 +236,6 @@ def spec_secure_acl_validation(data_all):
 
 
 
-
-def net_interface_not_disabled(text):
-    return "disabled" not in text
-
 def spec_interface_configuration_validation(data_all):
 
     interface_validation_list = []
@@ -298,53 +295,37 @@ def spec_interface_configuration_validation(data_all):
 def spec_route_configuration_validation(data_all):
 
     route_validation_list = []
-    mgmt_route_data = configParse.find_content_from_start_end(data_all, "sys management-route default", "sys ntp")
-    gateways = re.search(r'gateway\s+(\S+)', mgmt_route_data, re.I)
-    if gateways:
-        management_route = gateways.group()
-        management_route = "sys management-route default " + management_route
-        route_validation_list.append((20, "", SPEC_BASELINE_YES, [management_route], [], True))
+
+    management_route_list = configParse.sys_management_route(data_all)
+    isDefaultGateway = False
+    for i in management_route_list:
+        if i.name == "default":
+            isDefaultGateway = True
+
+    if isDefaultGateway:
+        route_validation_list.append((20, "", SPEC_BASELINE_YES, [], [], True))
     else:
-        route_validation_list.append((20, "", SPEC_BASELINE_NO, ["tmsh create sys  management-route default gateway xxx.xxx.xxx.xxx"], [], True))
+        tmsh_create_mgmt_route = tmsh.get('tmsh', 'create.sys.management-route').replace("${sys.management-route.gateway}", "x.x.x.x")
+        tmsh_delete_mgmt_route = tmsh.get('tmsh', 'delete.sys.management-route')
+        route_validation_list.append((20, "", SPEC_BASELINE_NO, [tmsh_create_mgmt_route], [tmsh_delete_mgmt_route], True))
 
-    net_self_all = []
-    net_self_data = configParse.find_content_from_start_end(data_all, "net self", "net self-allow")
-    net_self_list = net_self_data.split("net self")
-    for i in net_self_list:
-        net_self_results = re.search(r'address\s+(\S+)', i, re.I)
-        if net_self_results:
-            net_self_raw = net_self_results.group()
-            net_self = net_self_raw.lstrip("address").strip()
-            net_self_all.append(net_self)
-
-    network_objects = []
-    for i in net_self_all:
-        cidr = ipaddress.ip_network(i, False)
-        network_objects.append(cidr)
-
-    unique_networks = set(network_objects)
-
-    net_route_all = []
-    net_route_data = configParse.find_content_from_start_end(data_all, "net route", "net route-domain")
-    net_route_list = net_route_data.split("net route")
-    for i in net_route_list:
-        results = re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}\b|\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b", i)
-        if(len(results) > 0):
-            net_route_all.append(results[0])
-
-    if len(net_route_all) == 0:
-        route_validation_list.append((21, SPEC_ROUTE_DEFAULT_GATEWAY, SPEC_BASELINE_NO, ["tmsh create net route default gw xxx.xxx.xxx.xxx"], [], True))
-    
     invalid_route_list = []
-    for ip in net_route_all:
-        ip_addr = ipaddress.ip_address(ip)
-        if not any(ip_addr in network for network in unique_networks):
-            invalid_route_list.append(ip)
+    net_self_list = configParse.form_self_list(configParse.net_self(data_all))
+    net_route_list = configParse.net_route(data_all) 
+    if len(net_route_list) <= 0:
+        tmsh_create_route = tmsh.get('tmsh', 'create.net.route').replace("${net.route.ip}", "x.x.x.x")
+        tmsh_delete_route = tmsh.get('tmsh', 'delete.net.route')
+        route_validation_list.append((21, SPEC_ROUTE_DEFAULT_GATEWAY, SPEC_BASELINE_NO, [tmsh_create_route], [tmsh_delete_route], True))
+
+    for i in net_route_list:
+        ip_addr = ipaddress.ip_address(i.gw)
+        if not any(ip_addr in network for network in net_self_list):
+            invalid_route_list.append(ip_addr)
 
     if len(invalid_route_list) > 0:
-        route_validation_list.append((21, SPEC_ROUTE_DEFAULT_GATEWAY_NEXT_HOP, SPEC_BASELINE_NO, invalid_route_list, [], True))
+        route_validation_list.append((21, SPEC_ROUTE_DEFAULT_GATEWAY_NEXT_HOP, SPEC_BASELINE_NO, [], [], True)) 
     else:
-        route_validation_list.append((21, "", SPEC_BASELINE_YES, net_route_all, [], True))
+        route_validation_list.append((21, "", SPEC_BASELINE_YES, [], [], True))
 
     return route_validation_list
 
@@ -756,13 +737,13 @@ spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, device_
 spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, device_info[0], device_info[1], device_info[2], bigip_running_config))
 
 spec_validation_list.append(SpecInterfaceConfiguration(SPEC_ITEM_INTERFACES_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
-#spec_validation_list.append(SpecRouteConfiguration(SPEC_ITEM_INEXROUTER_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
-#spec_validation_list.append(SpecHAConfiguration(SPEC_ITEM_HASETTINGS_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
-#spec_validation_list.append(SpecFailoverSetting(SPEC_ITEM_FAILOVERS_CHECK, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecRouteConfiguration(SPEC_ITEM_INEXROUTER_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecHAConfiguration(SPEC_ITEM_HASETTINGS_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecFailoverSetting(SPEC_ITEM_FAILOVERS_CHECK, device_info[0], device_info[1], device_info[2], bigip_running_config))
 
-#spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECTIONS, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
-#spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
-#spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECTIONS, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
 
 for spec in spec_validation_list:
     spec.write_to_excel()

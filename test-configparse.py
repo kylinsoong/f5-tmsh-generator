@@ -31,45 +31,10 @@ running_config = load_bigip_running_config(fileconfig)
 #results = configParse.net_self(running_config)
 #results = configParse.net_vlan(running_config)
 
-
-#print(len(results))
-
+#results = configParse.sys_management_route(running_config)
 #for i in results:
-#    print(i.name, i.fwd_mode, i.if_index, i.interfaces[0].name, i.interfaces[0].tag_mode, i.interfaces[0].tagged, i.sflow_poll_interval_global, i.sflow_sampling_rate_global, i.tag)
-    #if "traffic-group-1" == i.trafficgroup:
-    #print(i.name, i.address, i.allowservice, i.floating, i.trafficgroup, i.vlan, "---", i.floating)
-    #print(i.name, i.autosync, i.devices, i.fullloadonsync, i.networkfailover, i.type)
-    #print(i.configsync_ip, i.failover_state, i.hostname, i.management_ip, i.self_device, i.time_zone, i.unicast_address, i.unicast_port, i.version)
+#    print(i.name, i.gateway, i.network)
 
-#print(configParse.find_ip_from_line("2001::125.http"))
-
-#print(configParse.find_end_str(configParse.split_data_all(running_config)[1], "ltm virtual", configParse.f5_config_dict['ltm']))
-
-#sys_sshd = configParse.sys_sshd(running_config)
-#sys_httpd = configParse.sys_httpd(running_config)
-#ntp = configParse.sys_ntp(running_config)
-#print(sys_sshd, sys_sshd.allow, len(sys_sshd.allow), sys_sshd.inactivity_timeout)
-#print(sys_httpd, sys_httpd.allow, len(sys_httpd.allow), sys_httpd.auth_pam_idle_timeout)
-#print(ntp, ntp.servers, len(ntp.servers), ntp.timezone)
-#snmp = configParse.sys_snmp(running_config)
-#print(snmp.agent_addresses)
-#print(snmp.allowed_addresses)
-#for i in snmp.communities:
-#    print(i.community, i.community_name, i.oid_subset, i.source)
-#for i in snmp.disk_monitors:
-#    print(i.disk_monitor, i.minspace, i.path)
-#for i in snmp.process_monitors:
-#    print(i.process_monitor, i.max_processes, i.process)
-#for i in snmp.traps:
-#    print(i.trap, i.auth_password_encrypted, i.community, i.host, i.network, i.port, i.privacy_password_encrypted)
-#syslog = configParse.sys_syslog(running_config)
-#for i in syslog.remote_servers:
-#    print(i.remote_server, i.host, i.local_ip)
-
-#net_trunk_list = configParse.net_trunk(running_config)
-#for i in net_trunk_list:
-#    print(i.name, i.bandwidth, i.interfaces, i.mac_address, i.media)
-
-net_interfces_list = configParse.net_interface(running_config)
-for i in net_interfces_list:
-    print(i.name, i.disabled, i.mac_address, i.media_active, i.mtu, i.serial, i.vendor)
+results = configParse.net_route(running_config)
+for i in results:
+    print(i.name, i.gw, i.network)

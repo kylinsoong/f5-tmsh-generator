@@ -1,0 +1,9 @@
+net route ZiZhuYinHang {
+    gw 192.168.26.30
+    network 192.168.4.166/32
+}
+net route default_gw {
+    gw 192.168.88.62
+    network default
+}
+net route-domain

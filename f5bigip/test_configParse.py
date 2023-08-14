@@ -632,6 +632,32 @@ class TestConfigParse(unittest.TestCase):
         self.assertEqual(len(i.interfaces), 4)
         self.assertTrue("1.1" in i.interfaces and "1.2" in i.interfaces and "1.3" in i.interfaces and "1.4" in i.interfaces)
 
+    def test_sys_management_route(self):
+        data = load_config_data("unittest.sys.management.route")
+        management_route_list = sys_management_route(data)
+        self.assertEqual(len(management_route_list), 2)
+        name_list, gateway_list, network_list  = [], [], []
+        for i in management_route_list:
+            name_list.append(i.name)
+            gateway_list.append(i.gateway)
+            network_list.append(i.network)
+        self.assertTrue("log" in name_list and "default" in name_list)
+        self.assertTrue("192.168.21.190" in gateway_list)
+        self.assertTrue("192.168.121.14/32" in network_list and "default" in network_list)
+
+    def test_net_route(self):
+        data = load_config_data("unittest.net.route")
+        net_route_list = net_route(data) 
+        self.assertEqual(len(net_route_list), 2)
+        name_list, gateway_list, network_list  = [], [], []
+        for i in net_route_list:
+            name_list.append(i.name)
+            gateway_list.append(i.gw)
+            network_list.append(i.network)
+        self.assertTrue("ZiZhuYinHang" in name_list and "default_gw" in name_list)
+        self.assertTrue("192.168.26.30" in gateway_list and "192.168.88.62" in gateway_list)
+        self.assertTrue("192.168.4.166/32" in network_list and "default" in network_list)
+
 
 if __name__ == '__main__':
     unittest.main()
