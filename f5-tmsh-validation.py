@@ -122,27 +122,31 @@ def spec_login_methods_validation(data_all):
 
 def spec_ntp_settings_validation(data_all):
     ntp_validation_list = []
-    ntp_data_start = re.search("sys ntp", data_all,re.I).start()
-    ntp_data_end = re.search("sys outbound-smtp", data_all[ntp_data_start:],re.I).start()
-    ntp_data = data_all[ntp_data_start:][:ntp_data_end]
-    timezone_line = re.search(r'timezone\s+(\S+)', ntp_data, re.I).group()
-    timezone = timezone_line.lstrip("timezone").strip()
+    ntp = configParse.sys_ntp(data_all)
     timezone_validation_note = ""
     timezone_validation_spec = SPEC_BASELINE_YES
     timezone_validation_tmsh = []
     timezone_validation_rollback_tmsh = []
-    if timezone != "Asia/Shanghai" :
+    if ntp.timezone != "Asia/Shanghai" :
         timezone_validation_note = SPEC_NTP_SETTINGS_TIMEZONE_WRONG
         timezone_validation_spec = SPEC_BASELINE_NO
-        timezone_validation_tmsh.append("tmsh modify sys  ntp { timezone  Asia/Shanghai}")
-        timezone_validation_rollback_tmsh.append("tmsh modify sys  ntp { timezone  " + timezone + "}")
+        timezone_validation_tmsh.append(tmsh.get('tmsh', 'modify.sys.ntp').replace("${sys.ntp.timezone}", "Asia/Shanghai"))
+        timezone_validation_rollback_tmsh.append(tmsh.get('tmsh', 'modify.sys.ntp').replace("${sys.ntp.timezone}", ntp.timezone))
     ntp_validation_list.append((7, timezone_validation_note, timezone_validation_spec, timezone_validation_tmsh, False))
 
-    servers_start = re.search("servers", ntp_data,re.I).start()
-    servers_end = re.search("}", ntp_data[servers_start:],re.I).start()
-    servers = ntp_data[servers_start:][:servers_end]
-    servers = servers.replace("{ ", "")
-    ntp_validation_list.append((8, "", SPEC_BASELINE_YES, ["ntp " + servers], [], True))
+    servers_validation_note = ""
+    servers_validation_spec = SPEC_BASELINE_YES
+    servers_validation_tmsh = []
+    servers_validation_rollback_tmsh = []
+    if len(ntp.servers) < 2:
+        servers_validation_note = SPEC_NTP_SETTINGS_SERVERS_WRONG
+        servers_validation_spec = SPEC_BASELINE_NO
+        tmsh_ntp_add = tmsh.get('tmsh', 'modify.sys.ntp.add').replace("${sys.ntp.servers}", "x.x.x.x x.x.x.x")        
+        tmsh_ntp_del = tmsh.get('tmsh', 'modify.sys.ntp.del').replace("${sys.ntp.servers}", "x.x.x.x x.x.x.x")        
+        servers_validation_tmsh.append(tmsh_ntp_add)
+        servers_validation_rollback_tmsh.append(tmsh_ntp_del)
+    ntp_validation_list.append((8, servers_validation_note, servers_validation_spec, servers_validation_tmsh, servers_validation_rollback_tmsh, True))
+        
     return ntp_validation_list
 
 
@@ -736,6 +740,7 @@ SPEC_USER_MANAGEMENT_VIEW_NO_EXPECT_RIGHT = "view 用户权限不对"
 SPEC_LOGIN_METHODS_ALLOW_DEFAULT = "业务口 allow default"
 SPEC_LOGIN_METHODS_TIMEOUT_NO_12_MINS = "超时时间不是 12 分钟"
 SPEC_NTP_SETTINGS_TIMEZONE_WRONG = "时区设定非中国时区"
+SPEC_NTP_SETTINGS_SERVERS_WRONG = "时区服务器数量不足"
 SEPC_INTERFACE_HA_ON_BUSINESS_TRUNK = "HA 基于业务 trunk"
 SPEC_INTERFACE_UNUSED_UNDISABLED = "未被定义使用的物理端口没有disable"
 SPEC_ROUTE_DEFAULT_GATEWAY = "没有默认路由配置"
@@ -765,8 +770,8 @@ spec_validation_list = []
 
 #spec_validation_list.append(SpecUserManagement(SPEC_ITEM_USER_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
 #spec_validation_list.append(SpecLoginMethods(SPEC_ITEM_EXLOGIN_METHODS, device_info[0], device_info[1], device_info[2], bigip_running_config))
-spec_validation_list.append(SpecNTPSyncSetting(SPEC_ITEM_NTPSYN_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
-#spec_validation_list.append(SpecSNMPManagement(SPEC_ITEM_SNMP_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
+#spec_validation_list.append(SpecNTPSyncSetting(SPEC_ITEM_NTPSYN_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecSNMPManagement(SPEC_ITEM_SNMP_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
 #spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
 #spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, device_info[0], device_info[1], device_info[2], bigip_running_config))
 

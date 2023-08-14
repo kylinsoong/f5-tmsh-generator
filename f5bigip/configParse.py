@@ -148,6 +148,10 @@ class BIGIPSysHTTPD:
         self.allow = allow
         self.auth_pam_idle_timeout = auth_pam_idle_timeout
 
+class BIGIPSysNTP:
+    def __init__(self, servers, timezone):
+        self.servers = servers
+        self.timezone = timezone
 
 
 def auth_user(data_all):
@@ -640,6 +644,23 @@ def sys_httpd(data_all):
 
 
 
+def sys_ntp(data_all):
+
+    sys_ntp_start_str = "sys ntp"
+    sys_ntp_end_str = find_end_str(data_all, sys_ntp_start_str, f5_config_dict['tail'])
+    sys_ntp_data = find_content_from_start_end(data_all, sys_ntp_start_str, sys_ntp_end_str)
+    servers, timezone = [], None
+    lines = sys_ntp_data.splitlines()
+    for l in lines:
+        line = l.strip()
+        if line.startswith("servers"):
+            server_list = replace_with_patterns(trip_prefix(line, "servers"), ["{", "}"])
+            servers = split_to_list(server_list, " ")
+        elif line.startswith("timezone"):
+            timezone = trip_prefix(line, "timezone")
+
+    return BIGIPSysNTP(servers, timezone)
+
 def sys_sshd(data_all):
 
     sys_sshd_start_str = "sys sshd"
@@ -719,6 +740,11 @@ def find_port_from_line(line):
     if len(tcp_ports) > 0:
         return tcp_ports[0]
     return None
+
+
+def split_to_list(content, splits):
+    content = content.strip()
+    return content.split(splits)
 
 
 def split_destination(destination):

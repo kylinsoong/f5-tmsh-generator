@@ -581,6 +581,14 @@ class TestConfigParse(unittest.TestCase):
         self.assertEqual(sshd.inactivity_timeout, '600')
         self.assertTrue("192.168.1.11" in sshd.allow)
 
+    def test_sys_ntp(self):
+        data = load_config_data("unittest.sys.ntp")
+        ntp = sys_ntp(data)
+        self.assertEqual(ntp.timezone, 'Asia/Shanghai')
+        self.assertEqual(len(ntp.servers), 2)
+        self.assertTrue("192.168.100.3" in ntp.servers)
+        self.assertTrue("192.168.100.5" in ntp.servers)
+
 
 
 if __name__ == '__main__':

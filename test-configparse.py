@@ -45,7 +45,9 @@ running_config = load_bigip_running_config(fileconfig)
 
 #print(configParse.find_end_str(configParse.split_data_all(running_config)[1], "ltm virtual", configParse.f5_config_dict['ltm']))
 
-sys_sshd = configParse.sys_sshd(running_config)
-sys_httpd = configParse.sys_httpd(running_config)
-print(sys_sshd.allow, " - ", sys_sshd.inactivity_timeout)
-print(sys_httpd.allow, " - ", sys_httpd.auth_pam_idle_timeout)
+#sys_sshd = configParse.sys_sshd(running_config)
+#sys_httpd = configParse.sys_httpd(running_config)
+#print(sys_sshd.allow, " - ", sys_sshd.inactivity_timeout)
+#print(sys_httpd.allow, " - ", sys_httpd.auth_pam_idle_timeout)
+ntp = configParse.sys_ntp(running_config)
+print(ntp, ntp.servers, len(ntp.servers), ntp.timezone)
