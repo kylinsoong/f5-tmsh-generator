@@ -104,7 +104,7 @@ def spec_login_methods_validation(data_all):
     if sys_sshd.inactivity_timeout is not None and sys_sshd.inactivity_timeout != "720":
         timeout_validation_note = SPEC_LOGIN_METHODS_TIMEOUT_NO_12_MINS
         timeout_validation_spec = SPEC_BASELINE_NO
-        timeout_validation_tmsh.append(msh.get('tmsh', 'modify.sys.sshd').replace("${sys.sshd.timeout}", "720"))
+        timeout_validation_tmsh.append(tmsh.get('tmsh', 'modify.sys.sshd').replace("${sys.sshd.timeout}", "720"))
         timeout_validation_rollback_tmsh.append(tmsh.get('tmsh', 'modify.sys.sshd').replace("${sys.sshd.timeout}", sys_sshd.inactivity_timeout))
 
     sys_httpd = configParse.sys_httpd(data_all)
@@ -190,7 +190,7 @@ def spec_syslog_settings_validation(data_all):
         tmsh_syslog_del = tmsh.get('tmsh', 'modify.sys.syslog.del').replace("${sys.syslog.name}", "XX")
         syslog_validation_list.append((13, "", SPEC_BASELINE_NO, [tmsh_syslog_add], [tmsh_syslog_del], True))
 
-    syslog_validation_list.append((14, SPEC_SYSLOG_REMOTE_SERVER_NONE, SPEC_BASELINE_YES, ["tmsh  modify  sys  syslog  local6-from notice"], [], False))
+    syslog_validation_list.append((14, SPEC_SYSLOG_REMOTE_SERVER_NONE, SPEC_BASELINE_YES, [tmsh.get('tmsh', 'modify.sys.syslog.log.level')], [], False))
 
     return syslog_validation_list
 
@@ -240,64 +240,56 @@ def net_interface_not_disabled(text):
     return "disabled" not in text
 
 def spec_interface_configuration_validation(data_all):
+
     interface_validation_list = []
-    net_trunk_data = re.findall(r'net trunk\s+\S+',data_all, re.I)
-    net_trunk_list = []
-    for i in net_trunk_data:
-        net_trunk_list.append(i)
 
-    for i,num in zip(net_trunk_data,range(len(net_trunk_list))):
-        if num < len(net_trunk_list)-1:
-            data_start = re.search(i, data_all, re.I).start()
-            data_end = re.search(net_trunk_list[num+1], data_all[data_start:]).start()
-            data_detail = data_all[data_start:][:data_end]
-        else:
-            data_start = re.search(i, data_all, re.I).start()
-            data_end = re.search(r'net tunnels', data_all[data_start:]).start()
-            data_detail = data_all[data_start:][:data_end]
-
-        matches = re.search(r'net trunk\s+(\S+)', data_detail, re.I)
-        trunk_name = matches.group()
-        trunk_name = trunk_name[len("net trunk"):]
-        trunk_disable_tmsh = "tmsh modify  net  trunk " + trunk_name + " lacp disabled"
-
-        inter_data_start = re.search("interfaces", data_detail, re.I).start()
-        inter_data_end = re.search(r'}', data_detail[inter_data_start:]).start()
-        inter_data_detail = data_detail[inter_data_start:][:inter_data_end + 1]
-        inter_data_detail = trunk_name + " " + inter_data_detail
-
-        interface_validation_list.append((17, "", SPEC_BASELINE_YES, [inter_data_detail], [], False))
-
-        if "lacp enabled" in data_detail:
-            interface_validation_list.append((17, "", SPEC_BASELINE_NO, [trunk_disable_tmsh], [], False))
-
-    if len(interface_validation_list) <= 0:
-        interface_validation_list.append((17, "", SPEC_BASELINE_NO, ["tmsh create net trunk XXXX interfaces add { X.X }"], [], False))
-        interface_validation_list.append((18, "", SPEC_BASELINE_NO, ["tmsh create net trunk XXXX interfaces add { X.X }"], [], True))
+    net_trunk_list = configParse.net_trunk(data_all)
+    if len(net_trunk_list) <= 0:
+        tmsh_trunk_create = tmsh.get('tmsh', 'create.net.trunk').replace("${net.trunk.name}", "XX").replace("${net.trunk.interface}", "XX")   
+        tmsh_trunk_delete = tmsh.get('tmsh', 'delete.net.trunk').replace("${net.trunk.name}", "XX")
+        interface_validation_list.append((17, SPEC_INTERFACE_TRUNK_NONE, SPEC_BASELINE_NO, [tmsh_trunk_create], [tmsh_trunk_delete], False))
     else:
-        interface_validation_list.append((18, SEPC_INTERFACE_HA_ON_BUSINESS_TRUNK, SPEC_BASELINE_YES, [""], [], True))
+        tunk_interfaces_num_notes = ""
+        tunk_interfaces_num_spec = SPEC_BASELINE_YES
+        tunk_interfaces_num_tmsh_add = []
+        tunk_interfaces_num_tmsh_del = []
+        for i in net_trunk_list:
+            if len(i.interfaces) < 2:
+                tunk_interfaces_num_spec = SPEC_BASELINE_NO
+                tunk_interfaces_num_notes += SPEC_INTERFACE_TRUNK_SINGLE_INTERFACE
+                tmsh_tunk_add_interface = tmsh.get('tmsh', 'modify.net.trunk.interface.add').replace("${net.trunk.name}", i.name).replace("${net.trunk.interface}", "XX")
+                tmsh_tunk_del_interface = tmsh.get('tmsh', 'modify.net.trunk.interface.del').replace("${net.trunk.name}", i.name).replace("${net.trunk.interface}", "XX")
+                tunk_interfaces_num_tmsh_add.append(tmsh_tunk_add_interface)
+                tunk_interfaces_num_tmsh_del.append(tmsh_tunk_del_interface)
+            if i.lacp is not None and i.lacp == "enabled":
+                tunk_interfaces_num_spec = SPEC_BASELINE_NO
+                tunk_interfaces_num_notes += SPEC_INTERFACE_TRUNK_LACP
+                tmsh_tunk_lacp_disable = tmsh.get('tmsh', 'modify.net.trunk.lacp.disable').replace("${net.trunk.name}", i.name) 
+                tmsh_tunk_lacp_enabled = tmsh.get('tmsh', 'modify.net.trunk.lacp.enable').replace("${net.trunk.name}", i.name)
+                tunk_interfaces_num_tmsh_add.append(tmsh_tunk_lacp_disable)
+                tunk_interfaces_num_tmsh_del.append(tmsh_tunk_lacp_enabled)
+        interface_validation_list.append((17, tunk_interfaces_num_notes, tunk_interfaces_num_spec, tunk_interfaces_num_tmsh_add, tunk_interfaces_num_tmsh_del, False))
 
-    net_interface_unused = []
-    net_interface_data = configParse.find_content_from_start_end(data_all, "net interface", "net interface mgmt")
-    net_interface_list = net_interface_data.split("}")
-    for text in net_interface_list:
-        if "bundle-speed" not in text and "media-active" not in text:
-            net_interface_unused.append(text)
+    device_list = configParse.cm_device(data_all)
+    if len(device_list) > 1 and len(device_list[0].unicast_address) >= 2:
+        interface_validation_list.append((18, "", SPEC_BASELINE_YES, [], [], True))
+    else:
+        interface_validation_list.append((18, SEPC_INTERFACE_HA_TRUNK_SINGLE, SPEC_BASELINE_NO, [], [], True))
+
+    interface_disable_notes = ""
+    interface_disable_spec = SPEC_BASELINE_YES
+    interface_disable_tmsh, interface_disable_tmsh_rollback = [], []
+    net_interface_list = configParse.net_interface(data_all)
+    for i in net_interface_list:
+        if i.serial is not None and i.vendor is not None and i.disabled == False and i.media_active is None:
+            interface_disable_notes = SPEC_INTERFACE_UNUSED_UNDISABLED
+            interface_disable_spec = SPEC_BASELINE_NO
+            tmsh_inter_disable = tmsh.get('tmsh', 'modify.net.interface.disable').replace("${net.iterface.name}", i.name) 
+            tmsh_inter_enabled = tmsh.get('tmsh', 'modify.net.interface.enabled').replace("${net.iterface.name}", i.name) 
+            interface_disable_tmsh.append(tmsh_inter_disable)
+            interface_disable_tmsh_rollback.append(tmsh_inter_enabled)
     
-    net_interface_disable_list = []
-    net_interface_undisabled = list(filter(net_interface_not_disabled, net_interface_unused))
-    for text in net_interface_undisabled:
-        lines = text.strip().splitlines()
-        if len(lines) > 0:
-            net_interface = lines[0]
-            net_interface = net_interface.strip().rstrip("{").strip()
-            tmsh_disable_interface = "tmsh modify " + net_interface + " disabled"
-            net_interface_disable_list.append(tmsh_disable_interface)
-          
-    if len(net_interface_disable_list) > 0 :
-        interface_validation_list.append((19, SPEC_INTERFACE_UNUSED_UNDISABLED, SPEC_BASELINE_NO, net_interface_disable_list, [], False))
-    else:
-        interface_validation_list.append((19, "", SPEC_BASELINE_YES, [], [], False))
+    interface_validation_list.append((19, interface_disable_notes, interface_disable_spec, interface_disable_tmsh, interface_disable_tmsh_rollback, False))
 
     return interface_validation_list
 
@@ -726,7 +718,10 @@ SPEC_SECURE_ACL_ALLOWED_ADDR_NONE = "访问控制列表中允许登录的服务�
 SPEC_SNMP_COMMINITY_NOT_EXIST = "未配置只读SNMP community（psbc****）属性"
 SPEC_SNMP_TRAP_NOT_EXIST = "未配置 Trap 网管服务器"
 SPEC_SYSLOG_REMOTE_SERVER_NONE = "未配置SYSLOG服务器"
-SEPC_INTERFACE_HA_ON_BUSINESS_TRUNK = "HA 基于业务 trunk"
+SPEC_INTERFACE_TRUNK_NONE = "未配置 trunk"
+SPEC_INTERFACE_TRUNK_SINGLE_INTERFACE = "trunk绑定单链路接口 "
+SPEC_INTERFACE_TRUNK_LACP = "trunk 启用LACP "
+SEPC_INTERFACE_HA_TRUNK_SINGLE = "HA 线缆不满足至少两条且两条HA线配置及状态均正常"
 SPEC_INTERFACE_UNUSED_UNDISABLED = "未被定义使用的物理端口没有disable"
 SPEC_ROUTE_DEFAULT_GATEWAY = "没有默认路由配置"
 SPEC_ROUTE_DEFAULT_GATEWAY_NEXT_HOP = "路由下一跳不是对外exernal vlan在交换机上的网关地址"
@@ -754,13 +749,13 @@ vs_list_all = configParse.ltm_virtual(bigip_running_config)
 spec_validation_list = []
 
 spec_validation_list.append(SpecUserManagement(SPEC_ITEM_USER_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
-#spec_validation_list.append(SpecLoginMethods(SPEC_ITEM_EXLOGIN_METHODS, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecLoginMethods(SPEC_ITEM_EXLOGIN_METHODS, device_info[0], device_info[1], device_info[2], bigip_running_config))
 spec_validation_list.append(SpecNTPSyncSetting(SPEC_ITEM_NTPSYN_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
 spec_validation_list.append(SpecSNMPManagement(SPEC_ITEM_SNMP_MANAGEMENT, device_info[0], device_info[1], device_info[2], bigip_running_config))
 spec_validation_list.append(SpecSyslogSetting(SPEC_ITEM_SYSLOG_SETTINGS, device_info[0], device_info[1], device_info[2], bigip_running_config))
 spec_validation_list.append(SpecSecureACLControl(SPEC_ITEM_SEC_ACL_CONTROL, device_info[0], device_info[1], device_info[2], bigip_running_config))
 
-#spec_validation_list.append(SpecInterfaceConfiguration(SPEC_ITEM_INTERFACES_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
+spec_validation_list.append(SpecInterfaceConfiguration(SPEC_ITEM_INTERFACES_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
 #spec_validation_list.append(SpecRouteConfiguration(SPEC_ITEM_INEXROUTER_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
 #spec_validation_list.append(SpecHAConfiguration(SPEC_ITEM_HASETTINGS_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config))
 #spec_validation_list.append(SpecFailoverSetting(SPEC_ITEM_FAILOVERS_CHECK, device_info[0], device_info[1], device_info[2], bigip_running_config))

@@ -619,6 +619,19 @@ class TestConfigParse(unittest.TestCase):
         self.assertTrue("192.168.16.40" in host_list and "192.168.121.14" in host_list)
         self.assertTrue("192.168.21.143" in loip_list and "192.168.21.144" in loip_list)
 
+    def test_net_trunk(self):
+        data = load_config_data("unittest.net.trunk")
+        net_trunk_list = net_trunk(data)
+        self.assertEqual(len(net_trunk_list), 1)
+        i = net_trunk_list[0]
+        self.assertEqual(i.name, "trunk_01")
+        self.assertEqual(i.bandwidth, "40000")
+        self.assertEqual(i.mac_address, "00:94:a1:c4:53:2e")
+        self.assertEqual(i.media, "10000")
+        self.assertEqual(i.lacp, "enabled")
+        self.assertEqual(len(i.interfaces), 4)
+        self.assertTrue("1.1" in i.interfaces and "1.2" in i.interfaces and "1.3" in i.interfaces and "1.4" in i.interfaces)
+
 
 if __name__ == '__main__':
     unittest.main()

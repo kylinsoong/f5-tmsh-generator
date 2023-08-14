@@ -62,6 +62,14 @@ running_config = load_bigip_running_config(fileconfig)
 #    print(i.process_monitor, i.max_processes, i.process)
 #for i in snmp.traps:
 #    print(i.trap, i.auth_password_encrypted, i.community, i.host, i.network, i.port, i.privacy_password_encrypted)
-syslog = configParse.sys_syslog(running_config)
-for i in syslog.remote_servers:
-    print(i.remote_server, i.host, i.local_ip)
+#syslog = configParse.sys_syslog(running_config)
+#for i in syslog.remote_servers:
+#    print(i.remote_server, i.host, i.local_ip)
+
+#net_trunk_list = configParse.net_trunk(running_config)
+#for i in net_trunk_list:
+#    print(i.name, i.bandwidth, i.interfaces, i.mac_address, i.media)
+
+net_interfces_list = configParse.net_interface(running_config)
+for i in net_interfces_list:
+    print(i.name, i.disabled, i.mac_address, i.media_active, i.mtu, i.serial, i.vendor)

@@ -56,6 +56,25 @@ class BIGIPNetL2:
         self.sflow_sampling_rate_global = sflow_sampling_rate_global 
         self.tag = tag
 
+class BIGIPNetL2Trunk:
+    def __init__(self, name, bandwidth, interfaces, mac_address, media, lacp):
+        self.name = name
+        self.bandwidth = bandwidth
+        self.interfaces = interfaces
+        self.mac_address = mac_address
+        self.media = media
+        self.lacp = lacp
+
+class BIGIPNetL2InterfaceDetail:
+    def __init__(self, name, disabled, mac_address, media_active, mtu, serial, vendor):
+        self.name = name
+        self.disabled = disabled
+        self.mac_address = mac_address
+        self.media_active = media_active
+        self.mtu = mtu
+        self.serial = serial
+        self.vendor = vendor
+
 class BIGIPNetL2Interface:
     def __init__(self, name, tag_mode, tagged):
         self.name = name
@@ -585,6 +604,37 @@ def ltm_virtual(data_all):
 
 
 
+def net_interface(data_all):
+
+    net_interface_list = []
+   
+    net_interface_start_str = "net interface"
+    net_interface_end_str = find_end_str(data_all, net_interface_start_str, f5_config_dict['net'])
+    net_interface_data_list = split_content_to_list_split(data_all, net_interface_start_str, net_interface_end_str)
+    for data in net_interface_data_list:
+        interface_data = trip_prefix(data, None)
+        name = replace_with_patterns(find_first_line(interface_data), "{")        
+        disabled, mac_address, media_active, mtu, serial, vendor = False, None, None, None, None, None
+        lines = interface_data.splitlines()
+        for l in lines:
+            line = l.strip() 
+            if line.startswith("disabled"):
+                disabled = True
+            elif line.startswith("mac-address"):
+                mac_address = trip_prefix(line, "mac-address")
+            elif line.startswith("media-active"):
+                media_active = trip_prefix(line, "media-active")  
+            elif line.startswith("mtu"):
+                mtu = trip_prefix(line, "mtu")  
+            elif line.startswith("serial"):
+                serial = trip_prefix(line, "serial")  
+            elif line.startswith("vendor "):
+                vendor = trip_prefix(line, "vendor")
+        net_interface_list.append(BIGIPNetL2InterfaceDetail(name, disabled, mac_address, media_active, mtu, serial, vendor))
+
+    return net_interface_list      
+        
+
 
 def net_self(data_all):
 
@@ -613,6 +663,39 @@ def net_self(data_all):
     return net_self_list
 
 
+def net_trunk(data_all):
+
+    net_trunk_list = []
+
+    net_trunk_start_str = "net trunk"
+    net_trunk_end_str = find_end_str(data_all, net_trunk_start_str, f5_config_dict['net'])
+    net_trunk_data_list = split_content_to_list_split(data_all, net_trunk_start_str, net_trunk_end_str)
+    for data in net_trunk_data_list:
+        trunk_data = trip_prefix(data, None)
+        name = replace_with_patterns(find_first_line(trunk_data), "{")
+        bandwidth, interfaces, mac_address, media, lacp = None, [], None, None, None
+        lines = trunk_data.splitlines()
+        isInterfaceStart = False
+        for l in lines:
+            line = l.strip()
+            if line.startswith("bandwidth"):
+                bandwidth = trip_prefix(line, "bandwidth")
+            elif line.startswith("interfaces"):
+                isInterfaceStart = True
+            elif isInterfaceStart and "}" in line:
+                isInterfaceStart = False
+            elif isInterfaceStart and len(line) >= 3:
+                interfaces.append(line)
+            elif line.startswith("mac-address"):
+                mac_address = trip_prefix(line, "mac-address")
+            elif line.startswith("media"):
+                media = trip_prefix(line, "media")
+            elif line.startswith("lacp"):
+                lacp = trip_prefix(line, "lacp")
+
+        net_trunk_list.append(BIGIPNetL2Trunk(name, bandwidth, interfaces, mac_address, media, lacp))
+
+    return net_trunk_list
 
 
 def net_vlan(data_all):
