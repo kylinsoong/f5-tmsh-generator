@@ -31,7 +31,7 @@ class TestConfigParse(unittest.TestCase):
 
     def test_f5_config_dict(self):
         self.assertEqual(len(f5_config_dict['header']), 14)
-        self.assertEqual(len(f5_config_dict['ltm']), 17)
+        self.assertEqual(len(f5_config_dict['ltm']), 31)
         self.assertEqual(len(f5_config_dict['net']), 18)
         self.assertEqual(len(f5_config_dict['tail']), 35)
 
@@ -657,6 +657,52 @@ class TestConfigParse(unittest.TestCase):
         self.assertTrue("ZiZhuYinHang" in name_list and "default_gw" in name_list)
         self.assertTrue("192.168.26.30" in gateway_list and "192.168.88.62" in gateway_list)
         self.assertTrue("192.168.4.166/32" in network_list and "default" in network_list)
+
+    def test_ltm_profile_web_acceleration(self):
+        data = load_config_data("unittest.ltm.profile.webacceleration")
+        profiles_list = ltm_profile_web_acceleration(data)
+        self.assertEqual(len(profiles_list), 2)
+        name_list = []
+        for i in profiles_list:
+            name_list.append(i.name)
+        self.assertTrue("my-web-acceleration" in name_list and "test-web-acceleration" in name_list)
+
+    def test_ltm_monitor_http(self):
+        data = load_config_data("unittest.ltm.monitor")
+        monitors_list = ltm_monitor_http(data)
+        self.assertEqual(len(monitors_list), 1)
+        name_list = []
+        for i in monitors_list:
+            name_list.append(i.name)
+            self.assertEqual(i.type, "http")
+            self.assertEqual(i.interval, "5")
+            self.assertEqual(i.timeout, "16")
+        self.assertTrue("my_http_monitor" in name_list)
+
+    def test_ltm_monitor_tcp(self):
+        data = load_config_data("unittest.ltm.monitor")
+        monitors_list = ltm_monitor_tcp(data)
+        self.assertEqual(len(monitors_list), 2)
+        name_list = []
+        for i in monitors_list:
+            name_list.append(i.name)
+            self.assertEqual(i.type, "tcp")
+            self.assertEqual(i.interval, "5")
+            self.assertEqual(i.timeout, "16")
+        self.assertTrue("custome_tcp" in name_list and "my_tcp" in name_list)
+
+    def test_ltm_monitor_udp(self):
+        data = load_config_data("unittest.ltm.monitor")
+        monitors_list = ltm_monitor_udp(data)
+        self.assertEqual(len(monitors_list), 2)
+        name_list = []
+        for i in monitors_list:
+            name_list.append(i.name)
+            self.assertEqual(i.type, "udp")
+            self.assertEqual(i.interval, "5")
+            self.assertEqual(i.timeout, "16")
+        self.assertTrue("custom_udp" in name_list and "my_udp" in name_list)
+
 
 
 if __name__ == '__main__':

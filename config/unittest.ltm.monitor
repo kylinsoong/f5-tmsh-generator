@@ -1,0 +1,61 @@
+ltm monitor http my_http_monitor {
+    adaptive disabled
+    defaults-from http
+    destination *:*
+    interval 5
+    ip-dscp 0
+    recv none
+    recv-disable none
+    send "GET /\r\n"
+    time-until-up 0
+    timeout 16
+}
+ltm monitor tcp custome_tcp {
+    adaptive disabled
+    defaults-from tcp
+    destination *:*
+    interval 5
+    ip-dscp 0
+    recv none
+    recv-disable none
+    send none
+    time-until-up 0
+    timeout 16
+}
+ltm monitor tcp my_tcp {
+    adaptive disabled
+    defaults-from tcp
+    destination *:*
+    interval 5
+    ip-dscp 0
+    recv none
+    recv-disable none
+    send none
+    time-until-up 0
+    timeout 16
+}
+ltm monitor udp custom_udp {
+    adaptive disabled
+    debug no
+    defaults-from udp
+    destination *:*
+    interval 5
+    recv none
+    recv-disable none
+    send "default send string"
+    time-until-up 0
+    timeout 16
+}
+ltm monitor udp my_udp {
+    adaptive disabled
+    debug no
+    defaults-from udp
+    destination *:*
+    interval 5
+    recv none
+    recv-disable none
+    send "default send string"
+    time-until-up 0
+    timeout 16
+}
+ltm node 10.10.10.1

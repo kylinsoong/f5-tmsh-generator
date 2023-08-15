@@ -127,6 +127,26 @@ class BIGIPNode:
         self.session = session
         self.state = state
 
+class BIGIPMonitor:
+    def __init__(self, type, name, interval, timeout):
+        self.type = type
+        self.name = name
+        self.interval = interval
+        self.timeout = timeout
+
+class BIGIPMonitorHTTP(BIGIPMonitor):
+    def __init__(self, type, name, interval, timeout):
+        super().__init__(type, name, interval, timeout)
+
+class BIGIPMonitorTCP(BIGIPMonitor):
+    def __init__(self, type, name, interval, timeout):
+        super().__init__(type, name, interval, timeout)
+
+class BIGIPMonitorUDP(BIGIPMonitor):
+    def __init__(self, type, name, interval, timeout):
+        super().__init__(type, name, interval, timeout)
+
+
 class BIGIPProfile:
     def __init__(self, name, parent):
         self.name = name
@@ -143,6 +163,10 @@ class BIGIPProfileHttp(BIGIPProfile):
         super().__init__(name, parent)
         self.xff = xff
 
+class BIGIPProfileWebAcceleration(BIGIPProfile):
+    def __init__(self, name, parent):
+        super().__init__(name, parent)
+
 class BIGIPPersistSourceAddr:
     def __init__(self, name, timeout, default_from):
         self.name = name
@@ -157,6 +181,7 @@ class BIGIPPersistCookie:
         self.default_from = default_from 
         self.expiration = expiration 
         self.method = method 
+
 
 class BIGIPSnatPool:
     def __init__(self, name, members):
@@ -330,6 +355,64 @@ def cm_device_group(data_all):
 
 
 
+def ltm_monitor_http(data_all):
+    monitor_http_list = []
+    results = split_content_to_list_pattern(data_all, r'ltm monitor http\s+\S+', "}")
+    for i in results:
+        monitor = i[len("ltm monitor http"):].replace("{", "").replace("}", "")
+        lines = monitor.splitlines()
+        monitor_name = lines[0].strip()
+        monitor_interval = None
+        monitor_timeout = None
+        for l in lines:
+            line = l.strip()
+            if line.startswith("interval"):
+                monitor_interval = trip_prefix(line, "interval")
+            elif line.startswith("timeout"):
+                monitor_timeout = trip_prefix(line, "timeout")
+        monitor_http_list.append(BIGIPMonitorHTTP("http", monitor_name, monitor_interval, monitor_timeout))
+    return monitor_http_list
+
+
+def ltm_monitor_tcp(data_all):
+    monitor_tcp_list = []
+    results = split_content_to_list_pattern(data_all, r'ltm monitor tcp\s+\S+', "}")
+    for i in results:
+        monitor = i[len("ltm monitor tcp"):].replace("{", "").replace("}", "")
+        lines = monitor.splitlines()
+        monitor_name = lines[0].strip()
+        monitor_interval = None
+        monitor_timeout = None
+        for l in lines:
+            line = l.strip()
+            if line.startswith("interval"):
+                monitor_interval = trip_prefix(line, "interval")
+            elif line.startswith("timeout"):
+                monitor_timeout = trip_prefix(line, "timeout")
+        monitor_tcp_list.append(BIGIPMonitorTCP("tcp", monitor_name, monitor_interval, monitor_timeout))
+    return monitor_tcp_list
+
+
+def ltm_monitor_udp(data_all):
+    monitor_udp_list = []
+    results = split_content_to_list_pattern(data_all, r'ltm monitor udp\s+\S+', "}")
+    for i in results:
+        monitor = i[len("ltm monitor udp"):].replace("{", "").replace("}", "")
+        lines = monitor.splitlines()
+        monitor_name = lines[0].strip()
+        monitor_interval = None
+        monitor_timeout = None
+        for l in lines:
+            line = l.strip()
+            if line.startswith("interval"):
+                monitor_interval = trip_prefix(line, "interval")
+            elif line.startswith("timeout"):
+                monitor_timeout = trip_prefix(line, "timeout")
+        monitor_udp_list.append(BIGIPMonitorUDP("udp", monitor_name, monitor_interval, monitor_timeout))
+    return monitor_udp_list
+
+
+
 def ltm_node(data_all):
 
     node_list = []
@@ -494,6 +577,7 @@ def ltm_profile_http(data_all):
         http_profile_results.append(BIGIPProfileHttp(profile_name, profile_parent, profile_xff))
     return http_profile_results
 
+
 def ltm_profile_fastl4(data_all):
     fastl4_profile_results = []
     results = split_content_to_list_pattern(data_all, r'ltm profile fastl4\s+\S+', "}")
@@ -515,6 +599,21 @@ def ltm_profile_fastl4(data_all):
         fastl4_profile_results.append(BIGIPProfileFastl4(profile_name, profile_parent, profile_idle_timeout, profile_handshake_timeout))
     return fastl4_profile_results
 
+
+def ltm_profile_web_acceleration(data_all):
+    web_acceleration_results = []
+    results = split_content_to_list_pattern(data_all, r'ltm profile web-acceleration\s+\S+', "}")
+    for i in results:
+        profile = i[len("ltm profile web-acceleration"):].replace("{", "").replace("}", "")
+        lines = profile.splitlines()
+        profile_name = lines[0].strip()
+        profile_parent = None
+        for l in lines:
+            line = l.strip()
+            if line.startswith("defaults-from"):
+                profile_parent = trip_prefix(line, "defaults-from")
+        web_acceleration_results.append(BIGIPProfileWebAcceleration(profile_name, profile_parent))
+    return web_acceleration_results
 
 
 def ltm_snatpool(data_all):
@@ -1668,7 +1767,7 @@ def load_f5_services_as_map():
 f5_services_dict = load_f5_services_as_map() 
 f5_config_dict = {
     "header": ["auth password-policy", "auth remote-role", "auth remote-user", "auth source", "auth user", "cli admin-partitions", "cli global-settings", "cli preference", "cm cert", "cm device", "cm device-group", "cm key", "cm traffic-group", "cm trust-domain"],
-    "ltm": ["ltm data-group", "ltm default-node-monitor", "ltm dns", "ltm global-settings", "ltm monitor", "ltm node", "ltm persistence cookie", "ltm persistence", "ltm persistence source-addr", "ltm policy", "ltm pool", "ltm profile", "ltm rule", "ltm snat-translation", "ltm snatpool", "ltm tacdb", "ltm virtual"],
+    "ltm": ["ltm data-group", "ltm default-node-monitor", "ltm dns", "ltm global-settings", "ltm monitor", "ltm monitor http", "ltm monitor tcp", "ltm monitor udp", "ltm node", "ltm persistence", "ltm persistence cookie", "ltm persistence global-settings", "ltm persistence source-addr", "ltm policy", "ltm pool", "ltm profile", "ltm profile client-ssl", "ltm profile dns", "ltm profile fastl4", "ltm profile http", "ltm profile http-compression", "ltm profile one-connect", "ltm profile server-ssl", "ltm profile tcp", "ltm profile udp", "ltm profile web-acceleration", "ltm rule", "ltm snat-translation", "ltm snatpool", "ltm tacdb", "ltm virtual"],
     "net": ["net address-list", "net cos", "net dag-globals", "net dns-resolver", "net fdb", "net interface", "net ipsec ike-daemon", "net lldp-globals", "net multicast-globals", "net packet-filter-trusted", "net route", "net route-domain", "net self", "net self-allow", "net stp-globals", "net trunk", "net tunnels", "net vlan"],
     "tail": ["sys config-sync", "sys aom", "sys autoscale-group", "sys daemon-log-settings", "sys datastor", "sys diags", "sys disk", "sys dns", "sys failover", "sys dynad key", "sys dynad", "sys feature-module", "sys file", "sys folder", "sys fpga", "sys global-settings", "sys httpd", "sys icontrol-soap", "sys log-rotate", "sys management-dhcp", "sys management-ip", "sys management-ovsdb", "sys management-route", "sys ntp", "sys outbound-smtp", "sys provision", "sys scriptd", "sys sflow", "sys snmp", "sys software", "sys sshd", "sys state-mirroring", "sys syslog", "sys turboflex", "sys url-db"]
 }

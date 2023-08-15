@@ -1,0 +1,10 @@
+ltm profile web-acceleration my-web-acceleration {
+    app-service none
+    cache-max-age 120
+}
+ltm profile web-acceleration test-web-acceleration {
+    app-service none
+    cache-size 120mb
+    defaults-from webacceleration
+}
+ltm rule AFM_iruls 

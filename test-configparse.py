@@ -35,6 +35,19 @@ running_config = load_bigip_running_config(fileconfig)
 #for i in results:
 #    print(i.name, i.gateway, i.network)
 
-results = configParse.net_route(running_config)
-for i in results:
-    print(i.name, i.gw, i.network)
+#results = configParse.ltm_profile_web_acceleration(running_config)
+#for i in results:
+#    print(i.name, len(i.name), i.parent)
+
+results1 = configParse.ltm_monitor_http(running_config)
+results2 = configParse.ltm_monitor_tcp(running_config)
+results3 = configParse.ltm_monitor_udp(running_config)
+
+for i in results1:
+    print(i.type, i.name, i.interval, i.timeout)
+
+for i in results2:
+    print(i.type, i.name, i.interval, i.timeout)
+
+for i in results3:
+    print(i.type, i.name, i.interval, i.timeout)
