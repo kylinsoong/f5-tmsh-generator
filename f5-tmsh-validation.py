@@ -571,7 +571,49 @@ def sepc_monitor_configuration_validation(data_all, vs_list):
 
     monitor_validation_list = []
 
+    isMonitorTCPTemplateExist = False
+    tcp_monitors_list = configParse.ltm_monitor_tcp(data_all)
+    tcp_monitors_notes = ""
+    tcp_monitors_spec = SPEC_BASELINE_YES
+    tcp_monitors_tmsh, tcp_monitors_tmsh_rollback = [], []
+    for i in tcp_monitors_list:
+        if i.name == "monitor_tcp_5s":
+            isMonitorTCPTemplateExist = True
+        if i.timeout != "16" or i.interval != "5":
+            tcp_monitors_spec = SPEC_BASELINE_NO
+            tcp_monitors_notes = SPEC_APP_MONITOR_INTERVAL_TIMEOUT
+            tmsh_monitor = tmsh.get('tmsh', 'modify.ltm.monitor').replace("${replace.monitor.type}", "tcp").replace("${replace.monitor.name}", i.name).replace("${replace.monitor.interval}", "5").replace("${replace.monitor.timeout}", "16")
+            tmsh_monitor_rollback = tmsh.get('tmsh', 'modify.ltm.monitor').replace("${replace.monitor.type}", "tcp").replace("${replace.monitor.name}", i.name).replace("${replace.monitor.interval}", i.interval).replace("${replace.monitor.timeout}", i.timeout)
+            tcp_monitors_tmsh.append(tmsh_monitor)
+            tcp_monitors_tmsh_rollback.append(tmsh_monitor_rollback)
 
+    if isMonitorTCPTemplateExist == False:
+        tcp_monitors_spec = SPEC_BASELINE_NO
+        tcp_monitors_notes += SPEC_APP_MONITOR_TCP
+        tmsh_monitor_create = tmsh.get('tmsh', 'create.ltm.monitor').replace("${replace.monitor.type}", "tcp").replace("${replace.monitor.name}", "monitor_tcp_5s").replace("${replace.monitor.interval}", "5").replace("${replace.monitor.timeout}", "16")
+        tmsh_monitor_delete = tmsh.get('tmsh', 'delete.ltm.monitor').replace("${replace.monitor.type}", "tcp").replace("${replace.monitor.name}", "monitor_tcp_5s")
+        tcp_monitors_tmsh.append(tmsh_monitor_create)
+        tcp_monitors_tmsh_rollback.append(tmsh_monitor_delete)
+
+    udp_monitors_list = configParse.ltm_monitor_udp(data_all)
+    for i in udp_monitors_list:
+        if i.timeout != "16" or i.interval != "5":
+            tcp_monitors_notes = SPEC_APP_MONITOR_INTERVAL_TIMEOUT
+            tcp_monitors_spec = SPEC_BASELINE_NO
+            tmsh_monitor = tmsh.get('tmsh', 'modify.ltm.monitor').replace("${replace.monitor.type}", "udp").replace("${replace.monitor.name}", i.name).replace("${replace.monitor.interval}", "5").replace("${replace.monitor.timeout}", "16")
+            tmsh_monitor_rollback = tmsh.get('tmsh', 'modify.ltm.monitor').replace("${replace.monitor.type}", "udp").replace("${replace.monitor.name}", i.name).replace("${replace.monitor.interval}", i.interval).replace("${replace.monitor.timeout}", i.timeout)
+            tcp_monitors_tmsh.append(tmsh_monitor)
+            tcp_monitors_tmsh_rollback.append(tmsh_monitor_rollback)
+
+    if len(udp_monitors_list) <= 0:
+        tcp_monitors_spec = SPEC_BASELINE_NO
+        tcp_monitors_notes += SPEC_APP_MONITOR_UDP
+        tmsh_monitor_create = tmsh.get('tmsh', 'create.ltm.monitor').replace("${replace.monitor.type}", "udp").replace("${replace.monitor.name}", "monitor_udp_5s").replace("${replace.monitor.interval}", "5").replace("${replace.monitor.timeout}", "16")
+        tmsh_monitor_delete = tmsh.get('tmsh', 'delete.ltm.monitor').replace("${replace.monitor.type}", "udp").replace("${replace.monitor.name}", "monitor_udp_5s")
+        tcp_monitors_tmsh.append(tmsh_monitor_create)
+        tcp_monitors_tmsh_rollback.append(tmsh_monitor_delete)
+            
+    monitor_validation_list.append((30, tcp_monitors_notes, tcp_monitors_spec, tcp_monitors_tmsh, tcp_monitors_tmsh_rollback, False))
 
     return monitor_validation_list
 
@@ -581,7 +623,28 @@ def sepc_persist_configuration_validation(data_all, vs_list):
 
     persist_validation_list = []
 
+    persist_list = configParse.ltm_persistence_source_addr(data_all)
+    persist_notes = ""
+    persist_spec = SPEC_BASELINE_YES
+    persist_tmsh, persist_tmsh_rollback = [], []
+    for i in persist_list:
+        if i.timeout != "300":
+            persist_spec = SPEC_BASELINE_NO
+            persist_notes = SPEC_APP_PERSIST_SOURCE_ADDR
+            tmsh_modify = tmsh.get('tmsh', 'modify.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", i.name).replace("${replace.persist.timeout}", "300")
+            tmsh_rollback = tmsh.get('tmsh', 'modify.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", i.name).replace("${replace.persist.timeout}", i.timeout)
+            persist_tmsh.append(tmsh_modify)
+            persist_tmsh_rollback.append(tmsh_rollback)
 
+    if len(persist_list) <= 0:
+        persist_spec = SPEC_BASELINE_NO
+        persist_notes += SPEC_APP_PERSIST_SOURCE_ADDR_NONE
+        tmsh_persist_create = tmsh.get('tmsh', 'create.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", "src_addr_300s").replace("${replace.persist.timeout}", "300")
+        tmsh_persist_delete = tmsh.get('tmsh', 'delete.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", "src_addr_300s") 
+        persist_tmsh.append(tmsh_persist_create)
+        persist_tmsh_rollback.append(tmsh_persist_delete)
+
+    persist_validation_list.append((31, persist_notes, persist_spec, persist_tmsh, persist_tmsh_rollback, False))
 
     return persist_validation_list
 
@@ -591,20 +654,61 @@ def sepc_pool_configuration_validation(data_all, vs_list):
 
     pool_validation_list = []
 
+    pool_list = configParse.ltm_pool(data_all)
+    pool_notes, pool_lb_notes = "", ""
+    pool_spec, pool_lb_spec = SPEC_BASELINE_YES, SPEC_BASELINE_YES
+    pool_tmsh, pool_tmsh_rollback, pool_lb_tmsh, pool_lb_tmsh_rollback = [], [], [], []
+    for i in pool_list:
+        if i.monitor is None or i.monitor != "tcp" or i.monitor != "monitor_tcp_5s":
+            pool_notes = SPEC_POOL_MONITOR_NONE
+            pool_spec = SPEC_BASELINE_NO
+            tmsh_modify = tmsh.get('tmsh', 'modify.ltm.pool.monitor').replace("${replace.pool.name}", i.name).replace("${replace.monitor.name}", "monitor_tcp_5s")
+            monitor_value = "none"
+            if i.monitor is not None:
+                monitor_value = i.monitor
+            tmsh_rollback = tmsh.get('tmsh', 'modify.ltm.pool.monitor').replace("${replace.pool.name}", i.name).replace("${replace.monitor.name}", monitor_value)
+            pool_tmsh.append(tmsh_modify)
+            pool_tmsh_rollback.append(tmsh_rollback)
+        elif i.lb_methods is not None or i.lb_methods == "round-robin":
+            pool_lb_notes = SPEC_POOL_LB_NO_RR
+            pool_lb_spec = SPEC_BASELINE_NO
+            tmsh_lb_modify = tmsh.get('tmsh', 'modify.ltm.pool.lbmethods').replace("${replace.pool.name}", i.name).replace("${replace.pool.lbmethods}", "round-robin")
+            tmsh_lb_rollback = tmsh.get('tmsh', 'modify.ltm.pool.lbmethods').replace("${replace.pool.name}", i.name).replace("${replace.pool.lbmethods}", i.lb_methods)
+            pool_lb_tmsh.append(tmsh_lb_modify)
+            pool_lb_tmsh_rollback.append(tmsh_lb_rollback)
 
+    pool_validation_list.append((32, pool_notes, pool_spec, pool_tmsh, pool_tmsh_rollback, False))
+
+    pool_validation_list.append((33, pool_lb_notes, pool_lb_spec, pool_lb_tmsh, pool_lb_tmsh_rollback, False))
 
     return pool_validation_list
+
 
 
 def sepc_virtual_configuration_validation(data_all, vs_list):
 
     virtual_validation_list = []
 
+    virtual_validation_list.append((34, "", SPEC_BASELINE_YES, [], [], False))
 
+    profiles_list = configParse.ltm_profile_web_acceleration(data_all)
+    profiles_list.append("webacceleration")
+    profiles_notes = ""
+    profiles_spec = SPEC_BASELINE_YES
+    profiles_tmsh, profiles_tmsh_rollback = [], []
+    for i in vs_list:
+        for j in i.profiles:
+            if j in profiles_list:
+                profiles_notes = SPEC_VIRTUAL_RAMCACHE
+                profiles_spec = SPEC_BASELINE_NO
+                tmsh_add = tmsh.get('tmsh', 'modify.ltm.virtual.profile.add').replace("${replace.virtual.name}", i.name).replace("${replace.virtual.profile}", j) 
+                tmsh_del = tmsh.get('tmsh', 'modify.ltm.virtual.profile.del').replace("${replace.virtual.name}", i.name).replace("${replace.virtual.profile}", j) 
+                profiles_tmsh.append(tmsh_del)
+                profiles_tmsh_rollback.append(tmsh_del)
+
+    virtual_validation_list.append((35, profiles_notes, profiles_spec, profiles_tmsh, profiles_tmsh_rollback, False))
 
     return virtual_validation_list
-
-
 
 
 
@@ -625,9 +729,6 @@ class Spec:
 
     def write_to_excel(self):
         for item in self.spec_basic:
-            print(item)
-
-        for item in self.spec_supplementary:
             print(item)
 
 class SpecUserManagement(Spec):
@@ -808,6 +909,14 @@ SPEC_APP_SANT_NO_SANTPOOL = " 没有关联 snat pool，而是配置了automap"
 SPEC_APP_SANT_SANTPOOL_LESS_FOUR = " snat pool 中地址小于 4, "
 SPEC_APP_SANT_NO_SANTPOOL_NO_AUTOMAP = " 没有关联 snat pool"
 SPEC_APP_HTTP_SERVICE_DOWN_REST = " 未设置后台服务不可用时发rst"
+SPEC_APP_MONITOR_INTERVAL_TIMEOUT = "探测超时时间超过16秒"
+SPEC_APP_MONITOR_TCP = " 名称为monitor_tcp_5s的TCP健康检查模板不存在"
+SPEC_APP_MONITOR_UDP = " 名称为monitor_udp_5s的TCP健康检查模板不存在"
+SPEC_APP_PERSIST_SOURCE_ADDR = "源地址会话保持超时时间不是是300秒"
+SPEC_APP_PERSIST_SOURCE_ADDR_NONE = " 源地址会话保持不存在"
+SPEC_POOL_MONITOR_NONE = "Pool 上没有关联tcp健康检查"
+SPEC_POOL_LB_NO_RR = "POOL池算法没有采用轮询算法"
+SPEC_VIRTUAL_RAMCACHE = "RAMcache 没有关闭"
 
 bigip_running_config = load_bigip_running_config(fileconfig)
 device_info = data_collect_system_extract_hostname(bigip_running_config)
