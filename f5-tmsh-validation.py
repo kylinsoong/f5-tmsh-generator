@@ -437,6 +437,178 @@ def spec_failover_configuration_validation(data_all):
 
 
 
+def spec_tcp_connection_configuration_validation(data_all, vs_list):
+
+    l4_timeout_validation_list = []
+    
+    profiles_list = []
+    fastl4_list = configParse.ltm_profile_fastl4(data_all)
+    for i in fastl4_list:
+        profiles_list.append(i.name)
+    
+    l4_vs_list = []
+    for i in vs_list:
+        for profile in i.profiles:
+            if profile in profiles_list:
+                l4_vs_list.append(i)
+
+    notes = ""
+    tmsh_list = []
+    tmsh_rollback_list = []
+    for vs in l4_vs_list:
+        timeout = extract_timeout(vs.profiles, fastl4_list) 
+        if int(timeout) > 300:
+            notes = SPEC_APP_TCP_TIEMOUT_LARGER
+            tmsh_modify = tmsh.get('tmsh', 'modify.ltm.profile.fastl4').replace("${ltm.profile.name}", vs.profiles[0]).replace("${ltm.profile.timeout}", "300")
+            tmsh_rollback = tmsh.get('tmsh', 'modify.ltm.profile.fastl4').replace("${ltm.profile.name}", vs.profiles[0]).replace("${ltm.profile.timeout}", timeout)
+            tmsh_list.append(tmsh_modify)
+            tmsh_rollback_list.append(tmsh_rollback)
+
+    if len(tmsh_list) > 0:
+        l4_timeout_validation_list.append((27, notes, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
+    else:
+        l4_timeout_validation_list.append((27, notes, SPEC_BASELINE_YES, [], [], False))
+
+    return l4_timeout_validation_list
+
+
+def extract_timeout(profiles, list):
+    for i in list:
+        if i.name == profiles[0]:
+            return i.idle_timeout
+    return 0
+
+
+
+def spec_snat_configuration_validation(data_all, vs_list):
+
+    snat_validation_list = []
+ 
+    snatpool_list = configParse.ltm_snatpool(data_all)
+    notes_list, tmsh_list, tmsh_rollback_list = [], [], []
+    for vs in vs_list:
+        if vs.vs_port != "0" and vs.snatpool is None and vs.snatType == "automap":
+            notes = vs.vs_name + SPEC_APP_SANT_NO_SANTPOOL
+            tmsh_create = tmsh.get('tmsh', 'create.ltm.snatpool').replace("${replace.snatpool.name}", "xx").replace("${replace.snatpool.members}", "x.x.x.x")        
+            tmsh_delete = tmsh.get('tmsh', 'delete.ltm.snatpool').replace("${replace.snatpool.name}", "xx")
+            notes_list.append(notes)
+            tmsh_list.append(tmsh_create)
+            tmsh_rollback_list.append(tmsh_delete)
+        elif vs.vs_port != "0" and vs.snatpool is not None:
+            snat_pool_obj = None
+            for i in snatpool_list:
+                if i.name == vs.snatpool:
+                    snat_pool_obj = i
+                    break
+            if len(snat_pool_obj.members) < 4:
+                notes = vs.vs_name + SPEC_APP_SANT_SANTPOOL_LESS_FOUR + configParse.convert_list_to_str(snat_pool_obj.members)
+                tmsh_member_add = tmsh.get('tmsh', 'modify.ltm.snatpool').replace("${replace.snatpool.name}", snat_pool_obj.name).replace("${replace.snatpool.members}", "x.x.x.x") 
+                tmsh_member_del = tmsh.get('tmsh', 'modify.ltm.snatpool.rollback').replace("${replace.snatpool.name}", snat_pool_obj.name).replace("${replace.snatpool.members}", "x.x.x.x") 
+                notes_list.append(notes)
+                tmsh_list.append(tmsh_member_add)
+                tmsh_rollback_list.append(tmsh_member_del)
+        elif vs.vs_port != "0" and vs.snatpool is None and vs.snatType is None:
+            notes = vs.vs_name + SPEC_APP_SANT_NO_SANTPOOL_NO_AUTOMAP
+            tmsh_create = tmsh.get('tmsh', 'create.ltm.snatpool').replace("${replace.snatpool.name}", "xx").replace("${replace.snatpool.members}", "x.x.x.x")          
+            tmsh_delete = tmsh.get('tmsh', 'delete.ltm.snatpool').replace("${replace.snatpool.name}", "xx")
+            notes_list.append(notes)
+            tmsh_list.append(tmsh_create)
+            tmsh_rollback_list.append(tmsh_delete)
+
+    if len(tmsh_list) > 0:
+        snat_validation_list.append((28, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
+    else:
+        snat_validation_list.append((28, [], SPEC_BASELINE_YES, [], [], False))
+                
+    return snat_validation_list
+
+
+
+def sepc_http_rst_action_validation(data_all, vs_list):
+
+    http_rst_validation_list = []
+
+    http_profiles, fastl4_profiles = [], []
+    fastl4_list = configParse.ltm_profile_fastl4(data_all)
+    for i in fastl4_list:
+        fastl4_profiles.append(i.name)
+    fastl4_profiles.append("fastL4")
+
+    http_list = configParse.ltm_profile_http(data_all)
+    for i in http_list:
+        http_profiles.append(i.name)
+    http_profiles.append("http")
+
+    notes_list, tmsh_list, tmsh_rollback_list = [], [], []
+    for vs in vs_list:
+        vs_profiles_list = vs.profiles
+        fastL4NotExist = True
+        httpExist = False
+        for profile in vs_profiles_list:
+            if profile in fastl4_profiles:
+                fastL4NotExist = False
+            elif profile in http_profiles:
+                httpExist = True
+
+        if fastL4NotExist and httpExist and vs.serviceDownReset is None:
+            notes = vs.vs_name + SPEC_APP_HTTP_SERVICE_DOWN_REST
+            tmsh_rst = tmsh.get('tmsh', 'modify.ltm.virtual.rst').replace("${replace.virtual.name}", vs.vs_name).replace("${replace.virtual.rst.action}", "reset")  
+            tmsh_none = tmsh.get('tmsh', 'modify.ltm.virtual.rst').replace("${replace.virtual.name}", vs.vs_name).replace("${replace.virtual.rst.action}", "none")
+            notes_list.append(notes)
+            tmsh_list.append(tmsh_rst)
+            tmsh_rollback_list.append(tmsh_none)  
+
+    if len(tmsh_list) > 0:
+        http_rst_validation_list.append((29, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
+    else:
+        http_rst_validation_list.append((29, [], SPEC_BASELINE_YES, [], [], False))
+
+    return http_rst_validation_list    
+
+
+
+def sepc_monitor_configuration_validation(data_all, vs_list):
+
+    monitor_validation_list = []
+
+
+
+    return monitor_validation_list
+
+
+
+def sepc_persist_configuration_validation(data_all, vs_list):
+
+    persist_validation_list = []
+
+
+
+    return persist_validation_list
+
+
+
+def sepc_pool_configuration_validation(data_all, vs_list):
+
+    pool_validation_list = []
+
+
+
+    return pool_validation_list
+
+
+def sepc_virtual_configuration_validation(data_all, vs_list):
+
+    virtual_validation_list = []
+
+
+
+    return virtual_validation_list
+
+
+
+
+
+
 class Spec:
     def __init__(self, name, hostname, management_ip, software_version, data):
         self.name = name
@@ -514,129 +686,39 @@ class SpecApp(Spec):
         super().__init__(name, hostname, management_ip, software_version, data)
 
 class SpecTCPConnectionConfiguration(SpecApp):
-
-    profiles = []
-
     def parse(self):
-        fastl4_list = configParse.ltm_profile_fastl4(self.data)
-        for i in fastl4_list:
-            self.profiles.append(i.name)
-   
-        l4_vs_list = list(filter(self.is_tcp_application, self.vs_list))
-        notes_list = []
-        tmsh_list = []
-        tmsh_rollback_list = []
-        for vs in l4_vs_list:
-            timeout = self.extract_timeout(vs.profiles, fastl4_list) 
-            if int(timeout) > 300:
-                notes = vs.vs_name + SPEC_APP_TCP_TIEMOUT_LARGER
-                tmsh = "tmsh modify ltm profile fastl4 " + vs.profiles[0] + " idle-timeout 300"
-                tmsh_rollback = "tmsh modify ltm profile fastl4 " + vs.profiles[0] + " idle-timeout " + timeout
-                notes_list.append(notes)
-                tmsh_list.append(tmsh)
-                tmsh_rollback_list.append(tmsh_rollback)
-        
-        if len(tmsh_list) > 0:
-            self.spec_basic.append((27, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
-        else:
-            self.spec_basic.append((27, [], SPEC_BASELINE_YES, [], [], False))
-  
-    def extract_timeout(self, profiles, list):
-        for i in list:
-            if i.name == profiles[0]:
-                return i.idle_timeout
-        return 0
-
-    def is_tcp_application(self, vs):
-        if vs.profiles is not None:
-            for profile in vs.profiles:
-                return profile in self.profiles
-        return False 
+        validation_results = spec_tcp_connection_configuration_validation(self.data, self.vs_list)
+        self.spec_basic.extend(validation_results)
 
 class SpecSNATConfiguration(SpecApp):
     def parse(self):
-        snatpool_list = configParse.ltm_snatpool(self.data)
-        notes_list = []
-        tmsh_list = []
-        tmsh_rollback_list = [] 
-        for vs in self.vs_list:
-            if vs.vs_port != "0" and vs.snatpool is None and vs.snatType == "automap":
-                notes = vs.vs_name + SPEC_APP_SANT_NO_SANTPOOL
-                tmsh = "tmsh create ltm snatpool XX members add { xx.xx.xx.xx }"
-                tmsh_rollback = "tmsh delete ltm snatpool XX"
-                notes_list.append(notes)
-                tmsh_list.append(tmsh)
-                tmsh_rollback_list.append(tmsh_rollback)
-            elif vs.vs_port != "0" and vs.snatpool is not None:
-                snat_pool_obj = self.extract_from_snatpool_list(snatpool_list, vs.snatpool)
-                if len(snat_pool_obj.members) < 4:
-                    notes = vs.vs_name + SPEC_APP_SANT_SANTPOOL_LESS_FOUR + self.convert_list_to_string(snat_pool_obj.members)
-                    tmsh = "tmsh modify ltm snatpool XX members add { xx.xx.xx.xx }" 
-                    tmsh_rollback = "tmsh modify ltm snatpool XX members delete { xx.xx.xx.xx }"
-                    notes_list.append(notes)
-                    tmsh_list.append(tmsh)
-                    tmsh_rollback_list.append(tmsh_rollback)
-            elif vs.vs_port != "0" and vs.snatpool is None and vs.snatType is None:
-                notes = vs.vs_name + SPEC_APP_SANT_NO_SANTPOOL_NO_AUTOMAP
-                tmsh = "tmsh create ltm snatpool XX members add { xx.xx.xx.xx }"
-                tmsh_rollback = "tmsh delete ltm snatpool XX"
-                notes_list.append(notes)
-                tmsh_list.append(tmsh)
-                tmsh_rollback_list.append(tmsh_rollback)
-
-        if len(tmsh_list) > 0:
-            self.spec_basic.append((28, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
-        else:
-            self.spec_basic.append((28, [], SPEC_BASELINE_YES, [], [], False))
-
-    def convert_list_to_string(self, members):
-        members_str = ' '.join(members)
-        return "[" + members_str + "]"
-
-    def extract_from_snatpool_list(self, snatpool_list, snatpool):
-        for i in snatpool_list:
-            if i.name == snatpool:
-                return i
+        validation_results = spec_snat_configuration_validation(self.data, self.vs_list)
+        self.spec_basic.extend(validation_results) 
 
 class SpecHTTPRstActionDownSetting(SpecApp):
     def parse(self):
-        http_profiles = []
-        fastl4_profiles = []
+        validation_results = sepc_http_rst_action_validation(self.data, self.vs_list)
+        self.spec_basic.extend(validation_results)
 
-        fastl4_list = configParse.ltm_profile_fastl4(self.data)
-        for i in fastl4_list:
-            fastl4_profiles.append(i.name)
-        fastl4_profiles.append("fastL4")
+class SpecMonitorConfiguration(SpecApp):
+    def parse(self):
+        validation_results = sepc_monitor_configuration_validation(self.data, self.vs_list)
+        self.spec_basic.extend(validation_results)
 
-        http_list = configParse.ltm_profile_http(self.data)
-        for i in http_list:
-            http_profiles.append(i.name)
-        http_profiles.append("http")
+class SpecPersistConfiguration(SpecApp):
+    def parse(self):
+        validation_results = sepc_persist_configuration_validation(self.data, self.vs_list)
+        self.spec_basic.extend(validation_results)
 
-        notes_list = []
-        tmsh_list = []
-        tmsh_rollback_list = []
-        for vs in self.vs_list:
-            vs_profiles_list = vs.profiles
-            fastL4NotExist = True
-            httpExist = False
-            for profile in vs_profiles_list:
-                if profile in fastl4_profiles:
-                    fastL4NotExist = False
-                elif profile in http_profiles:
-                    httpExist = True
-            if fastL4NotExist and httpExist and vs.serviceDownReset is None: 
-                notes = vs.vs_name + SPEC_APP_HTTP_SERVICE_DOWN_REST
-                tmsh = "tmsh modify ltm virtual " + vs.vs_name + " service-down-immediate-action reset"
-                tmsh_rollback = "tmsh modify ltm virtual " + vs.vs_name + " service-down-immediate-action none"
-                notes_list.append(notes)
-                tmsh_list.append(tmsh)
-                tmsh_rollback_list.append(tmsh_rollback)
+class SpecPoolConfiguration(SpecApp):
+    def parse(self):
+        validation_results = sepc_pool_configuration_validation(self.data, self.vs_list)
+        self.spec_basic.extend(validation_results)
 
-        if len(tmsh_list) > 0:
-            self.spec_basic.append((29, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
-        else:
-            self.spec_basic.append((29, [], SPEC_BASELINE_YES, [], [], False))
+class SpecVirtualConfiguration(SpecApp):
+    def parse(self):
+        validation_results = sepc_virtual_configuration_validation(self.data, self.vs_list)
+        self.spec_basic.extend(validation_results)
 
 
 
@@ -681,6 +763,11 @@ SPEC_ITEM_FAILOVERS_CHECK = "切换条件检测"
 SPEC_ITEM_TCP_CONNECTIONS = "长连接业务配置"
 SPEC_ITEM_SNATPOOLME_CONF = "SNAT配置项检查"
 SPEC_ITEM_HTTP_RST_ONDOWN = "后台服务不可用时发rst"
+SPEC_ITEM_MONITOR_TIMEOUT = "健康检查时间"
+SPEC_ITEM_PERSIT = "会话保持"
+SPEC_ITEM_POOL = "POOL 配置检查"
+SPEC_ITEM_VIRTUAL = "VIRTUAL 配置检查"
+
 
 SPEC_BASELINE_YES = "是"
 SPEC_BASELINE_NO = "否"
@@ -744,6 +831,11 @@ spec_validation_list.append(SpecFailoverSetting(SPEC_ITEM_FAILOVERS_CHECK, devic
 spec_validation_list.append(SpecTCPConnectionConfiguration(SPEC_ITEM_TCP_CONNECTIONS, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
 spec_validation_list.append(SpecSNATConfiguration(SPEC_ITEM_SNATPOOLME_CONF, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
 spec_validation_list.append(SpecHTTPRstActionDownSetting(SPEC_ITEM_HTTP_RST_ONDOWN, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecMonitorConfiguration(SPEC_ITEM_MONITOR_TIMEOUT, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecPersistConfiguration(SPEC_ITEM_PERSIT, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecPoolConfiguration(SPEC_ITEM_POOL, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+spec_validation_list.append(SpecVirtualConfiguration(SPEC_ITEM_VIRTUAL, device_info[0], device_info[1], device_info[2], bigip_running_config, vs_list_all))
+
 
 for spec in spec_validation_list:
     spec.write_to_excel()
