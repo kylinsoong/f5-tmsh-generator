@@ -1182,15 +1182,23 @@ def is_valid_ip_network(address):
 
 
 
-
-
-
-
 '''
-[f5bigip % configParse.py] Parse running config data to form profiles related functions:
+Deprecated funtions:
 
     extract_http_profile()
     extract_fastl4_profile()
+    data_collect_snatpool_list()
+    data_collect_node_list()
+    data_collect_pool_list()
+    extract_poolmember_attributes()
+    data_collect_vs_list()
+    extract_snat_attributes()
+    extract_vs_attributes()
+    convert_profiles_rules_to_list()
+    data_collect_auth_user()
+    data_collect_net_self()
+    data_collect_cm_device_group()
+    data_collect_cm_device()
 '''
 def extract_http_profile(data_all):
     http_profile_results = []
@@ -1209,6 +1217,7 @@ def extract_http_profile(data_all):
                 profile_xff = trip_prefix(line, "insert-xforwarded-for")
         http_profile_results.append(BIGIPProfileHttp(profile_name, profile_parent, profile_xff))
     return http_profile_results
+
 
 def extract_fastl4_profile(data_all):
     fastl4_profile_results = []
@@ -1230,9 +1239,6 @@ def extract_fastl4_profile(data_all):
                 profile_handshake_timeout = trip_prefix(line, "tcp-handshake-timeou")
         fastl4_profile_results.append(BIGIPProfileFastl4(profile_name, profile_parent, profile_idle_timeout, profile_handshake_timeout))
     return fastl4_profile_results
-'''
-[f5bigip % configParse.py] Parse running config data to form profiles end
-'''
 
 
 def data_collect_snatpool_list(data_all):
@@ -1256,8 +1262,6 @@ def data_collect_snatpool_list(data_all):
             snatpool_results.append(BIGIPSnatPool(snat_name, snat_members))
         
     return snatpool_results
-
-
 
 
 def data_collect_node_list(data_all):
@@ -1295,13 +1299,6 @@ def data_collect_node_list(data_all):
     return node_list
 
 
-
-'''
-Deprecated funtions:
-  
-    data_collect_pool_list()
-    extract_poolmember_attributes()
-'''
 def data_collect_pool_list(data_all):
 
     pool_list = []
@@ -1376,21 +1373,8 @@ def extract_poolmember_attributes(data_all):
     if member is not None:
         return BIGIPPoolMember(member, address, port, session, state, connectionlimit)
     return None
-'''
-[f5bigip % configParse.py] Parse all Pool data as list - end
-'''
 
 
-
-'''
-[f5bigip % configParse.py] Parse all VS data as list start, related functions:
-
-    data_collect_vs_list()
-    extract_snat_attributes()
-    extract_vs_attributes()
-    convert_profiles_rules_to_list()
-
-'''
 def data_collect_vs_list(data_all):
     vs_list = []
 
@@ -1443,6 +1427,7 @@ def data_collect_vs_list(data_all):
 
     return vs_list
 
+
 def extract_snat_attributes(data_all):
 
     snatpool = None
@@ -1457,6 +1442,7 @@ def extract_snat_attributes(data_all):
             snatType = trip_prefix(line, "type")
 
     return (snatpool, snatType)
+
 
 def extract_vs_attributes(data_all):
 
@@ -1526,9 +1512,6 @@ def convert_profiles_rules_to_list(data_all, item):
         if len(line) > 0:
             results.append(line)
     return results
-'''
-[f5bigip % configParse.py] Parse all VS data as list - end
-'''
 
 
 def data_collect_auth_user(data_all):
@@ -1554,7 +1537,6 @@ def data_collect_auth_user(data_all):
         auth_user_list.append(BIGIPAuthUser(name, role, shell))
 
     return auth_user_list
-
 
 
 def data_collect_net_self(data_all):
@@ -1583,7 +1565,6 @@ def data_collect_net_self(data_all):
 
 
     return net_self_list
-
 
 
 def data_collect_cm_device_group(data_all):
@@ -1666,6 +1647,10 @@ def data_collect_cm_device(data_all):
             cm_device_list.append(BIGIPDevice(configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, unicast_address, unicast_port, version))
 
     return cm_device_list
+'''
+Deprecated funtions End
+'''
+
 
 
 def load_f5_services_as_map():
@@ -1825,12 +1810,4 @@ def existinfolist(data_all):
     for vs in vs_list:
         info_list.append((vs.vs_name, vs.vs_ip, vs.vs_port, vs.pool, form_pool_members(pool_list, vs.pool), vs.snatpool, form_snat_members(snatpool_list, vs.snatpool)))
 
-    """
-    print(len(vs_list), len(pool_list), len(snatpool_list), len(cm_device_list), len(cm_device_group_list), len(net_self_list))
-    for i in info_list:
-        print(i)
-    print(net_set)
-    print(sys_list)
-    print("==============")
-    """
     return (info_list, net_set, sys_list)
