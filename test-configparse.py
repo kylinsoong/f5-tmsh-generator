@@ -52,6 +52,10 @@ running_config = load_bigip_running_config(fileconfig)
 #for i in results3:
 #    print(i.type, i.name, i.interval, i.timeout)
 
-profile_list = configParse.ltm_profile_fastl4(running_config)
-for i in profile_list:
-    print(i.name, i.parent, i.idle_timeout, i.tcp_handshake_timeout, i.pva_acceleration)
+#profile_list = configParse.ltm_profile_fastl4(running_config)
+#for i in profile_list:
+#    print(i.name, i.parent, i.idle_timeout, i.tcp_handshake_timeout, i.pva_acceleration)
+
+value = configParse.convert_list_to_str_semicolon(["tmsh create ltm virtual", "tmsh create ltm pool"])
+print(value, len(value), type(value))
+

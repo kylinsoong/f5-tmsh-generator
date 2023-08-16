@@ -3,6 +3,7 @@
 import sys
 import re
 import ipaddress
+import openpyxl
 
 from f5bigip import configParse
 from f5bigip import tmsh
@@ -16,19 +17,19 @@ def spec_user_management_validation(data_all):
         user_role_dict[i.name] = i.role    
     
     user_validation_list = []
-    user_config_note = []
+    user_config_note = ""
     user_config_spec = SPEC_BASELINE_YES
     user_config_tmsh = []
     user_config_rollback_tmsh = []
     if "psbc" not in user_role_dict:
-        user_config_note.append(SPEC_USER_MANAGEMENT_PSBC_NOT_EXIST)
+        user_config_note = SPEC_USER_MANAGEMENT_PSBC_NOT_EXIST
         user_config_spec = SPEC_BASELINE_NO
         user_create = tmsh.get('tmsh', 'create.auth.user').replace("${auth.user.name}", "psbc").replace("${auth.user.role}", "admin")
         user_config_tmsh.append(user_create)
         user_delete = tmsh.get('tmsh', 'delete.auth.user').replace("${auth.user.name}", "psbc")
         user_config_rollback_tmsh.append(user_delete)
     if "view" not in user_role_dict:
-        user_config_note.append(SPEC_USER_MANAGEMENT_VIEW_NOT_EXIST)
+        user_config_note = SPEC_USER_MANAGEMENT_VIEW_NOT_EXIST
         user_config_spec = SPEC_BASELINE_NO
         user_create = tmsh.get('tmsh', 'create.auth.user').replace("${auth.user.name}", "view").replace("${auth.user.role}", "auditor")
         user_config_tmsh.append(user_create)
@@ -47,14 +48,14 @@ def spec_user_management_validation(data_all):
         default_user_tmsh = tmsh.get('tmsh', 'modify.sys.db.systemauth').replace("${auth.user.name}", "psbc")
         default_user_rollback_tmsh = tmsh.get('tmsh', 'modify.sys.db.systemauth').replace("${auth.user.name}", "admin")
 
-    user_validation_list.append((2, default_user_note, default_user_spec, default_user_tmsh, default_user_rollback_tmsh, False))
+    user_validation_list.append((2, default_user_note, default_user_spec, [default_user_tmsh], [default_user_rollback_tmsh], False))
 
-    user_role_config_note = []
+    user_role_config_note = ""
     user_role_config_spec = SPEC_BASELINE_YES
     user_role_config_tmsh = []
     user_role_config_rollback_tmsh = []
     if "psbc" in user_role_dict and user_role_dict['psbc'] != "admin":
-        user_role_config_note.append(SPEC_USER_MANAGEMENT_PSBC_NO_EXPECT_RIGHT)
+        user_role_config_note = SPEC_USER_MANAGEMENT_PSBC_NO_EXPECT_RIGHT
         user_role_config_spec = SPEC_BASELINE_NO
         user_modify = tmsh.get('tmsh', 'modify.auth.user').replace("${auth.user.name}", "psbc").replace("${auth.user.role}", "admin")
         user_role_config_tmsh.append(user_modify)
@@ -62,7 +63,7 @@ def spec_user_management_validation(data_all):
         user_role_config_rollback_tmsh.append(user_modify_rollback)
 
     if "view" in user_role_dict and user_role_dict['view'] != "auditor":
-        user_role_config_note.append(SPEC_USER_MANAGEMENT_VIEW_NO_EXPECT_RIGHT)
+        user_role_config_note = SPEC_USER_MANAGEMENT_VIEW_NO_EXPECT_RIGHT
         user_role_config_spec = SPEC_BASELINE_NO
         user_modify = tmsh.get('tmsh', 'modify.auth.user').replace("${auth.user.name}", "view").replace("${auth.user.role}", "auditor")
         user_role_config_tmsh.append(user_modify)
@@ -133,7 +134,7 @@ def spec_ntp_settings_validation(data_all):
         timezone_validation_spec = SPEC_BASELINE_NO
         timezone_validation_tmsh.append(tmsh.get('tmsh', 'modify.sys.ntp').replace("${sys.ntp.timezone}", "Asia/Shanghai"))
         timezone_validation_rollback_tmsh.append(tmsh.get('tmsh', 'modify.sys.ntp').replace("${sys.ntp.timezone}", ntp.timezone))
-    ntp_validation_list.append((7, timezone_validation_note, timezone_validation_spec, timezone_validation_tmsh, False))
+    ntp_validation_list.append((7, timezone_validation_note, timezone_validation_spec, timezone_validation_tmsh, timezone_validation_rollback_tmsh, False))
 
     servers_validation_note = ""
     servers_validation_spec = SPEC_BASELINE_YES
@@ -344,26 +345,26 @@ def spec_ha_configuration_validation(data_all):
     if len(vlan_failsafe_list) > 0:
         for i in vlan_failsafe_list:
             if i.failsafe_action == "failover": 
-                ha_validation_list.append((23, "", SPEC_BASELINE_YES, [], [], False))
+                ha_validation_list.append((22, "", SPEC_BASELINE_YES, [], [], False))
             else:
-               ha_validation_list.append((23, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
+               ha_validation_list.append((22, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
     else:
-        ha_validation_list.append((23, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
+        ha_validation_list.append((22, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
 
     ha_devices_list = configParse.cm_device(data_all)
 
     if len(ha_devices_list) < 2:
-        ha_validation_list.append((24, SPEC_HA_NO_HA_CONF, SPEC_BASELINE_NO, [], [], False))
+        ha_validation_list.append((23, SPEC_HA_NO_HA_CONF, SPEC_BASELINE_NO, [], [], False))
     elif incorrect_ha_configuration(ha_devices_list):
-        ha_validation_list.append((24, SPEC_HA_HA_CONF_NOT_CORRECT, SPEC_BASELINE_NO, [], [], False))
+        ha_validation_list.append((23, SPEC_HA_HA_CONF_NOT_CORRECT, SPEC_BASELINE_NO, [], [], False))
     elif incorrect_time_zone(ha_devices_list):
-        ha_validation_list.append((24, SPEC_HA_HA_CONF_NOT_CORRECT_TIMEZONE, SPEC_BASELINE_NO, [], [], False))
+        ha_validation_list.append((23, SPEC_HA_HA_CONF_NOT_CORRECT_TIMEZONE, SPEC_BASELINE_NO, [], [], False))
     elif incorrect_version(ha_devices_list):
-        ha_validation_list.append((24, SPEC_HA_HA_CONF_NOT_CORRECT_VERSION, SPEC_BASELINE_NO, [], [], False))
+        ha_validation_list.append((23, SPEC_HA_HA_CONF_NOT_CORRECT_VERSION, SPEC_BASELINE_NO, [], [], False))
     elif len(ha_devices_list[0].unicast_address) <= 1:
-        ha_validation_list.append((24, SPEC_HA_HA_CONF_NO_MULTI_VLAN, SPEC_BASELINE_NO, [], [], False))
+        ha_validation_list.append((23, SPEC_HA_HA_CONF_NO_MULTI_VLAN, SPEC_BASELINE_NO, [], [], False))
     else:
-        ha_validation_list.append((24, "", SPEC_BASELINE_YES, [], [], False))
+        ha_validation_list.append((23, "", SPEC_BASELINE_YES, [], [], False))
 
     ha_device_group_sync_list = []
     cm_device_greoup_list = configParse.cm_device_group(data_all)
@@ -372,14 +373,14 @@ def spec_ha_configuration_validation(data_all):
             ha_device_group_sync_list.append(i)
     
     if len(ha_device_group_sync_list) == 0:
-        ha_validation_list.append((25, SPEC_HA_NO_SYNC_FAILOVER, SPEC_BASELINE_NO, [], [], True))
+        ha_validation_list.append((24, SPEC_HA_NO_SYNC_FAILOVER, SPEC_BASELINE_NO, [], [], True))
     elif len(ha_device_group_sync_list) > 1:
-        ha_validation_list.append((25, SPEC_HA_MULTI_SYNC_FAILOVER, SPEC_BASELINE_NO, [], [], True))
+        ha_validation_list.append((24, SPEC_HA_MULTI_SYNC_FAILOVER, SPEC_BASELINE_NO, [], [], True))
     elif len(ha_device_group_sync_list) == 1:
         if ha_device_group_sync_list[0].fullloadonsync == "true":
-            ha_validation_list.append((25, "", SPEC_BASELINE_YES, [], [], True))
+            ha_validation_list.append((24, "", SPEC_BASELINE_YES, [], [], True))
         else:
-            ha_validation_list.append((25, SPEC_HA_SYNC_NOT_FINISHED, SPEC_BASELINE_NO, [], [], True))
+            ha_validation_list.append((24, SPEC_HA_SYNC_NOT_FINISHED, SPEC_BASELINE_NO, [], [], True))
 
     return ha_validation_list
 
@@ -427,11 +428,11 @@ def spec_failover_configuration_validation(data_all):
         vlan_failsafe = vlan_failsafe_list[0]
         failsafe_timeout = vlan_failsafe_list[0].failsafe_timeout
         if failsafe_timeout is not None and int(failsafe_timeout) > 3:
-            failover_validation_list.append((26, "", SPEC_BASELINE_YES, [], False))    
+            failover_validation_list.append((25, "", SPEC_BASELINE_YES, [], False))    
         else:
-            failover_validation_list.append((26, SPEC_FAILOVER_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
+            failover_validation_list.append((25, SPEC_FAILOVER_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
     else:
-        failover_validation_list.append((26, SPEC_FAILOVER_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
+        failover_validation_list.append((25, SPEC_FAILOVER_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
 
     return failover_validation_list
 
@@ -465,9 +466,9 @@ def spec_tcp_connection_configuration_validation(data_all, vs_list):
             tmsh_rollback_list.append(tmsh_rollback)
 
     if len(tmsh_list) > 0:
-        l4_timeout_validation_list.append((27, notes, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
+        l4_timeout_validation_list.append((26, notes, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
     else:
-        l4_timeout_validation_list.append((27, notes, SPEC_BASELINE_YES, [], [], False))
+        l4_timeout_validation_list.append((26, notes, SPEC_BASELINE_YES, [], [], False))
 
     return l4_timeout_validation_list
 
@@ -485,13 +486,12 @@ def spec_snat_configuration_validation(data_all, vs_list):
     snat_validation_list = []
  
     snatpool_list = configParse.ltm_snatpool(data_all)
-    notes_list, tmsh_list, tmsh_rollback_list = [], [], []
+    notes_list, tmsh_list, tmsh_rollback_list = "", [], []
     for vs in vs_list:
         if vs.vs_port != "0" and vs.snatpool is None and vs.snatType == "automap":
-            notes = vs.vs_name + SPEC_APP_SANT_NO_SANTPOOL
+            notes_list =  SPEC_APP_SANT_NO_SANTPOOL
             tmsh_create = tmsh.get('tmsh', 'create.ltm.snatpool').replace("${replace.snatpool.name}", "xx").replace("${replace.snatpool.members}", "x.x.x.x")        
             tmsh_delete = tmsh.get('tmsh', 'delete.ltm.snatpool').replace("${replace.snatpool.name}", "xx")
-            notes_list.append(notes)
             tmsh_list.append(tmsh_create)
             tmsh_rollback_list.append(tmsh_delete)
         elif vs.vs_port != "0" and vs.snatpool is not None:
@@ -501,24 +501,22 @@ def spec_snat_configuration_validation(data_all, vs_list):
                     snat_pool_obj = i
                     break
             if len(snat_pool_obj.members) < 4:
-                notes = vs.vs_name + SPEC_APP_SANT_SANTPOOL_LESS_FOUR + configParse.convert_list_to_str(snat_pool_obj.members)
+                notes_list =  SPEC_APP_SANT_SANTPOOL_LESS_FOUR 
                 tmsh_member_add = tmsh.get('tmsh', 'modify.ltm.snatpool').replace("${replace.snatpool.name}", snat_pool_obj.name).replace("${replace.snatpool.members}", "x.x.x.x") 
                 tmsh_member_del = tmsh.get('tmsh', 'modify.ltm.snatpool.rollback').replace("${replace.snatpool.name}", snat_pool_obj.name).replace("${replace.snatpool.members}", "x.x.x.x") 
-                notes_list.append(notes)
                 tmsh_list.append(tmsh_member_add)
                 tmsh_rollback_list.append(tmsh_member_del)
         elif vs.vs_port != "0" and vs.snatpool is None and vs.snatType is None:
-            notes = vs.vs_name + SPEC_APP_SANT_NO_SANTPOOL_NO_AUTOMAP
+            notes_list =  SPEC_APP_SANT_NO_SANTPOOL_NO_AUTOMAP
             tmsh_create = tmsh.get('tmsh', 'create.ltm.snatpool').replace("${replace.snatpool.name}", "xx").replace("${replace.snatpool.members}", "x.x.x.x")          
             tmsh_delete = tmsh.get('tmsh', 'delete.ltm.snatpool').replace("${replace.snatpool.name}", "xx")
-            notes_list.append(notes)
             tmsh_list.append(tmsh_create)
             tmsh_rollback_list.append(tmsh_delete)
 
     if len(tmsh_list) > 0:
-        snat_validation_list.append((28, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
+        snat_validation_list.append((27, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
     else:
-        snat_validation_list.append((28, [], SPEC_BASELINE_YES, [], [], False))
+        snat_validation_list.append((27, "", SPEC_BASELINE_YES, [], [], False))
                 
     return snat_validation_list
 
@@ -539,7 +537,7 @@ def sepc_http_rst_action_validation(data_all, vs_list):
         http_profiles.append(i.name)
     http_profiles.append("http")
 
-    notes_list, tmsh_list, tmsh_rollback_list = [], [], []
+    notes_list, tmsh_list, tmsh_rollback_list = "", [], []
     for vs in vs_list:
         vs_profiles_list = vs.profiles
         fastL4NotExist = True
@@ -551,17 +549,16 @@ def sepc_http_rst_action_validation(data_all, vs_list):
                 httpExist = True
 
         if fastL4NotExist and httpExist and vs.serviceDownReset is None:
-            notes = vs.vs_name + SPEC_APP_HTTP_SERVICE_DOWN_REST
+            notes_list = SPEC_APP_HTTP_SERVICE_DOWN_REST
             tmsh_rst = tmsh.get('tmsh', 'modify.ltm.virtual.rst').replace("${replace.virtual.name}", vs.vs_name).replace("${replace.virtual.rst.action}", "reset")  
             tmsh_none = tmsh.get('tmsh', 'modify.ltm.virtual.rst').replace("${replace.virtual.name}", vs.vs_name).replace("${replace.virtual.rst.action}", "none")
-            notes_list.append(notes)
             tmsh_list.append(tmsh_rst)
             tmsh_rollback_list.append(tmsh_none)  
 
     if len(tmsh_list) > 0:
-        http_rst_validation_list.append((29, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
+        http_rst_validation_list.append((28, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
     else:
-        http_rst_validation_list.append((29, [], SPEC_BASELINE_YES, [], [], False))
+        http_rst_validation_list.append((28, notes_list, SPEC_BASELINE_YES, [], [], False))
 
     return http_rst_validation_list    
 
@@ -595,25 +592,31 @@ def sepc_monitor_configuration_validation(data_all, vs_list):
         tcp_monitors_tmsh.append(tmsh_monitor_create)
         tcp_monitors_tmsh_rollback.append(tmsh_monitor_delete)
 
+    monitor_validation_list.append((29, tcp_monitors_notes, tcp_monitors_spec, tcp_monitors_tmsh, tcp_monitors_tmsh_rollback, False))
+
+
     udp_monitors_list = configParse.ltm_monitor_udp(data_all)
+    udp_monitors_notes = ""
+    udp_monitors_spec = SPEC_BASELINE_YES
+    udp_monitors_tmsh, udp_monitors_tmsh_rollback = [], []
     for i in udp_monitors_list:
         if i.timeout != "16" or i.interval != "5":
-            tcp_monitors_notes = SPEC_APP_MONITOR_INTERVAL_TIMEOUT
-            tcp_monitors_spec = SPEC_BASELINE_NO
+            udp_monitors_notes = SPEC_APP_MONITOR_INTERVAL_TIMEOUT
+            udp_monitors_spec = SPEC_BASELINE_NO
             tmsh_monitor = tmsh.get('tmsh', 'modify.ltm.monitor').replace("${replace.monitor.type}", "udp").replace("${replace.monitor.name}", i.name).replace("${replace.monitor.interval}", "5").replace("${replace.monitor.timeout}", "16")
             tmsh_monitor_rollback = tmsh.get('tmsh', 'modify.ltm.monitor').replace("${replace.monitor.type}", "udp").replace("${replace.monitor.name}", i.name).replace("${replace.monitor.interval}", i.interval).replace("${replace.monitor.timeout}", i.timeout)
-            tcp_monitors_tmsh.append(tmsh_monitor)
-            tcp_monitors_tmsh_rollback.append(tmsh_monitor_rollback)
+            udp_monitors_tmsh.append(tmsh_monitor)
+            udp_monitors_tmsh_rollback.append(tmsh_monitor_rollback)
 
     if len(udp_monitors_list) <= 0:
-        tcp_monitors_spec = SPEC_BASELINE_NO
-        tcp_monitors_notes += SPEC_APP_MONITOR_UDP
+        udp_monitors_spec = SPEC_BASELINE_NO
+        udp_monitors_notes += SPEC_APP_MONITOR_UDP
         tmsh_monitor_create = tmsh.get('tmsh', 'create.ltm.monitor').replace("${replace.monitor.type}", "udp").replace("${replace.monitor.name}", "monitor_udp_5s").replace("${replace.monitor.interval}", "5").replace("${replace.monitor.timeout}", "16")
         tmsh_monitor_delete = tmsh.get('tmsh', 'delete.ltm.monitor').replace("${replace.monitor.type}", "udp").replace("${replace.monitor.name}", "monitor_udp_5s")
-        tcp_monitors_tmsh.append(tmsh_monitor_create)
-        tcp_monitors_tmsh_rollback.append(tmsh_monitor_delete)
+        udp_monitors_tmsh.append(tmsh_monitor_create)
+        udp_monitors_tmsh_rollback.append(tmsh_monitor_delete)
             
-    monitor_validation_list.append((30, tcp_monitors_notes, tcp_monitors_spec, tcp_monitors_tmsh, tcp_monitors_tmsh_rollback, False))
+    monitor_validation_list.append((30, udp_monitors_notes, udp_monitors_spec, udp_monitors_tmsh, udp_monitors_tmsh_rollback, False))
 
     return monitor_validation_list
 
@@ -741,8 +744,46 @@ class Spec:
         pass
 
     def write_to_excel(self):
+        wb = openpyxl.load_workbook(fileexcel)
+        ws1 = wb.worksheets[0]
+        ws2 = wb.worksheets[1]
+        ws3 = wb.worksheets[2]
+        ws2_start_id, ws3_start_id = 3, 3
+
+        for i in range(3, 40):
+            if ws2['B' + str(i)].value is None and ws2['C' + str(i)].value is None:
+                ws2_start_id = i
+                break
+
+        for i in range(3, 40):
+            if ws3['B' + str(i)].value is None and ws3['C' + str(i)].value is None:
+                ws3_start_id = i
+                break
+
         for item in self.spec_basic:
-            print(item)
+            cell_id = int(item[0]) + 1
+            ws1['B' + str(cell_id)] = self.hostname
+            ws1['C' + str(cell_id)] = self.management_ip 
+            ws1['K' + str(cell_id)] = item[2]
+            if item[2] == SPEC_BASELINE_YES:
+                continue
+            if item[5] == False:
+                ws2['A' + str(ws2_start_id)] = item[0]
+                ws2['B' + str(ws2_start_id)] = self.hostname
+                ws2['C' + str(ws2_start_id)] = self.management_ip
+                ws2['E' + str(ws2_start_id)] = configParse.convert_list_to_str_semicolon(item[3])
+                ws2['F' + str(ws2_start_id)] = configParse.convert_list_to_str_semicolon(item[4])
+                ws2['J' + str(ws2_start_id)] = item[1]
+                ws2_start_id = ws2_start_id +1
+            else:
+                ws3['A' + str(ws3_start_id)] = item[0]
+                ws3['B' + str(ws3_start_id)] = self.hostname
+                ws3['C' + str(ws3_start_id)] = self.management_ip
+                ws3['E' + str(ws3_start_id)] = configParse.convert_list_to_str_semicolon(item[3])
+                ws3['F' + str(ws3_start_id)] = configParse.convert_list_to_str_semicolon(item[4])
+                ws3['J' + str(ws3_start_id)] = item[1]
+                ws3_start_id = ws3_start_id + 1
+        wb.save(fileexcel)
 
 class SpecUserManagement(Spec):
     def parse(self):
@@ -861,7 +902,7 @@ if not sys.argv[2:]:
     sys.exit()
 
 fileconfig = sys.argv[1]
-fileadd = sys.argv[2]
+fileexcel = sys.argv[2]
 
 
 SPEC_ITEM_USER_MANAGEMENT = "用户管理"

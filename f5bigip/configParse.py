@@ -1186,6 +1186,13 @@ def convert_list_to_str(data_list):
     result_string = " ".join(data_list)
     return result_string
 
+def convert_list_to_str_semicolon(data_list):
+    result_string = ""
+    for i in data_list:
+       result_string += i
+       result_string = result_string + " ; "
+    return result_string
+
 def convert_servicename_to_port(input):
     input = trip_prefix(input, None)
     if input in f5_services_dict:
