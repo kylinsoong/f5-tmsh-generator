@@ -658,6 +658,24 @@ class TestConfigParse(unittest.TestCase):
         self.assertTrue("192.168.26.30" in gateway_list and "192.168.88.62" in gateway_list)
         self.assertTrue("192.168.4.166/32" in network_list and "default" in network_list)
 
+
+    def test_ltm_profile_fastl4(self):
+        data = load_config_data("unittest.ltm.profile.fastl4")
+        profiles_list = ltm_profile_fastl4(data)
+        self.assertEqual(len(profiles_list), 3)
+        name_list = []
+        for i in profiles_list:
+            name_list.append(i.name)
+            if i.name == "my_fastl4":
+                self.assertEqual(i.pva_acceleration, "none")
+            elif i.name == "fastL4_8H":
+                self.assertEqual(i.idle_timeout, "28800")
+                self.assertEqual(i.tcp_handshake_timeout, "5")
+            elif i.name == "fastL4_30M":
+                self.assertEqual(i.idle_timeout, "1800")
+        self.assertTrue("fastL4_8H" in name_list and "fastL4_30M" in name_list and "my_fastl4" in name_list)
+
+
     def test_ltm_profile_web_acceleration(self):
         data = load_config_data("unittest.ltm.profile.webacceleration")
         profiles_list = ltm_profile_web_acceleration(data)

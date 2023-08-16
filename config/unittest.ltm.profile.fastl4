@@ -1,0 +1,15 @@
+ltm profile fastl4 fastL4_8H {
+    app-service none
+    defaults-from fastL4
+    idle-timeout 28800
+    tcp-handshake-timeout 5
+}
+ltm profile fastl4 fastL4_30M {
+    app-service none
+    defaults-from fastL4
+    idle-timeout 1800
+}
+ltm profile fastl4 my_fastl4 {
+    app-service none
+    pva-acceleration none
+}

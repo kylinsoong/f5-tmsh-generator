@@ -689,7 +689,20 @@ def sepc_virtual_configuration_validation(data_all, vs_list):
 
     virtual_validation_list = []
 
-    virtual_validation_list.append((34, "", SPEC_BASELINE_YES, [], [], False))
+    fastl4_list = configParse.ltm_profile_fastl4(data_all)
+    fastl4_notes = ""
+    fastl4_spec = SPEC_BASELINE_YES
+    fastl4_tmsh, fastl4_tmsh_rollback = [], []
+    for i in fastl4_list:
+        if i.pva_acceleration is not None and i.pva_acceleration != "none":
+            fastl4_notes = SPEC_VIRTUAL_FASTL4_PVA_ON
+            fastl4_spec = SPEC_BASELINE_NO
+            tmsh_pva_none = tmsh.get('tmsh', 'modify.ltm.profile.fastl4.pva').replace("${replace.profile.name}", i.name).replace("${replace.profile.pva}", "none")
+            tmsh_pva_rollback = tmsh.get('tmsh', 'modify.ltm.profile.fastl4.pva').replace("${replace.profile.name}", i.name).replace("${replace.profile.pva}", i.pva_acceleration)
+            tmsh_pva_none.append(tmsh_pva_none)
+            tmsh_pva_rollback.append(tmsh_pva_rollback)
+
+    virtual_validation_list.append((34, fastl4_notes, fastl4_spec, fastl4_tmsh, fastl4_tmsh_rollback, False))
 
     profiles_list = configParse.ltm_profile_web_acceleration(data_all)
     profiles_list.append("webacceleration")
@@ -916,6 +929,7 @@ SPEC_APP_PERSIST_SOURCE_ADDR = "源地址会话保持超时时间不是是300秒
 SPEC_APP_PERSIST_SOURCE_ADDR_NONE = " 源地址会话保持不存在"
 SPEC_POOL_MONITOR_NONE = "Pool 上没有关联tcp健康检查"
 SPEC_POOL_LB_NO_RR = "POOL池算法没有采用轮询算法"
+SPEC_VIRTUAL_FASTL4_PVA_ON = "PVA 加速没有关闭"
 SPEC_VIRTUAL_RAMCACHE = "RAMcache 没有关闭"
 
 bigip_running_config = load_bigip_running_config(fileconfig)

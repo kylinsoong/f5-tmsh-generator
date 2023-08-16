@@ -153,10 +153,11 @@ class BIGIPProfile:
         self.parent = parent
 
 class BIGIPProfileFastl4(BIGIPProfile):
-    def __init__(self, name, parent, idle_timeout, tcp_handshake_timeout):
+    def __init__(self, name, parent, idle_timeout, tcp_handshake_timeout, pva_acceleration):
         super().__init__(name, parent)
         self.idle_timeout = idle_timeout
         self.tcp_handshake_timeout = tcp_handshake_timeout
+        self.pva_acceleration = pva_acceleration
 
 class BIGIPProfileHttp(BIGIPProfile):
     def __init__(self, name, parent, xff):
@@ -585,9 +586,7 @@ def ltm_profile_fastl4(data_all):
         profile = i[len("ltm profile fastl4"):].replace("{", "").replace("}", "")
         lines = profile.splitlines()
         profile_name = lines[0].strip()
-        profile_parent = None
-        profile_idle_timeout = None
-        profile_handshake_timeout = None
+        profile_parent, profile_idle_timeout, profile_handshake_timeout, pva_acceleration = None, None, None, None
         for l in lines:
             line = l.strip()
             if line.startswith("defaults-from"):
@@ -595,8 +594,10 @@ def ltm_profile_fastl4(data_all):
             elif line.startswith("idle-timeout"):
                 profile_idle_timeout = trip_prefix(line, "idle-timeout")
             elif line.startswith("tcp-handshake-timeout"):
-                profile_handshake_timeout = trip_prefix(line, "tcp-handshake-timeou")
-        fastl4_profile_results.append(BIGIPProfileFastl4(profile_name, profile_parent, profile_idle_timeout, profile_handshake_timeout))
+                profile_handshake_timeout = trip_prefix(line, "tcp-handshake-timeout")
+            elif line.startswith("pva-acceleration"):
+                pva_acceleration = trip_prefix(line, "pva-acceleration")
+        fastl4_profile_results.append(BIGIPProfileFastl4(profile_name, profile_parent, profile_idle_timeout, profile_handshake_timeout, pva_acceleration))
     return fastl4_profile_results
 
 
