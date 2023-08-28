@@ -1,0 +1,187 @@
+
+Sys::Performance Connections
+---------------------------------------------------------------------------
+Active Connections           Current  Average  Max(since 08/28/23 05:30:54)
+---------------------------------------------------------------------------
+Connections                        0        0                             2
+                           
+---------------------------------------------------------------------------
+Total New Connections(/sec)  Current  Average  Max(since 08/28/23 05:30:54)
+---------------------------------------------------------------------------
+Client Connections                 0        0                             0
+Server Connections                 0        0                             0
+                           
+---------------------------------------------------------------------------
+HTTP Requests(/sec)          Current  Average  Max(since 08/28/23 05:30:54)
+---------------------------------------------------------------------------
+HTTP Requests                      0        0                             0
+                           
+
+BIG-IP DNS::DNS-Express Performance
+-----------------------------------------------------------------------
+DNSX General Info(/sec)  Current  Average  Max(since 08/28/23 05:30:54)
+-----------------------------------------------------------------------
+Queries                     -nan     -nan                          -nan
+Responses                   -nan     -nan                          -nan
+XFR Messages                -nan     -nan                          -nan
+Notifies Received           -nan     -nan                          -nan
+
+BIG-IP DNS::DNSSEC Performance
+-----------------------------------------------------------------------------------
+DNSSEC Queries(/sec)                 Current  Average  Max(since 08/28/23 05:30:54)
+-----------------------------------------------------------------------------------
+Total                                   -nan     -nan                          -nan
+DNSKEY Queries                          -nan     -nan                          -nan
+CDNSKEY Queries                         -nan     -nan                          -nan
+NSEC3 Param Queries                     -nan     -nan                          -nan
+DS Queries                              -nan     -nan                          -nan
+CDS Queries                             -nan     -nan                          -nan
+AXFR Queries                            -nan     -nan                          -nan
+IXFR Queries                            -nan     -nan                          -nan
+                                   
+-----------------------------------------------------------------------------------
+DNSSEC Responses and Sig Info(/sec)  Current  Average  Max(since 08/28/23 05:30:54)
+-----------------------------------------------------------------------------------
+Responses                               -nan     -nan                          -nan
+Sig Crypto Failed                       -nan     -nan                          -nan
+Sig Success                             -nan     -nan                          -nan
+Sig RRset Failed                        -nan     -nan                          -nan
+                                   
+
+Sys::Performance Ramcache
+------------------------------------------------------------------------
+RAM Cache Utilization(%)  Current  Average  Max(since 08/28/23 05:30:54)
+------------------------------------------------------------------------
+Hit Rate                        0        0                             0
+Byte Rate                       0        0                             0
+Eviction Rate                   0        0                             0
+
+Sys::Performance System
+-------------------------------------------------------------------
+System CPU Usage(%)  Current  Average  Max(since 08/28/23 05:30:54)
+-------------------------------------------------------------------
+Utilization               11       10                            91
+                   
+-------------------------------------------------------------------
+Memory Used(%)       Current  Average  Max(since 08/28/23 05:30:54)
+-------------------------------------------------------------------
+TMM Memory Used            4        4                             4
+Other Memory Used         73       73                            81
+Swap Used                  9        9                            13
+                   
+
+Sys::Performance Throughput
+-----------------------------------------------------------------------------
+Throughput(bits)(bits/sec)     Current  Average  Max(since 08/28/23 05:30:54)
+-----------------------------------------------------------------------------
+Service                              0        2                           764
+In                                   0      160                          7.4K
+Out                                  0        7                          2.0K
+                             
+-----------------------------------------------------------------------------
+SSL Transactions               Current  Average  Max(since 08/28/23 05:30:54)
+-----------------------------------------------------------------------------
+SSL TPS                              0        0                             0
+                             
+-----------------------------------------------------------------------------
+Throughput(packets)(pkts/sec)  Current  Average  Max(since 08/28/23 05:30:54)
+-----------------------------------------------------------------------------
+Service                              0        0                             1
+In                                   0        0                            10
+Out                                  0        0                             4
+                             
+root@(00462773-bigip1)(cfg-sync Standalone)(Active)(/Common)(tmos)# quti
+Syntax Error: unexpected argument "quti"
+root@(00462773-bigip1)(cfg-sync Standalone)(Active)(/Common)(tmos)# quit
+[root@00462773-bigip1:Active:Standalone] config # tmsh show sys performance
+
+Sys::Performance Connections
+---------------------------------------------------------------------------
+Active Connections           Current  Average  Max(since 08/28/23 05:32:02)
+---------------------------------------------------------------------------
+Connections                        0        0                             2
+                           
+---------------------------------------------------------------------------
+Total New Connections(/sec)  Current  Average  Max(since 08/28/23 05:32:02)
+---------------------------------------------------------------------------
+Client Connections                 0        0                             0
+Server Connections                 0        0                             0
+                           
+---------------------------------------------------------------------------
+HTTP Requests(/sec)          Current  Average  Max(since 08/28/23 05:32:02)
+---------------------------------------------------------------------------
+HTTP Requests                      0        0                             0
+                           
+
+BIG-IP DNS::DNS-Express Performance
+-----------------------------------------------------------------------
+DNSX General Info(/sec)  Current  Average  Max(since 08/28/23 05:32:02)
+-----------------------------------------------------------------------
+Queries                     -nan     -nan                          -nan
+Responses                   -nan     -nan                          -nan
+XFR Messages                -nan     -nan                          -nan
+Notifies Received           -nan     -nan                          -nan
+
+BIG-IP DNS::DNSSEC Performance
+-----------------------------------------------------------------------------------
+DNSSEC Queries(/sec)                 Current  Average  Max(since 08/28/23 05:32:02)
+-----------------------------------------------------------------------------------
+Total                                   -nan     -nan                          -nan
+DNSKEY Queries                          -nan     -nan                          -nan
+CDNSKEY Queries                         -nan     -nan                          -nan
+NSEC3 Param Queries                     -nan     -nan                          -nan
+DS Queries                              -nan     -nan                          -nan
+CDS Queries                             -nan     -nan                          -nan
+AXFR Queries                            -nan     -nan                          -nan
+IXFR Queries                            -nan     -nan                          -nan
+                                   
+-----------------------------------------------------------------------------------
+DNSSEC Responses and Sig Info(/sec)  Current  Average  Max(since 08/28/23 05:32:02)
+-----------------------------------------------------------------------------------
+Responses                               -nan     -nan                          -nan
+Sig Crypto Failed                       -nan     -nan                          -nan
+Sig Success                             -nan     -nan                          -nan
+Sig RRset Failed                        -nan     -nan                          -nan
+                                   
+
+Sys::Performance Ramcache
+------------------------------------------------------------------------
+RAM Cache Utilization(%)  Current  Average  Max(since 08/28/23 05:32:02)
+------------------------------------------------------------------------
+Hit Rate                        0        0                             0
+Byte Rate                       0        0                             0
+Eviction Rate                   0        0                             0
+
+Sys::Performance System
+-------------------------------------------------------------------
+System CPU Usage(%)  Current  Average  Max(since 08/28/23 05:32:02)
+-------------------------------------------------------------------
+Utilization               10       10                            91
+                   
+-------------------------------------------------------------------
+Memory Used(%)       Current  Average  Max(since 08/28/23 05:32:02)
+-------------------------------------------------------------------
+TMM Memory Used            4        4                             4
+Other Memory Used         74       73                            81
+Swap Used                  9        9                            13
+                   
+
+Sys::Performance Throughput
+-----------------------------------------------------------------------------
+Throughput(bits)(bits/sec)     Current  Average  Max(since 08/28/23 05:32:02)
+-----------------------------------------------------------------------------
+Service                              0        2                           764
+In                                   0      160                          7.4K
+Out                                  0        7                          2.0K
+                             
+-----------------------------------------------------------------------------
+SSL Transactions               Current  Average  Max(since 08/28/23 05:32:02)
+-----------------------------------------------------------------------------
+SSL TPS                              0        0                             0
+                             
+-----------------------------------------------------------------------------
+Throughput(packets)(pkts/sec)  Current  Average  Max(since 08/28/23 05:32:02)
+-----------------------------------------------------------------------------
+Service                              0        0                             1
+In                                   0        0                            10
+Out                                  0        0                             4

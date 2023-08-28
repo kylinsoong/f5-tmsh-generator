@@ -1,0 +1,13 @@
+Sys::Software Status
+Volume  Product   Version  Build  Active    Status  Allowed Version
+-------------------------------------------------------------------
+HD1.1    BIG-IP  15.1.9.1  0.0.5     yes  complete              yes
+
+---------------------------
+Sys::Software Update Check
+---------------------------
+  Check Enabled        true
+  Phonehome Enabled    true
+  Frequency          weekly
+  Status               none
+  Errors                  0
