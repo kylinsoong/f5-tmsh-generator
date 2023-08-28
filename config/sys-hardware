@@ -1,0 +1,99 @@
+Sys::Hardware
+Chassis Fan Status
+  Index  Status  Low Limit(rpm)  Fan Speed(rpm)
+  1      up      1000            11806
+  2      up      1000            12000
+  3      up      1000            11619
+  4      up      1000            12000
+
+Chassis Information
+  Maximum MAC Count  2
+  Registration Key   -
+
+Chassis Power Supply Status
+  Index  Status  Current
+  1      up      AC
+  2      up      AC
+
+Chassis Temperature Status
+  Index  Lo Limit(C)  Temp(degC)  Hi Limit(C)  Location
+  1      0            28          43           Main board inlet IC temperature
+  2      0            24          59           Main board outlet IC temperatur
+  3      0            28          65           Power supply #1 meas. inlet tem
+  4      0            28          65           Power supply #2 meas. inlet tem
+  5      0            31          59           Main board near power supplies 
+
+CPU Status
+  Index  Temp(degC)  Fan Speed(rpm)
+  1      32          12000
+
+Hardware Version Information
+  Name        cpld
+  Type        pic
+  Model       F5 CPLD
+  Parameters  --                   --
+              version              0xa
+ 
+  Name        cpus
+  Type        base-board
+  Model       Intel(R) Core(TM) i3- CPU @ 2.00GHz
+  Parameters  --                   --
+              cache size           3072 KB
+              cores                4  (cores/cpu:2)
+              cpu MHz              1200.000
+ 
+  Name        lop
+  Type        pic
+  Model       F5
+  Parameters  --                   --
+              Boot loader version  1.04
+              Firmware version     4.08
+ 
+  Name        mainboard
+  Type        base-board
+  Model       F5
+  Parameters  --                   --
+              Assembly serial      pca0280z6707
+              Board type           N/A
+              Level 400 part       PCA-0280-08 REV B
+              PCN level            PCA-0280-08 REV B
+              Revision             N/A
+ 
+  Name        psu1
+  Type        psu
+  Model       SPAFFIV-03G
+  Parameters  --                   --
+              Location             1
+              Manufacturer         POWER-ONE
+              Revision             06
+              Serial number        C0185
+ 
+  Name        psu2
+  Type        psu
+  Model       SPAFFIV-03G
+  Parameters  --                   --
+              Location             2
+              Manufacturer         POWER-ONE
+              Revision             06
+              Serial number        C0420
+ 
+  Name        qa0
+  Type        coproc
+  Model       Cave Creek SKU3 C1 Crypto/Compression Coprocessor
+  Parameters  --                   --
+              version              QA API: 1.1.0-62, FW: 1.1.1
+ 
+
+Platform
+  Name           BIG-IP 2000
+  BIOS Revision  OBJ-0433-xx Build: 2.02.171.0 05/02/2014
+  Base MAC       00:0a:49:b5:60:40
+
+System Information
+  Type                       C112
+  Chassis Serial             f5-uhez-ukwn
+  Level 200/400 Part         205-0356-06 REV G
+  Switchboard Serial          
+  Switchboard Part Revision   
+  Host Board Serial          pca0280z6707
+  Host Board Part Revision

@@ -1,0 +1,276 @@
+tmsh show sys hardware Fan
+tmsh check_power_num
+tmsh list sys sshd
+tmsh list sys snmp
+tmsh show net interface
+tmsh list sys failover network failover unicast peer
+tmsh show sys performance Throughput
+tmsh show sys hardware Serial
+tmsh list sys httpd
+tmsh list sys syslog
+tmsh show sys hardware CPUtemp
+tmsh show sys hardware Power
+tmsh show sys memory
+tmsh list net vlan failsafe
+tmsh_show_sys_cpu
+tmsh show sys failover Time
+tmsh list sys sshd
+tmsh list sys httpd
+tmsh show sys hardware Fan
+tmsh list sys failover network failover unicast peer
+tmsh show sys hardware Serial
+tmsh show sys memory
+tmsh show sys cpu
+tmsh show sys hardware Power
+tmsh show net interface
+tmsh show sys hardware CPUtemp
+tmsh list sys snmp
+tmsh show sys performance Throughput
+tmsh list net vlan failsafe
+tmsh list sys syslog
+F5 1600 v9 b sshd list
+F5 1600 v9 b interface show
+F5 1600 v9 b platform CPU Temp
+F5 1600 v9 b platform Power
+F5 1600 v9 CPU Utility
+F5 1600 v9 b vlan list Vlan failsafe
+F5 1600 v9 b gloal show Throughput
+F5 1600 v9 b failover list Network failover
+F5 1600 v9 b platform serial
+F5 1600 v9 b failover show Device status
+F5 1600 v9 b snmpd list
+F5 1600 v9 b syslog list
+F5 1600 v9 b platform Fan
+F5 1600 v9 b httpd list
+tmsh list sys failover network failover unicast peer
+tmsh check_power_num
+tmsh list sys httpd
+tmsh show sys performance Throughput
+tmsh list sys syslog
+tmsh show net interface
+tmsh show sys failover Time
+tmsh list net vlan failsafe
+tmsh list sys snmp
+tmsh show sys hardware Serial
+tmsh show sys hardware CPUtemp
+tmsh show sys hardware Fan
+tmsh show sys hardware Power
+tmsh list sys sshd
+tmsh show sys cpu
+tmsh show sys memory
+tmsh show sys performance Throughput
+tmsh check_power_num
+tmsh list sys sshd
+tmsh list sys failover network failover unicast peer
+tmsh list sys httpd
+tmsh show sys hardware Fan
+tmsh show sys memory
+tmsh show net interface
+tmsh list sys syslog
+tmsh list sys snmp
+tmsh show sys failover Time
+tmsh show sys hardware Serial
+tmsh show sys hardware CPUtemp
+tmsh show sys hardware Power
+tmsh list net vlan failsafe
+tmsh show sys cpu
+tmsh list sys snmp
+tmsh check_power_num
+tmsh list sys httpd
+tmsh list sys failover network failover unicast peer
+tmsh show sys performance Throughput
+show sys memory |grep TMM  C 5
+tmsh show sys cpu
+tmsh show sys hardware Serial
+tmsh show sys hardware Fan
+tmsh list sys sshd
+tmsh list net vlan failsafe
+tmsh show sys hardware CPUtemp
+tmsh show sys hardware Power
+tmsh list sys syslog
+tmsh show net interface
+tmsh list sys syslog
+tmsh list sys sshd
+tmsh list sys httpd
+tmsh show sys hardware CPUtemp
+tmsh show sys performance Throughput
+tmsh show sys failover Time
+tmsh list sys snmp
+tmsh list net vlan failsafe
+tmsh show sys hardware Serial
+tmsh show sys hardware Fan
+tmsh list sys failover network failover unicast peer
+tmsh show sys cpu
+tmsh show net interface
+tmsh show sys hardware Power
+tmsh show sys memory
+F5 3600 v9 b failover list Network failover
+F5 3600 v9 b httpd list
+F5 3600 v9 b sshd list
+F5 3600 v9 b interface show
+F5 3600 v9 b platform CPU Temp
+F5 3600 v9 b platform Power
+F5 3600 v9 Memory Utility
+F5 3600 v9 b syslog list
+F5 3600 v9 b platform Fan
+F5 3600 v9 b vlan list Vlan failsafe
+F5 3600 v9 b gloal show Throughput
+F5 3600 v9 b snmpd list
+F5 3600 v9 b platform serial
+F5 3600 v9 b failover show Device status
+tmsh show sys hardware Fan
+tmsh check_power_num
+tmsh list sys failover network failover unicast peer
+tmsh list net vlan failsafe
+tmsh show net interface
+tmsh show sys performance Throughput
+tmsh show sys hardware CPUtemp
+tmsh list sys syslog
+tmsh show sys failover Time
+tmsh show sys hardware Serial
+tmsh show sys memory
+tmsh list sys sshd
+tmsh list sys httpd
+tmsh show sys hardware Power
+tmsh show sys cpu
+tmsh list sys snmp
+tmsh show sys cpu
+tmsh list sys sshd
+tmsh list sys httpd
+tmsh list sys syslog
+tmsh list sys failover network failover unicast peer
+tmsh show net interface
+tmsh list sys snmp
+tmsh show sys hardware Fan
+tmsh show sys memory
+tmsh show sys performance Throughput
+tmsh list net vlan failsafe
+tmsh show sys hardware Serial
+tmsh show sys hardware CPUtemp
+tmsh show sys hardware Power
+tmsh show sys memory
+tmsh check_power_num
+tmsh list sys httpd
+tmsh list sys sshd
+tmsh show sys hardware Fan
+tmsh list sys failover network failover unicast peer
+tmsh show sys hardware Serial
+tmsh list sys snmp
+tmsh show sys performance Throughput
+tmsh show sys hardware Power
+tmsh show sys cpu
+tmsh show sys failover Time
+tmsh list net vlan failsafe
+tmsh list sys syslog
+tmsh show net interface
+tmsh show sys hardware CPUtemp
+tmsh show sys hardware Power
+tmsh check_power_num
+tmsh show sys failover Time
+tmsh show sys performance Throughput
+tmsh list sys snmp
+tmsh show sys hardware Serial
+tmsh show sys memory
+tmsh show sys cpu
+tmsh list sys syslog
+tmsh show sys hardware CPUtemp
+tmsh show net interface
+tmsh list sys httpd
+tmsh list net vlan failsafe
+tmsh show sys hardware Fan
+tmsh list sys sshd
+tmsh list sys failover network failover unicast peer
+tmsh show sys hardware Fan
+tmsh list sys sshd
+tmsh list sys httpd
+tmsh list sys failover network failover unicast peer
+tmsh list net vlan failsafe
+tmsh show sys hardware Serial
+tmsh show sys hardware CPUtemp
+tmsh show sys memory
+tmsh show sys hardware Power
+tmsh show sys cpu
+tmsh list sys snmp
+tmsh show net interface
+tmsh show sys performance Throughput
+tmsh list sys syslog
+tmsh show sys hardware Fan
+tmsh check_power_num
+tmsh list sys failover network failover unicast peer
+tmsh list sys httpd
+tmsh list sys sshd
+tmsh show sys performance Throughput
+tmsh list sys snmp
+tmsh show sys cpu
+tmsh list net vlan failsafe
+tmsh show net interface
+tmsh show sys hardware CPUtemp
+tmsh list sys syslog
+tmsh show sys failover Time
+tmsh show sys hardware Serial
+tmsh show sys memory
+tmsh show sys hardware Power
+tmsh list sys syslog
+tmsh check_power_num
+tmsh list sys sshd
+tmsh show sys failover Time
+tmsh list sys failover network failover unicast peer
+tmsh list sys httpd
+tmsh list net vlan failsafe
+tmsh show sys performance Throughput
+tmsh show sys hardware CPUtemp
+tmsh show sys hardware Fan
+tmsh show sys memory
+tmsh show sys hardware Serial
+tmsh show sys hardware Power
+tmsh show sys cpu
+tmsh list sys snmp
+tmsh show net interface
+tmsh show sys hardware Serial
+tmsh check_power_num
+tmsh show net interface
+tmsh show sys performance Throughput
+tmsh show sys hardware Fan
+tmsh list sys sshd
+tmsh list sys httpd
+tmsh list sys failover network failover unicast peer
+tmsh show sys failover Time
+tmsh list net vlan failsafe
+tmsh show sys memory
+tmsh show sys hardware Power
+tmsh show sys cpu
+tmsh show sys hardware CPUtemp
+tmsh list sys syslog
+tmsh list sys snmp
+tmsh list sys syslog
+tmsh check_power_num
+tmsh list sys sshd
+tmsh show sys failover Time
+tmsh list sys httpd
+tmsh list sys failover network failover unicast peer
+tmsh list net vlan failsafe
+tmsh show sys hardware Fan
+tmsh show sys performance Throughput
+tmsh show sys hardware CPUtemp
+tmsh list sys snmp
+tmsh show sys hardware Power
+tmsh show sys cpu
+tmsh show sys memory
+tmsh show net interface
+tmsh show sys hardware Serial
+tmsh show sys hardware CPUtemp
+tmsh check_power_num
+tmsh list net vlan failsafe
+tmsh show sys memory
+tmsh show sys failover Time
+tmsh list sys failover network failover unicast peer
+tmsh list sys httpd
+tmsh list sys sshd
+tmsh show sys hardware Fan
+tmsh show sys performance Throughput
+tmsh show net interface
+tmsh show sys hardware Power
+tmsh show sys cpu
+tmsh list sys syslog
+tmsh list sys snmp
+tmsh show sys hardware Serial

@@ -1,0 +1,5 @@
+命令输出设备温度
+Device   Temperature Slot   State      Current(C)
+------   ----------------   --------   ----------
+1        0                  Normal     46
+2        0                  Normal     46
