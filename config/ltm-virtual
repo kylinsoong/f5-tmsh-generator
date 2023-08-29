@@ -1,0 +1,289 @@
+
+------------------------------------------------------------------
+Ltm::Virtual Server: vs_1      
+------------------------------------------------------------------
+Status                         
+  Availability     : available 
+  State            : enabled   
+  Reason           : The virtual server is available
+  CMP              : enabled   
+  CMP Mode         : all-cpus  
+  Destination      : 10.108.70.34:80
+                               
+Traffic                             ClientSide  Ephemeral  General
+  Bits In                                    0          0        -
+  Bits Out                                   0          0        -
+  Packets In                                 0          0        -
+  Packets Out                                0          0        -
+  Current Connections                        0          0        -
+  Maximum Connections                        0          0        -
+  Total Connections                          0          0        -
+  Evicted Connections                        0          0        -
+  Slow Connections Killed                    0          0        -
+  Min Conn Duration/msec                     -          -        0
+  Max Conn Duration/msec                     -          -        0
+  Mean Conn Duration/msec                    -          -        0
+  Total Requests                             -          -        0
+                               
+SYN Cookies                    
+  Status                         not-activated
+  Hardware SYN Cookie Instances              0
+  Software SYN Cookie Instances              0
+  Current SYN Cache                          0
+  SYN Cache Overflow                         0
+  Total Software                             0
+  Total Software Accepted                    0
+  Total Software Rejected                    0
+  Total Hardware                             0
+  Total Hardware Accepted                    0
+                               
+Message Routing Framework                   In        Out
+  Message                                    0          0
+  Request                                    0          0
+  Response                                   0          0
+                               
+CPU Usage Ratio (%)            
+  Last 5 Seconds                             0
+  Last 1 Minute                              0
+  Last 5 Minutes                             0
+
+------------------------------------------------------------------
+Ltm::Virtual Server: vs_2      
+------------------------------------------------------------------
+Status                         
+  Availability     : unknown   
+  State            : enabled   
+  Reason           : The children pool member(s) either don't have service checking enabled, or service check results are not available yet
+  CMP              : enabled   
+  CMP Mode         : all-cpus  
+  Destination      : 10.108.70.35:80
+                               
+Traffic                             ClientSide  Ephemeral  General
+  Bits In                                    0          0        -
+  Bits Out                                   0          0        -
+  Packets In                                 0          0        -
+  Packets Out                                0          0        -
+  Current Connections                        0          0        -
+  Maximum Connections                        0          0        -
+  Total Connections                          0          0        -
+  Evicted Connections                        0          0        -
+  Slow Connections Killed                    0          0        -
+  Min Conn Duration/msec                     -          -        0
+  Max Conn Duration/msec                     -          -        0
+  Mean Conn Duration/msec                    -          -        0
+  Total Requests                             -          -        0
+                               
+SYN Cookies                    
+  Status                         not-activated
+  Hardware SYN Cookie Instances              0
+  Software SYN Cookie Instances              0
+  Current SYN Cache                          0
+  SYN Cache Overflow                         0
+  Total Software                             0
+  Total Software Accepted                    0
+  Total Software Rejected                    0
+  Total Hardware                             0
+  Total Hardware Accepted                    0
+                               
+Message Routing Framework                   In        Out
+  Message                                    0          0
+  Request                                    0          0
+  Response                                   0          0
+                               
+CPU Usage Ratio (%)            
+  Last 5 Seconds                             0
+  Last 1 Minute                              0
+  Last 5 Minutes                             0
+
+------------------------------------------------------------------
+Ltm::Virtual Server: vs_3      
+------------------------------------------------------------------
+Status                         
+  Availability     : available 
+  State            : disabled  
+  Reason           : The virtual server is available
+  CMP              : enabled   
+  CMP Mode         : all-cpus  
+  Destination      : 10.108.70.36:80
+                               
+Traffic                             ClientSide  Ephemeral  General
+  Bits In                                    0          0        -
+  Bits Out                                   0          0        -
+  Packets In                                 0          0        -
+  Packets Out                                0          0        -
+  Current Connections                        0          0        -
+  Maximum Connections                        0          0        -
+  Total Connections                          0          0        -
+  Evicted Connections                        0          0        -
+  Slow Connections Killed                    0          0        -
+  Min Conn Duration/msec                     -          -        0
+  Max Conn Duration/msec                     -          -        0
+  Mean Conn Duration/msec                    -          -        0
+  Total Requests                             -          -        0
+                               
+SYN Cookies                    
+  Status                         not-activated
+  Hardware SYN Cookie Instances              0
+  Software SYN Cookie Instances              0
+  Current SYN Cache                          0
+  SYN Cache Overflow                         0
+  Total Software                             0
+  Total Software Accepted                    0
+  Total Software Rejected                    0
+  Total Hardware                             0
+  Total Hardware Accepted                    0
+                               
+Message Routing Framework                   In        Out
+  Message                                    0          0
+  Request                                    0          0
+  Response                                   0          0
+                               
+CPU Usage Ratio (%)            
+  Last 5 Seconds                             0
+  Last 1 Minute                              0
+  Last 5 Minutes                             0
+
+------------------------------------------------------------------
+Ltm::Virtual Server: vs_4      
+------------------------------------------------------------------
+Status                         
+  Availability     : available 
+  State            : enabled   
+  Reason           : The virtual server is available
+  CMP              : enabled   
+  CMP Mode         : all-cpus  
+  Destination      : 10.108.70.37:80
+                               
+Traffic                             ClientSide  Ephemeral  General
+  Bits In                                    0          0        -
+  Bits Out                                   0          0        -
+  Packets In                                 0          0        -
+  Packets Out                                0          0        -
+  Current Connections                        0          0        -
+  Maximum Connections                        0          0        -
+  Total Connections                          0          0        -
+  Evicted Connections                        0          0        -
+  Slow Connections Killed                    0          0        -
+  Min Conn Duration/msec                     -          -        0
+  Max Conn Duration/msec                     -          -        0
+  Mean Conn Duration/msec                    -          -        0
+  Total Requests                             -          -        0
+                               
+SYN Cookies                    
+  Status                         not-activated
+  Hardware SYN Cookie Instances              0
+  Software SYN Cookie Instances              0
+  Current SYN Cache                          0
+  SYN Cache Overflow                         0
+  Total Software                             0
+  Total Software Accepted                    0
+  Total Software Rejected                    0
+  Total Hardware                             0
+  Total Hardware Accepted                    0
+                               
+Message Routing Framework                   In        Out
+  Message                                    0          0
+  Request                                    0          0
+  Response                                   0          0
+                               
+CPU Usage Ratio (%)            
+  Last 5 Seconds                             0
+  Last 1 Minute                              0
+  Last 5 Minutes                             0
+
+------------------------------------------------------------------
+Ltm::Virtual Server: vs_5      
+------------------------------------------------------------------
+Status                         
+  Availability     : offline   
+  State            : enabled   
+  Reason           : The children pool member(s) are down
+  CMP              : enabled   
+  CMP Mode         : all-cpus  
+  Destination      : 10.108.77.38:80
+                               
+Traffic                             ClientSide  Ephemeral  General
+  Bits In                                    0          0        -
+  Bits Out                                   0          0        -
+  Packets In                                 0          0        -
+  Packets Out                                0          0        -
+  Current Connections                        0          0        -
+  Maximum Connections                        0          0        -
+  Total Connections                          0          0        -
+  Evicted Connections                        0          0        -
+  Slow Connections Killed                    0          0        -
+  Min Conn Duration/msec                     -          -        0
+  Max Conn Duration/msec                     -          -        0
+  Mean Conn Duration/msec                    -          -        0
+  Total Requests                             -          -        0
+                               
+SYN Cookies                    
+  Status                         not-activated
+  Hardware SYN Cookie Instances              0
+  Software SYN Cookie Instances              0
+  Current SYN Cache                          0
+  SYN Cache Overflow                         0
+  Total Software                             0
+  Total Software Accepted                    0
+  Total Software Rejected                    0
+  Total Hardware                             0
+  Total Hardware Accepted                    0
+                               
+Message Routing Framework                   In        Out
+  Message                                    0          0
+  Request                                    0          0
+  Response                                   0          0
+                               
+CPU Usage Ratio (%)            
+  Last 5 Seconds                             0
+  Last 1 Minute                              0
+  Last 5 Minutes                             0
+
+------------------------------------------------------------------
+Ltm::Virtual Server: vs_6      
+------------------------------------------------------------------
+Status                         
+  Availability     : offline   
+  State            : disabled  
+  Reason           : The children pool member(s) are down
+  CMP              : enabled   
+  CMP Mode         : all-cpus  
+  Destination      : 10.108.77.39:80
+                               
+Traffic                             ClientSide  Ephemeral  General
+  Bits In                                    0          0        -
+  Bits Out                                   0          0        -
+  Packets In                                 0          0        -
+  Packets Out                                0          0        -
+  Current Connections                        0          0        -
+  Maximum Connections                        0          0        -
+  Total Connections                          0          0        -
+  Evicted Connections                        0          0        -
+  Slow Connections Killed                    0          0        -
+  Min Conn Duration/msec                     -          -        0
+  Max Conn Duration/msec                     -          -        0
+  Mean Conn Duration/msec                    -          -        0
+  Total Requests                             -          -        0
+                               
+SYN Cookies                    
+  Status                         not-activated
+  Hardware SYN Cookie Instances              0
+  Software SYN Cookie Instances              0
+  Current SYN Cache                          0
+  SYN Cache Overflow                         0
+  Total Software                             0
+  Total Software Accepted                    0
+  Total Software Rejected                    0
+  Total Hardware                             0
+  Total Hardware Accepted                    0
+                               
+Message Routing Framework                   In        Out
+  Message                                    0          0
+  Request                                    0          0
+  Response                                   0          0
+                               
+CPU Usage Ratio (%)            
+  Last 5 Seconds                             0
+  Last 1 Minute                              0
+  Last 5 Minutes                             0
+

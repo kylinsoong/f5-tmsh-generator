@@ -1,0 +1,19 @@
+Filesystem                             Size  Used Avail Use% Mounted on
+/dev/mapper/vg--db--vda-set.1.root     419M   76M  317M  20% /
+devtmpfs                               3.9G  4.0K  3.9G   1% /dev
+tmpfs                                  3.9G  2.3M  3.9G   1% /dev/shm
+tmpfs                                  3.9G  2.3M  3.9G   1% /run
+tmpfs                                  3.9G     0  3.9G   0% /sys/fs/cgroup
+/dev/mapper/vg--db--vda-set.1._usr     5.2G  4.6G  318M  94% /usr
+/dev/mapper/vg--db--vda-set.1._var     2.9G  381M  2.4G  14% /var
+/dev/mapper/vg--db--vda-set.1._config  2.1G   15M  2.0G   1% /config
+prompt                                 4.0M   28K  4.0M   1% /var/prompt
+none                                   3.9G   18M  3.9G   1% /var/tmstat
+/dev/mapper/vg--db--vda-dat.appdata     25G  173M   24G   1% /appdata
+/dev/mapper/vg--db--vda-dat.share       15G  127M   14G   1% /shared
+none                                   3.9G   45M  3.9G   2% /shared/rrd.1.2
+/dev/mapper/vg--db--vda-dat.log        2.9G   33M  2.7G   2% /var/log
+none                                   3.9G  4.0K  3.9G   1% /run/pamcache
+none                                   3.9G     0  3.9G   0% /var/loipc
+tmpfs                                  799M     0  799M   0% /run/user/0
+tmpfs                                  799M     0  799M   0% /run/user/91
