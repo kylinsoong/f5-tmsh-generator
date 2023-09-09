@@ -1,0 +1,5 @@
+view@(FT-F5-WL-L7600-1A)(cfg-sync In Sync)(Standby)(/Common)(tmos)# list net  vlan failsafe failsafe-timeout  |grep enabled -C  1
+net vlan internal61_vlan {
+    failsafe enabled
+    failsafe-timeout 15
+

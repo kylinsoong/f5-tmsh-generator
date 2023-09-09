@@ -1,0 +1,13 @@
+# show cm sync-status
+            
+----------------------------------------------------------------------------------
+CM::Sync Status
+----------------------------------------------------------------------------------
+Color    green
+Status   In Sync
+Mode     high-availability
+Summary  All devices in the device group are in sync
+Details
+         gerenwangyinmenhu2.com: connected
+         DG1 (In Sync): All devices in the device group are in sync
+         device_trust_group (In Sync): All devices in the device group are in sync

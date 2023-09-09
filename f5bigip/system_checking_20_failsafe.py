@@ -6,6 +6,9 @@ def system_checking(data_str):
 
     results = []
 
+    if "failsafe enabled" in data_str and "failsafe-timeout" in data_str:
+        results.append({"key": "检查是否配置心跳检测", "value": "是"})    
+
     return results
 
 def checking(filePath):
