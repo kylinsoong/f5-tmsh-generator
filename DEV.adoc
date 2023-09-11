@@ -1,0 +1,76 @@
+= Developer Guide?
+:toc: manual
+
+== Usage
+
+=== BIG-IP Configuration
+
+[source, bash]
+.*Network*
+----
+tmsh create net vlan external interfaces add { 1.1 { untagged } }
+tmsh create net vlan internal interfaces add { 1.2 { untagged } }
+tmsh create net self 10.1.10.240 address 10.1.10.240/24 vlan external allow-service default
+tmsh create net self 10.1.20.240 address 10.1.20.240/24 vlan internal allow-service default
+tmsh create net route Default_Gateway network 0.0.0.0/0 gw 10.1.10.2
+tmsh modify sys dns name-servers add { 10.1.10.2 }
+tmsh modify sys ntp timezone Asia/Shanghai
+tmsh save sys config
+----
+
+[source, bash]
+.*VS/Pool/SNAT*
+----
+tmsh create ltm pool ydbg_10.1.10.11_80_pool members add {10.1.20.11:8081 10.1.20.12:8081 10.1.20.23:8081} monitor http
+tmsh create ltm snatpool ydbg_10.1.10.11_snat members add {10.1.10.101 10.1.10.102}
+tmsh create ltm virtual ydbg_10.1.10.11_80_vs destination 10.1.10.11:80 pool ydbg_10.1.10.11_80_pool ip-protocol tcp profiles add { http { } } source-address-translation { type snat pool ydbg_10.1.10.11_snat }
+
+tmsh create ltm pool sjyh_10.1.10.12_80_pool members add {10.1.20.13:8081 10.1.20.14:8081 10.1.20.15:8081} monitor http
+tmsh create ltm snatpool sjyh_10.1.10.12_snat members add {10.1.10.103}
+tmsh create ltm virtual sjyh_10.1.10.12_80_vs destination 10.1.10.12:80 pool sjyh_10.1.10.12_80_pool ip-protocol tcp profiles add { http { } } source-address-translation { type snat pool sjyh_10.1.10.12_snat }
+
+tmsh create ltm snatpool qywx_10.1.10.13_snat members add {10.1.10.104 10.1.10.105}
+tmsh create ltm virtual qywx_10.1.10.13_80_vs destination 10.1.10.13:80 ip-protocol tcp profiles add { http { } } source-address-translation { type snat pool qywx_10.1.10.13_snat }
+
+tmsh create ltm virtual qywy_10.1.10.14_80_vs destination 10.1.10.14:80 ip-protocol tcp profiles add { http { } }
+----
+
+* link:bash/bash_net_setup.sh[bash/bash_net_setup.sh]
+* link:bash/bash_add.sh[bash/bash_add.sh] 
+* link:bash/bash_delete.sh[bash/bash_delete.sh]
+
+=== running-config 
+
+[source, bash]
+----
+tmsh show running-config 
+----
+
+* link:config/f5config.0[config/f5config.0]
+* link:config/f5config.1[config/f5config.1]
+
+=== running-config parse
+
+[source, bash]
+----
+$ ./test/running-config-parse.py config/f5config.1 
+{'vsname': 'vs_1', 'vsip': '10.1.10.11', 'vsport': 'http', 'poolname': 6576, 'pool': [{'ip': '10.1.20.11', 'port': 'tproxy'}, {'ip': '10.1.20.12', 'port': 'tproxy'}, {'ip': '10.1.20.23', 'port': 'tproxy'}], 'snatpoolname': 'snat_1', 'snatpool': ['10.1.10.103']}
+{'vsname': 'vs_2', 'vsip': '10.1.10.12', 'vsport': 'http', 'poolname': 7017, 'pool': [{'ip': '10.1.20.21', 'port': 'tproxy'}, {'ip': '10.1.20.22', 'port': 'tproxy'}], 'snatpoolname': 'snat_2', 'snatpool': ['10.1.10.104', '10.1.10.105']}
+{'vsname': 'vs_3', 'vsip': '10.1.10.13', 'vsport': 'http', 'poolname': 7330, 'pool': [{'ip': '10.1.20.11', 'port': 'tproxy'}, {'ip': '10.1.20.12', 'port': 'tproxy'}, {'ip': '10.1.20.13', 'port': 'tproxy'}, {'ip': '10.1.20.14', 'port': 'tproxy'}, {'ip': '10.1.20.15', 'port': 'tproxy'}, {'ip': '10.1.20.16', 'port': 'tproxy'}, {'ip': '10.1.20.17', 'port': 'tproxy'}, {'ip': '10.1.20.18', 'port': 'tproxy'}, {'ip': '10.1.20.19', 'port': 'tproxy'}, {'ip': '10.1.20.20', 'port': 'tproxy'}], 'snatpoolname': 'snat_3', 'snatpool': ['10.1.10.106', '10.1.10.107', '10.1.10.108']}
+----
+
+=== Service name port mapping
+
+[source, bash]
+----
+./test/extract-port-from-service-name.py test/f5-services-names.txt 
+./test/extract-port-from-service-name.py test/services-uniq.txt 
+----
+
+== Run Generator
+
+[source, bash]
+----
+$ ./f5-tmsh-generator.py config/f5config.2 test/request-vs-not-exist-net-exist.txt 
+----
+
