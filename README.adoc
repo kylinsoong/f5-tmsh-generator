@@ -120,3 +120,20 @@ image:config/bigip-spc-validation.jpg[config/bigip-spc-validation.jpg]
 {'key': '接口 2.2 收发包情况', 'value': 'Bits In: 2.4K, Bits Out: 26.8M, Pkts In: 3, Pkts Out: 51.8K'}
 {'key': '接口 mgmt 收发包情况', 'value': 'Bits In: 11.9M, Bits Out: 30.1M, Pkts In: 8.7K, Pkts Out: 6.1K'}
 ----
+
+The following tmsh are used to collect runtime metric:
+
+* `show sys hardware`
+* `show sys availability`
+* `show sys software`
+* `show sys clock`
+* `show sys license`
+* `show sys cpu`
+* `show sys memory`
+* `df -h`
+* `show net interface`
+* `show sys failover`
+* `show sys performance`
+* `list net  vlan failsafe failsafe-timeout  |grep enabled -C  1`
+* `show cm sync-status`
+* `show ltm virtual`
