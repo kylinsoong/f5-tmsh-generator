@@ -101,6 +101,31 @@ def generator_tmsh_modify_ltm_snatpool(snat_name, dict, rollback_tmsh_list):
             rollback_tmsh_list.append(snat_members_del)
 
 
+def generator_tmsh_persist(persistname, protocol, dict, rollback_tmsh_list):
+    results = is_persist_exist(persistname, dict)
+    if results == False and protocol == "tcp":
+        tmsh_persist_create = tmsh.get('tmsh', 'create.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", persistname).replace("${replace.persist.timeout}", "300")
+        tmsh_persist_delete = tmsh.get('tmsh', 'delete.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", persistname)
+        print(tmsh_persist_create)
+        rollback_tmsh_list.append(tmsh_persist_delete)        
+    elif results == False and protocol == "http":
+        tmsh_persist_create = tmsh.get('tmsh', 'create.ltm.persist.http').replace("${replace.persist.name}", persistname)
+        tmsh_persist_delete = tmsh.get('tmsh', 'delete.ltm.persist').replace("${replace.persist.type}", "cookie").replace("${replace.persist.name}", persistname)    
+        print(tmsh_persist_create)
+        rollback_tmsh_list.append(tmsh_persist_delete)
+
+
+def form_persist_name(protocol, dict, rollback_tmsh_list):
+    persistname = config['persistname']
+    if len(persistname) <= 0 and protocol == "tcp":
+        return "source_addr"
+    elif len(persistname) <= 0 and protocol == "http":
+        return "cookie"
+    else:
+        generator_tmsh_persist(persistname, protocol, dict, rollback_tmsh_list)
+        return persistname
+
+
 def generator_tmsh_create_ltm_virtual(vs_name, pool_name, snat_name, addr, port, protocol, rollback_tmsh_list, dict):
     
     vs_create = None
@@ -108,40 +133,42 @@ def generator_tmsh_create_ltm_virtual(vs_name, pool_name, snat_name, addr, port,
     destination = addr + ":" + str(port)
     key_pool = 'create_ltm_pool'
     key_snat = 'create_ltm_snatpool'
+    persist_name = form_persist_name(protocol, dict, rollback_tmsh_list)
+    
     if key_pool in dict and key_snat in dict and dict[key_pool] and dict[key_snat] and protocol == "tcp" and dict['syslist'][0] > 10:
-        vs_create = form_create_ltm_tmsh('create.ltm.virtual.tcp', vs_name, pool_name, snat_name, destination)
+        vs_create = form_create_ltm_tmsh('create.ltm.virtual.tcp', vs_name, pool_name, snat_name, destination, persist_name)
     elif key_pool in dict and key_snat in dict and dict[key_pool] and dict[key_snat] and protocol == "tcp" and dict['syslist'][0] <= 10:
-        vs_create = form_create_ltm_tmsh('create.ltm.virtual.tcp.legacy', vs_name, pool_name, snat_name, destination)
+        vs_create = form_create_ltm_tmsh('create.ltm.virtual.tcp.legacy', vs_name, pool_name, snat_name, destination, persist_name)
     elif key_pool in dict and key_snat in dict and dict[key_pool] and dict[key_snat] and protocol == "http" and dict['syslist'][0] >= 12:
-        vs_create = form_create_ltm_tmsh('create.ltm.virtual.http', vs_name, pool_name, snat_name, destination)
+        vs_create = form_create_ltm_tmsh('create.ltm.virtual.http', vs_name, pool_name, snat_name, destination, persist_name)
     elif key_pool in dict and key_snat in dict and dict[key_pool] and dict[key_snat] and protocol == "http" and dict['syslist'][0] == 11:
-        vs_create = form_create_ltm_tmsh('create.ltm.virtual.http.legacy', vs_name, pool_name, snat_name, destination)
+        vs_create = form_create_ltm_tmsh('create.ltm.virtual.http.legacy', vs_name, pool_name, snat_name, destination, persist_name)
     elif key_pool in dict and key_snat in dict and dict[key_pool] and dict[key_snat] and protocol == "http" and dict['syslist'][0] <= 10:
-        vs_create = form_create_ltm_tmsh('create.ltm.virtual.http.legacy.old', vs_name, pool_name, snat_name, destination)
+        vs_create = form_create_ltm_tmsh('create.ltm.virtual.http.legacy.old', vs_name, pool_name, snat_name, destination, persist_name)
     elif key_pool in dict and key_snat not in dict and dict[key_pool] and protocol == "tcp" and dict['syslist'][0] > 10:
-        vs_create = form_create_ltm_tmsh_nosnat('create.ltm.virtual.tcp.nosnat', vs_name, pool_name, destination)
+        vs_create = form_create_ltm_tmsh_nosnat('create.ltm.virtual.tcp.nosnat', vs_name, pool_name, destination, persist_name)
     elif key_pool in dict and key_snat not in dict and dict[key_pool] and protocol == "tcp" and dict['syslist'][0] <= 10:
-        vs_create = form_create_ltm_tmsh_nosnat('create.ltm.virtual.tcp.legacy.nosnat', vs_name, pool_name, destination)
+        vs_create = form_create_ltm_tmsh_nosnat('create.ltm.virtual.tcp.legacy.nosnat', vs_name, pool_name, destination, persist_name)
     elif key_pool in dict and key_snat not in dict and dict[key_pool] and protocol == "http" and dict['syslist'][0] >= 12:
-        vs_create = form_create_ltm_tmsh_nosnat('create.ltm.virtual.http.nosnat', vs_name, pool_name, destination)
+        vs_create = form_create_ltm_tmsh_nosnat('create.ltm.virtual.http.nosnat', vs_name, pool_name, destination, persist_name)
     elif key_pool in dict and key_snat not in dict and dict[key_pool] and protocol == "http" and dict['syslist'][0] < 12:
-        vs_create = form_create_ltm_tmsh_nosnat('create.ltm.virtual.http.legacy.nosnat', vs_name, pool_name, destination)
+        vs_create = form_create_ltm_tmsh_nosnat('create.ltm.virtual.http.legacy.nosnat', vs_name, pool_name, destination, persist_name)
     elif key_pool not in dict and key_snat in dict and dict[key_snat] and protocol == "tcp" and dict['syslist'][0] > 10:
-        vs_create = form_create_ltm_tmsh_nopool('create.ltm.virtual.tcp.nopool', vs_name, snat_name, destination)
+        vs_create = form_create_ltm_tmsh_nopool('create.ltm.virtual.tcp.nopool', vs_name, snat_name, destination, persist_name)
     elif key_pool not in dict and key_snat in dict and dict[key_snat] and protocol == "tcp" and dict['syslist'][0] <= 10:
-        vs_create = form_create_ltm_tmsh_nopool('create.ltm.virtual.tcp.legacy.nopool', vs_name, snat_name, destination)
+        vs_create = form_create_ltm_tmsh_nopool('create.ltm.virtual.tcp.legacy.nopool', vs_name, snat_name, destination, persist_name)
     elif key_pool not in dict and key_snat in dict and dict[key_snat] and protocol == "http" and dict['syslist'][0] >= 12:
-        vs_create = form_create_ltm_tmsh_nopool('create.ltm.virtual.http.nopool', vs_name, snat_name, destination)
+        vs_create = form_create_ltm_tmsh_nopool('create.ltm.virtual.http.nopool', vs_name, snat_name, destination, persist_name)
     elif key_pool not in dict and key_snat in dict and dict[key_snat] and protocol == "http" and dict['syslist'][0] == 11:
-        vs_create = form_create_ltm_tmsh_nopool('create.ltm.virtual.http.legacy.nopool', vs_name, snat_name, destination)
+        vs_create = form_create_ltm_tmsh_nopool('create.ltm.virtual.http.legacy.nopool', vs_name, snat_name, destination, persist_name)
     elif key_pool not in dict and key_snat in dict and dict[key_snat] and protocol == "http" and dict['syslist'][0] <= 10:
-        vs_create = form_create_ltm_tmsh_nopool('create.ltm.virtual.http.legacy.nopool.old', vs_name, snat_name, destination)
+        vs_create = form_create_ltm_tmsh_nopool('create.ltm.virtual.http.legacy.nopool.old', vs_name, snat_name, destination, persist_name)
     elif key_pool not in dict and key_snat not in dict and protocol == "tcp":
-        vs_create =  form_create_ltm_tmsh_nopool_nosnat('create.ltm.virtual.tcp.nopool.nosnat', vs_name, destination)
+        vs_create =  form_create_ltm_tmsh_nopool_nosnat('create.ltm.virtual.tcp.nopool.nosnat', vs_name, destination, persist_name)
     elif key_pool not in dict and key_snat not in dict and protocol == "http" and dict['syslist'][0] >= 12:
-        vs_create =  form_create_ltm_tmsh_nopool_nosnat('create.ltm.virtual.http.nopool.nosnat', vs_name, destination)
+        vs_create =  form_create_ltm_tmsh_nopool_nosnat('create.ltm.virtual.http.nopool.nosnat', vs_name, destination, persist_name)
     elif key_pool not in dict and key_snat not in dict and protocol == "http" and dict['syslist'][0] < 12:
-        vs_create =  form_create_ltm_tmsh_nopool_nosnat('create.ltm.virtual.http.legacy.nopool.nosnat', vs_name, destination)
+        vs_create =  form_create_ltm_tmsh_nopool_nosnat('create.ltm.virtual.http.legacy.nopool.nosnat', vs_name, destination, persist_name)
 
     vs_delete = tmsh.get('tmsh', 'delete.ltm.virtual').replace("${replace.virtual.name}", vs_name)
  
@@ -189,17 +216,17 @@ def form_modify_ltm_tmsh_nopool(key, vs_name, snat_name):
 def form_modify_ltm_tmsh(key, vs_name, pool_name, snat_name):
     return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.pool.name}", pool_name).replace("${replace.snatpool.name}", snat_name)
 
-def form_create_ltm_tmsh(key, vs_name, pool_name, snat_name, destination):
-    return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.pool.name}", pool_name).replace("${replace.snatpool.name}", snat_name)
+def form_create_ltm_tmsh(key, vs_name, pool_name, snat_name, destination, persist_name):
+    return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.pool.name}", pool_name).replace("${replace.snatpool.name}", snat_name).replace("${replace.virtual.persist}", persist_name)
 
-def form_create_ltm_tmsh_nosnat(key, vs_name, pool_name, destination):
-    return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.pool.name}", pool_name)
+def form_create_ltm_tmsh_nosnat(key, vs_name, pool_name, destination, persist_name):
+    return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.pool.name}", pool_name).replace("${replace.virtual.persist}", persist_name)
 
-def form_create_ltm_tmsh_nopool(key, vs_name, snat_name, destination):
-    return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.snatpool.name}", snat_name)
+def form_create_ltm_tmsh_nopool(key, vs_name, snat_name, destination, persist_name):
+    return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.snatpool.name}", snat_name).replace("${replace.virtual.persist}", persist_name)
 
-def form_create_ltm_tmsh_nopool_nosnat(key, vs_name, destination):
-    return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination)
+def form_create_ltm_tmsh_nopool_nosnat(key, vs_name, destination, persist_name):
+    return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.virtual.persist}", persist_name)
 
 
 def is_vs_exist(vs_name, dict):
@@ -216,7 +243,12 @@ def is_vs_exist(vs_name, dict):
             return True
     return False
 
-
+def is_persist_exist(persist_name, dict):
+    infolist = dict['infolist']
+    for info in infolist:
+        if info[7] == persist_name:
+            return True
+    return False         
 
 def generate_save_sync(dict, sync_group_name):
 
@@ -492,6 +524,7 @@ def load_app_request_form(fileadd):
             config['external'] = dict[k_external]
             config['externalvlan'] = dict[k_externalvlan]
             config['externaltrunk'] = dict[k_externaltrunk]
+            config['persistname'] = dict[k_persist]
             config_list.append(config)
     file.close
     return config_list
@@ -514,6 +547,7 @@ k_snataddr = 'SNAT地址'
 k_serverport = '服务器端口'
 k_serveraddr = '真实服务器地址'
 k_protocol = '协议类型'
+k_persist = '会话保持'
 k_internal = 'internal地址'
 k_internalvlan = 'internalvlan'
 k_internaltrunk = 'internaltrunk'

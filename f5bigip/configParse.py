@@ -1892,6 +1892,7 @@ The exist info list contains 3 list:
         4 - pool members
         5 - snatpool name
         6 - snatpool members
+        7 - persist name
 
     net_set: all exist networks
         eg , {IPv4Network('10.1.10.0/24'), IPv4Network('10.1.20.0/24')}
@@ -1915,6 +1916,6 @@ def existinfolist(data_all):
     net_set = form_self_list(net_self_list)
     sys_list = form_sys_list(cm_device_list, cm_device_group_list)
     for vs in vs_list:
-        info_list.append((vs.vs_name, vs.vs_ip, vs.vs_port, vs.pool, form_pool_members(pool_list, vs.pool), vs.snatpool, form_snat_members(snatpool_list, vs.snatpool)))
+        info_list.append((vs.vs_name, vs.vs_ip, vs.vs_port, vs.pool, form_pool_members(pool_list, vs.pool), vs.snatpool, form_snat_members(snatpool_list, vs.snatpool), vs.persist))
 
     return (info_list, net_set, sys_list)
