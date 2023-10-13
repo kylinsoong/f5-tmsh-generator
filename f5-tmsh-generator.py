@@ -118,9 +118,11 @@ def generator_tmsh_persist(persistname, protocol, dict, rollback_tmsh_list):
 def form_persist_name(protocol, dict, rollback_tmsh_list):
     persistname = config['persistname']
     if len(persistname) <= 0 and protocol == "tcp":
-        return "source_addr"
+        #return "source_addr"
+        return "none"  # issue #14
     elif len(persistname) <= 0 and protocol == "http":
-        return "cookie"
+        #return "cookie"
+        return "none" # issue #14
     else:
         generator_tmsh_persist(persistname, protocol, dict, rollback_tmsh_list)
         return persistname
@@ -217,16 +219,32 @@ def form_modify_ltm_tmsh(key, vs_name, pool_name, snat_name):
     return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.pool.name}", pool_name).replace("${replace.snatpool.name}", snat_name)
 
 def form_create_ltm_tmsh(key, vs_name, pool_name, snat_name, destination, persist_name):
-    return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.pool.name}", pool_name).replace("${replace.snatpool.name}", snat_name).replace("${replace.virtual.persist}", persist_name)
+    if persist_name == "none":
+        key = key + ".none"
+        return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.pool.name}", pool_name).replace("${replace.snatpool.name}", snat_name)
+    else:
+        return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.pool.name}", pool_name).replace("${replace.snatpool.name}", snat_name).replace("${replace.virtual.persist}", persist_name)
 
 def form_create_ltm_tmsh_nosnat(key, vs_name, pool_name, destination, persist_name):
-    return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.pool.name}", pool_name).replace("${replace.virtual.persist}", persist_name)
+    if persist_name == "none":
+        key = key + ".none"
+        return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.pool.name}", pool_name)
+    else:
+        return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.pool.name}", pool_name).replace("${replace.virtual.persist}", persist_name)
 
 def form_create_ltm_tmsh_nopool(key, vs_name, snat_name, destination, persist_name):
-    return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.snatpool.name}", snat_name).replace("${replace.virtual.persist}", persist_name)
+    if persist_name == "none":
+        key = key + ".none"
+        return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.snatpool.name}", snat_name)
+    else:
+        return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.snatpool.name}", snat_name).replace("${replace.virtual.persist}", persist_name)
 
 def form_create_ltm_tmsh_nopool_nosnat(key, vs_name, destination, persist_name):
-    return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.virtual.persist}", persist_name)
+    if persist_name == "none":
+        key = key + ".none"
+        return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination)
+    else:
+        return tmsh.get('tmsh', key).replace("${replace.virtual.name}", vs_name).replace("${replace.virtual.destination}", destination).replace("${replace.virtual.persist}", persist_name)
 
 
 def is_vs_exist(vs_name, dict):
@@ -244,6 +262,8 @@ def is_vs_exist(vs_name, dict):
     return False
 
 def is_persist_exist(persist_name, dict):
+    if persist_name in dict['persistlist']:
+        return True
     infolist = dict['infolist']
     for info in infolist:
         if info[7] == persist_name:
@@ -373,7 +393,6 @@ def generate_net_scripts(config, rollback_tmsh_list):
 '''
 Generate Network Script End
 '''
-
 
 
 def generate_vs_exist(vs_name, pool_name, snat_name, dict, rollback_tmsh_list):
@@ -563,5 +582,6 @@ for config in config_list:
     config['infolist'] = infolists[0]
     config['netset'] = infolists[1]
     config['syslist'] = infolists[2]
+    config['persistlist'] = infolists[3]
     generate(config)
 

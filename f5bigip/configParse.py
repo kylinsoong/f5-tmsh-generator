@@ -1881,6 +1881,15 @@ def form_sys_list(devices, device_groups):
     return (version, device_group)
 
 
+def form_perisit_name_list(persist_source_addr_list, persist_cookie_list):
+    results = []
+    for source_addr in persist_source_addr_list:
+        results.append(source_addr.name)
+    for cookie in persist_cookie_list:
+        results.append(cookie.name)
+    return results
+
+
 '''
 The exist info list contains 3 list:
 
@@ -1911,6 +1920,10 @@ def existinfolist(data_all):
     cm_device_list = cm_device(data_all_list[0])
     cm_device_group_list = cm_device_group(data_all_list[0])
     net_self_list = net_self(data_all_list[2])
+    persist_source_addr_list = ltm_persistence_source_addr(data_all_list[1])
+    persist_cookie_list = ltm_persistence_cookie(data_all_list[1])
+    persist_list = form_perisit_name_list(persist_source_addr_list, persist_cookie_list)
+
 
     info_list = []
     net_set = form_self_list(net_self_list)
@@ -1918,4 +1931,4 @@ def existinfolist(data_all):
     for vs in vs_list:
         info_list.append((vs.vs_name, vs.vs_ip, vs.vs_port, vs.pool, form_pool_members(pool_list, vs.pool), vs.snatpool, form_snat_members(snatpool_list, vs.snatpool), vs.persist))
 
-    return (info_list, net_set, sys_list)
+    return (info_list, net_set, sys_list, persist_list)
