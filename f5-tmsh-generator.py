@@ -375,6 +375,9 @@ def generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_inter
 
 def generate_net_scripts(config, rollback_tmsh_list):
 
+    if is_second_request_config:
+        return
+
     net_external = config['external']
     net_externaltag = config['externalvlan']
     net_externaltrunk = config['externaltrunk']
@@ -442,7 +445,10 @@ def generate(dict):
     rollback_tmsh_list = []
 
     generate_net_scripts(dict, rollback_tmsh_list)
-    print("----  业务变更配置  ----")
+
+    if is_second_request_config == False:
+        print("----  业务变更配置  ----")
+
     if is_vs_exist(vs_name, dict):
         vs_name = dict['existed_vs_name']
         if dict['existed_pool_name'] is not None:
@@ -453,14 +459,11 @@ def generate(dict):
     else:
         generate_vs_not_exist(vs_name, pool_name, snat_name, dict, rollback_tmsh_list)
 
-    sync_group_name = dict['syslist'][1]
-    generate_save_sync(dict, sync_group_name)
+    #sync_group_name = dict['syslist'][1]
+    #generate_save_sync(dict, sync_group_name)
 
-    print("----  变更回退配置  ----")
-    num = len(rollback_tmsh_list) - 1
-    for num in range(num, -1 , -1):
-        print(rollback_tmsh_list[num])
-    generate_save_sync(dict, sync_group_name)
+    dict['rollback_tmsh_list'] = rollback_tmsh_list
+
 
 
 def listToString(s):
@@ -578,10 +581,26 @@ config_list = load_app_request_form(fileadd)
 running_config = load_bigip_running_config(fileconfig)
 infolists = configParse.existinfolist(running_config)
 
+is_second_request_config = False
+rollback_list = []
+
 for config in config_list:
     config['infolist'] = infolists[0]
     config['netset'] = infolists[1]
     config['syslist'] = infolists[2]
     config['persistlist'] = infolists[3]
     generate(config)
+    rollback_list.append(config['rollback_tmsh_list'])
+    is_second_request_config = True
+
+#sync_group_name = dict['syslist'][1]
+generate_save_sync(config_list[0], config_list[0]['syslist'][1])
+
+print("----  变更回退配置  ----")
+rollbacknum = len(rollback_list) - 1
+for rollbacknum in range(rollbacknum, -1 , -1):
+    rollback_tmsh_list = rollback_list[rollbacknum]
+    num = len(rollback_tmsh_list) - 1
+    for num in range(num, -1 , -1):
+        print(rollback_tmsh_list[num])
 
