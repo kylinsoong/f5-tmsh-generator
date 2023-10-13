@@ -262,7 +262,7 @@ def is_vs_exist(vs_name, dict):
     return False
 
 def is_persist_exist(persist_name, dict):
-    if persist_name in dict['persistlist']:
+    if persist_name in dict['persistlist'] or persist_name == "none":
         return True
     infolist = dict['infolist']
     for info in infolist:
