@@ -603,4 +603,4 @@ for rollbacknum in range(rollbacknum, -1 , -1):
     num = len(rollback_tmsh_list) - 1
     for num in range(num, -1 , -1):
         print(rollback_tmsh_list[num])
-
+generate_save_sync(config_list[0], config_list[0]['syslist'][1])
