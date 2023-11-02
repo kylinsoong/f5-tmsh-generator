@@ -692,9 +692,9 @@ def sepc_pool_configuration_validation(data_all, vs_list):
             pool_lb_tmsh.append(tmsh_lb_modify)
             pool_lb_tmsh_rollback.append(tmsh_lb_rollback)
 
-    pool_validation_list.append((32, pool_notes, pool_spec, pool_tmsh, pool_tmsh_rollback, False))
+    pool_validation_list.append((32, pool_notes, pool_spec, pool_tmsh, pool_tmsh_rollback, True))
 
-    pool_validation_list.append((33, pool_lb_notes, pool_lb_spec, pool_lb_tmsh, pool_lb_tmsh_rollback, False))
+    pool_validation_list.append((33, pool_lb_notes, pool_lb_spec, pool_lb_tmsh, pool_lb_tmsh_rollback, True))
 
     return pool_validation_list
 
@@ -717,7 +717,7 @@ def sepc_virtual_configuration_validation(data_all, vs_list):
             tmsh_pva_none.append(tmsh_pva_none)
             tmsh_pva_rollback.append(tmsh_pva_rollback)
 
-    virtual_validation_list.append((34, fastl4_notes, fastl4_spec, fastl4_tmsh, fastl4_tmsh_rollback, False))
+    virtual_validation_list.append((34, fastl4_notes, fastl4_spec, fastl4_tmsh, fastl4_tmsh_rollback, True))
 
     profiles_list = configParse.ltm_profile_web_acceleration(data_all)
     profiles_list.append("webacceleration")
@@ -734,7 +734,7 @@ def sepc_virtual_configuration_validation(data_all, vs_list):
                 profiles_tmsh.append(tmsh_del)
                 profiles_tmsh_rollback.append(tmsh_del)
 
-    virtual_validation_list.append((35, profiles_notes, profiles_spec, profiles_tmsh, profiles_tmsh_rollback, False))
+    virtual_validation_list.append((35, profiles_notes, profiles_spec, profiles_tmsh, profiles_tmsh_rollback, True))
 
     return virtual_validation_list
 
@@ -783,16 +783,16 @@ class Spec:
                 ws2['A' + str(ws2_start_id)] = item[0]
                 ws2['B' + str(ws2_start_id)] = self.hostname
                 ws2['C' + str(ws2_start_id)] = self.management_ip
-                ws2['E' + str(ws2_start_id)] = configParse.convert_list_to_str_semicolon(item[3])
-                ws2['F' + str(ws2_start_id)] = configParse.convert_list_to_str_semicolon(item[4])
+                ws2['E' + str(ws2_start_id)] = configParse.convert_list_to_str_enter(item[3])
+                ws2['F' + str(ws2_start_id)] = configParse.convert_list_to_str_enter(item[4])
                 ws2['J' + str(ws2_start_id)] = item[1]
                 ws2_start_id = ws2_start_id +1
             else:
                 ws3['A' + str(ws3_start_id)] = item[0]
                 ws3['B' + str(ws3_start_id)] = self.hostname
                 ws3['C' + str(ws3_start_id)] = self.management_ip
-                ws3['E' + str(ws3_start_id)] = configParse.convert_list_to_str_semicolon(item[3])
-                ws3['F' + str(ws3_start_id)] = configParse.convert_list_to_str_semicolon(item[4])
+                ws3['E' + str(ws3_start_id)] = configParse.convert_list_to_str_enter(item[3])
+                ws3['F' + str(ws3_start_id)] = configParse.convert_list_to_str_enter(item[4])
                 ws3['J' + str(ws3_start_id)] = item[1]
                 ws3_start_id = ws3_start_id + 1
         wb.save(fileexcel)
