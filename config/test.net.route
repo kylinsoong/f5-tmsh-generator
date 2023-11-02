@@ -1,0 +1,9 @@
+net route NTP {
+    gw 11.16.160.30
+    network 11.20.22.0/24
+}
+net route default_route {
+[7m---(less 84[m[K
+[K    gw 11.19.16.14
+    network default
+}

@@ -765,7 +765,8 @@ def net_route(data_all):
                 gw = trip_prefix(line, "gw")
             elif line.startswith("network"):
                 network = trip_prefix(line, "network")
-        net_route_list.append(BIGIPNetRoute(name, gw, network))
+        if gw is not None:
+            net_route_list.append(BIGIPNetRoute(name, gw, network))
 
     return net_route_list
         
