@@ -893,6 +893,7 @@ def data_collect_system_extract_hostname(data_all):
     devices = configParse.cm_device(data_all)
     return (devices[0].hostname, devices[0].management_ip, devices[0].version)
 
+
 def load_bigip_running_config(fileconfig):
     with open(fileconfig, 'r') as fo:
         data_all = fo.read()

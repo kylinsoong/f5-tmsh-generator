@@ -320,9 +320,22 @@ def cm_device(data_all):
                     unicast_address.append(trip_prefix(address, "ip"))
             cm_device_list.append(BIGIPDevice(configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, unicast_address, unicast_port, version))
 
+    if len(cm_device_list) <= 0:
+        cm_device_list = cm_device_v10(data_all)
+
     return cm_device_list
 
 
+def cm_device_v10(data_all):
+
+    device_list = []
+  
+    hostname = find_line_content_from_start_str(data_all, "hostname")
+    management_ip_data_all = find_line_content_from_start_str(data_all, "sys management-ip")
+    management_ip = replace_with_patterns(management_ip_data_all, ["{", "}"])
+
+    device_list.append(BIGIPDevice(None, None, hostname, management_ip, None, None, None, None, None))
+    return device_list
 
 
 def cm_device_group(data_all):

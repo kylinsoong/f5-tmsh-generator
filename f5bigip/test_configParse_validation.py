@@ -38,6 +38,12 @@ class TestConfigParseValidation(unittest.TestCase):
         net_route_list = net_route(data)
         self.assertEqual(len(net_route_list), 1)
 
+    def test_devicesV10_attrs_extract(self):
+        data = load_config_data("BH-BF2M1-HLW_APP-L3600-2A.com_11.16.176.91.running-config")
+        if data is not None:
+            device_list = cm_device_v10(data)
+
+
 
 if __name__ == '__main__':
     unittest.main()
