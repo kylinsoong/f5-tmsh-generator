@@ -40,15 +40,26 @@ def spec_user_management_validation(data_all):
 
     default_user_note = ""
     default_user_spec = SPEC_BASELINE_YES
-    default_user_tmsh = ""
-    default_user_rollback_tmsh = ""
+    default_user_tmsh_list = []
+    default_user_rollback_tmsh_list = []
     if "admin" in user_role_dict:
         default_user_note = SPEC_USER_MANAGEMENT_ADMIN_NOT_DELETE
         default_user_spec = SPEC_BASELINE_NO
         default_user_tmsh = tmsh.get('tmsh', 'modify.sys.db.systemauth').replace("${auth.user.name}", "psbc")
         default_user_rollback_tmsh = tmsh.get('tmsh', 'modify.sys.db.systemauth').replace("${auth.user.name}", "admin")
+        default_user_tmsh_list.append(default_user_tmsh)
+        default_user_rollback_tmsh_list.append(default_user_rollback_tmsh)
 
-    user_validation_list.append((2, default_user_note, default_user_spec, [default_user_tmsh], [default_user_rollback_tmsh], False))
+    if "root" in user_role_dict:
+        default_user_note = SPEC_USER_MANAGEMENT_ADMIN_NOT_DELETE
+        default_user_spec = SPEC_BASELINE_NO
+        default_root_tmsh = tmsh.get('tmsh', 'modify.sys.db.systemauth.disablerootlogin').replace("${auth.disablerootlogin}", "true")
+        default_root_tmsh_rollback = tmsh.get('tmsh', 'modify.sys.db.systemauth.disablerootlogin').replace("${auth.disablerootlogin}", "false")
+        default_user_tmsh_list.append(default_root_tmsh)
+        default_user_rollback_tmsh_list.append(default_root_tmsh_rollback)
+
+
+    user_validation_list.append((2, default_user_note, default_user_spec, default_user_tmsh_list, default_user_rollback_tmsh_list, True))
 
     user_role_config_note = ""
     user_role_config_spec = SPEC_BASELINE_YES
@@ -95,8 +106,8 @@ def spec_login_methods_validation(data_all):
             self_allow_default_rollback_tmsh.append(tmsh_rollback)
 
 
-    user_login_validation_list.append((4, self_allow_default_note, self_allow_default_spec, self_allow_default_tmsh, self_allow_default_rollback_tmsh, False))
-    user_login_validation_list.append((5, self_allow_default_note, self_allow_default_spec, self_allow_default_tmsh, self_allow_default_rollback_tmsh, False))
+    user_login_validation_list.append((4, self_allow_default_note, self_allow_default_spec, self_allow_default_tmsh, self_allow_default_rollback_tmsh, True))
+    user_login_validation_list.append((5, self_allow_default_note, self_allow_default_spec, self_allow_default_tmsh, self_allow_default_rollback_tmsh, True))
 
     timeout_validation_note = ""
     timeout_validation_spec = SPEC_BASELINE_YES
@@ -116,7 +127,7 @@ def spec_login_methods_validation(data_all):
         timeout_validation_tmsh.append(tmsh.get('tmsh', 'modify.sys.httpd').replace("${sys.httpd.timeout}", "720"))
         timeout_validation_rollback_tmsh.append(tmsh.get('tmsh', 'modify.sys.httpd').replace("${sys.httpd.timeout}", sys_httpd.auth_pam_idle_timeout))
 
-    user_login_validation_list.append((6, timeout_validation_note, timeout_validation_spec, timeout_validation_tmsh, timeout_validation_rollback_tmsh, False))
+    user_login_validation_list.append((6, timeout_validation_note, timeout_validation_spec, timeout_validation_tmsh, timeout_validation_rollback_tmsh, True))
     
     return user_login_validation_list
 
@@ -134,7 +145,7 @@ def spec_ntp_settings_validation(data_all):
         timezone_validation_spec = SPEC_BASELINE_NO
         timezone_validation_tmsh.append(tmsh.get('tmsh', 'modify.sys.ntp').replace("${sys.ntp.timezone}", "Asia/Shanghai"))
         timezone_validation_rollback_tmsh.append(tmsh.get('tmsh', 'modify.sys.ntp').replace("${sys.ntp.timezone}", ntp.timezone))
-    ntp_validation_list.append((7, timezone_validation_note, timezone_validation_spec, timezone_validation_tmsh, timezone_validation_rollback_tmsh, False))
+    ntp_validation_list.append((7, timezone_validation_note, timezone_validation_spec, timezone_validation_tmsh, timezone_validation_rollback_tmsh, True))
 
     servers_validation_note = ""
     servers_validation_spec = SPEC_BASELINE_YES
@@ -160,15 +171,15 @@ def spec_snmp_management_validation(data_all):
     for i in snmp.communities:
         communities_name_list.append(i.community_name)
 
-    snmp_validation_list.append((9, "", SPEC_BASELINE_YES, [], [], False))
-    snmp_validation_list.append((10, "", SPEC_BASELINE_YES, ["v2c"], [], False))
+    snmp_validation_list.append((9, "", SPEC_BASELINE_YES, [], [], True))
+    snmp_validation_list.append((10, "", SPEC_BASELINE_YES, ["v2c"], [], True))
 
     if "psbcread" not in communities_name_list:
         tmsh_community_add = tmsh.get('tmsh', 'modify.sys.snmp.communities.add').replace("${sys.snmp.community}", "XX").replace("${sys.snmp.community.name}", "XX")
         tmsh_community_del = tmsh.get('tmsh', 'modify.sys.snmp.communities.del').replace("${sys.snmp.community}", "XX")
-        snmp_validation_list.append((11, SPEC_SNMP_COMMINITY_NOT_EXIST, SPEC_BASELINE_NO, [tmsh_community_add], [tmsh_community_del], False))
+        snmp_validation_list.append((11, SPEC_SNMP_COMMINITY_NOT_EXIST, SPEC_BASELINE_NO, [tmsh_community_add], [tmsh_community_del], True))
     else:
-        snmp_validation_list.append((11, "", SPEC_BASELINE_YES, [], [], False))
+        snmp_validation_list.append((11, "", SPEC_BASELINE_YES, [], [], True))
 
     if len(snmp.traps) <= 0:
         tmsh_trap_add = tmsh.get('tmsh', 'modify.sys.snmp.trap.add').replace("${sys.snmp.trap.name}", "XX").replace("${sys.snmp.trap.community}", "XX").replace("${sys.snmp.trap.host}", "XX").replace("${sys.snmp.trap.port}", "XX")       
@@ -192,7 +203,7 @@ def spec_syslog_settings_validation(data_all):
         tmsh_syslog_del = tmsh.get('tmsh', 'modify.sys.syslog.del').replace("${sys.syslog.name}", "XX")
         syslog_validation_list.append((13, "", SPEC_BASELINE_NO, [tmsh_syslog_add], [tmsh_syslog_del], True))
 
-    syslog_validation_list.append((14, SPEC_SYSLOG_REMOTE_SERVER_NONE, SPEC_BASELINE_YES, [tmsh.get('tmsh', 'modify.sys.syslog.log.level')], [], False))
+    syslog_validation_list.append((14, SPEC_SYSLOG_REMOTE_SERVER_NONE, SPEC_BASELINE_YES, [tmsh.get('tmsh', 'modify.sys.syslog.log.level')], [], True))
 
     return syslog_validation_list
 
@@ -345,26 +356,26 @@ def spec_ha_configuration_validation(data_all):
     if len(vlan_failsafe_list) > 0:
         for i in vlan_failsafe_list:
             if i.failsafe_action == "failover": 
-                ha_validation_list.append((22, "", SPEC_BASELINE_YES, [], [], False))
+                ha_validation_list.append((22, "", SPEC_BASELINE_YES, [], [], True))
             else:
-               ha_validation_list.append((22, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
+               ha_validation_list.append((22, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], True))
     else:
-        ha_validation_list.append((22, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], False))
+        ha_validation_list.append((22, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], True))
 
     ha_devices_list = configParse.cm_device(data_all)
 
     if len(ha_devices_list) < 2:
-        ha_validation_list.append((23, SPEC_HA_NO_HA_CONF, SPEC_BASELINE_NO, [], [], False))
+        ha_validation_list.append((23, SPEC_HA_NO_HA_CONF, SPEC_BASELINE_NO, [], [], True))
     elif incorrect_ha_configuration(ha_devices_list):
-        ha_validation_list.append((23, SPEC_HA_HA_CONF_NOT_CORRECT, SPEC_BASELINE_NO, [], [], False))
+        ha_validation_list.append((23, SPEC_HA_HA_CONF_NOT_CORRECT, SPEC_BASELINE_NO, [], [], True))
     elif incorrect_time_zone(ha_devices_list):
-        ha_validation_list.append((23, SPEC_HA_HA_CONF_NOT_CORRECT_TIMEZONE, SPEC_BASELINE_NO, [], [], False))
+        ha_validation_list.append((23, SPEC_HA_HA_CONF_NOT_CORRECT_TIMEZONE, SPEC_BASELINE_NO, [], [], True))
     elif incorrect_version(ha_devices_list):
-        ha_validation_list.append((23, SPEC_HA_HA_CONF_NOT_CORRECT_VERSION, SPEC_BASELINE_NO, [], [], False))
+        ha_validation_list.append((23, SPEC_HA_HA_CONF_NOT_CORRECT_VERSION, SPEC_BASELINE_NO, [], [], True))
     elif len(ha_devices_list[0].unicast_address) <= 1:
-        ha_validation_list.append((23, SPEC_HA_HA_CONF_NO_MULTI_VLAN, SPEC_BASELINE_NO, [], [], False))
+        ha_validation_list.append((23, SPEC_HA_HA_CONF_NO_MULTI_VLAN, SPEC_BASELINE_NO, [], [], True))
     else:
-        ha_validation_list.append((23, "", SPEC_BASELINE_YES, [], [], False))
+        ha_validation_list.append((23, "", SPEC_BASELINE_YES, [], [], True))
 
     ha_device_group_sync_list = []
     cm_device_greoup_list = configParse.cm_device_group(data_all)
@@ -514,9 +525,9 @@ def spec_snat_configuration_validation(data_all, vs_list):
             tmsh_rollback_list.append(tmsh_delete)
 
     if len(tmsh_list) > 0:
-        snat_validation_list.append((27, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
+        snat_validation_list.append((27, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, True))
     else:
-        snat_validation_list.append((27, "", SPEC_BASELINE_YES, [], [], False))
+        snat_validation_list.append((27, "", SPEC_BASELINE_YES, [], [], True))
                 
     return snat_validation_list
 
@@ -556,9 +567,9 @@ def sepc_http_rst_action_validation(data_all, vs_list):
             tmsh_rollback_list.append(tmsh_none)  
 
     if len(tmsh_list) > 0:
-        http_rst_validation_list.append((28, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, False))
+        http_rst_validation_list.append((28, notes_list, SPEC_BASELINE_NO, tmsh_list, tmsh_rollback_list, True))
     else:
-        http_rst_validation_list.append((28, notes_list, SPEC_BASELINE_YES, [], [], False))
+        http_rst_validation_list.append((28, notes_list, SPEC_BASELINE_YES, [], [], True))
 
     return http_rst_validation_list    
 
@@ -592,7 +603,7 @@ def sepc_monitor_configuration_validation(data_all, vs_list):
         tcp_monitors_tmsh.append(tmsh_monitor_create)
         tcp_monitors_tmsh_rollback.append(tmsh_monitor_delete)
 
-    monitor_validation_list.append((29, tcp_monitors_notes, tcp_monitors_spec, tcp_monitors_tmsh, tcp_monitors_tmsh_rollback, False))
+    monitor_validation_list.append((29, tcp_monitors_notes, tcp_monitors_spec, tcp_monitors_tmsh, tcp_monitors_tmsh_rollback, True))
 
 
     udp_monitors_list = configParse.ltm_monitor_udp(data_all)
@@ -616,7 +627,7 @@ def sepc_monitor_configuration_validation(data_all, vs_list):
         udp_monitors_tmsh.append(tmsh_monitor_create)
         udp_monitors_tmsh_rollback.append(tmsh_monitor_delete)
             
-    monitor_validation_list.append((30, udp_monitors_notes, udp_monitors_spec, udp_monitors_tmsh, udp_monitors_tmsh_rollback, False))
+    monitor_validation_list.append((30, udp_monitors_notes, udp_monitors_spec, udp_monitors_tmsh, udp_monitors_tmsh_rollback, True))
 
     return monitor_validation_list
 
@@ -648,7 +659,7 @@ def sepc_persist_configuration_validation(data_all, vs_list):
         persist_tmsh.append(tmsh_persist_create)
         persist_tmsh_rollback.append(tmsh_persist_delete)
 
-    persist_validation_list.append((31, persist_notes, persist_spec, persist_tmsh, persist_tmsh_rollback, False))
+    persist_validation_list.append((31, persist_notes, persist_spec, persist_tmsh, persist_tmsh_rollback, True))
 
     return persist_validation_list
 
