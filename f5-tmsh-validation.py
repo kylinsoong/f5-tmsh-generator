@@ -634,10 +634,11 @@ def sepc_persist_configuration_validation(data_all, vs_list):
         if i.timeout != "300":
             persist_spec = SPEC_BASELINE_NO
             persist_notes = SPEC_APP_PERSIST_SOURCE_ADDR
-            tmsh_modify = tmsh.get('tmsh', 'modify.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", i.name).replace("${replace.persist.timeout}", "300")
-            tmsh_rollback = tmsh.get('tmsh', 'modify.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", i.name).replace("${replace.persist.timeout}", i.timeout)
-            persist_tmsh.append(tmsh_modify)
-            persist_tmsh_rollback.append(tmsh_rollback)
+            if i.timeout is not None:
+                tmsh_modify = tmsh.get('tmsh', 'modify.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", i.name).replace("${replace.persist.timeout}", "300")
+                tmsh_rollback = tmsh.get('tmsh', 'modify.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", i.name).replace("${replace.persist.timeout}", i.timeout)
+                persist_tmsh.append(tmsh_modify)
+                persist_tmsh_rollback.append(tmsh_rollback)
 
     if len(persist_list) <= 0:
         persist_spec = SPEC_BASELINE_NO
