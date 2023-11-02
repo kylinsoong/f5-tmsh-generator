@@ -354,11 +354,15 @@ def spec_ha_configuration_validation(data_all):
             vlan_failsafe_list.append(i)
     
     if len(vlan_failsafe_list) > 0:
+        IS_VLAN_FAILSAFE = False
         for i in vlan_failsafe_list:
             if i.failsafe_action == "failover": 
-                ha_validation_list.append((22, "", SPEC_BASELINE_YES, [], [], True))
-            else:
-               ha_validation_list.append((22, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], True))
+                IS_VLAN_FAILSAFE = True
+
+        if IS_VLAN_FAILSAFE:
+            ha_validation_list.append((22, "", SPEC_BASELINE_YES, [], [], True))
+        else:
+           ha_validation_list.append((22, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], True))
     else:
         ha_validation_list.append((22, SPEC_HA_FAILSAFE_ERROR, SPEC_BASELINE_NO, [], [], True))
 
