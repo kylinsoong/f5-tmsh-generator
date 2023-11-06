@@ -318,6 +318,12 @@ def cm_device(data_all):
                     unicast_port = convert_servicename_to_port(trip_prefix(address, "effective-port"))
                 elif address.startswith("ip"):
                     unicast_address.append(trip_prefix(address, "ip"))
+            if management_ip is None:
+                management_ip = cm_device_management_ip(data_all)
+            if hostname is None:
+                 hostname = cm_device_hostname_global_setting(data_all)
+            if version is None:
+                 version = cm_device_version(data_all)
             cm_device_list.append(BIGIPDevice(configsync_ip, failover_state, hostname, management_ip, self_device, time_zone, unicast_address, unicast_port, version))
 
     if len(cm_device_list) <= 0:
@@ -325,16 +331,49 @@ def cm_device(data_all):
 
     return cm_device_list
 
+def cm_device_hostname_global_setting(data_all):
+    end_str = find_end_str(data_all, "sys global-settings", f5_config_dict['tail'])
+    global_setting_str = find_content_from_start_end(data_all, "sys global-settings", end_str)
+    hostname = cm_device_hostname(global_setting_str) 
+    return hostname
+ 
+def cm_device_version(data_all):
+    start_str = "sys software volume"
+    end_str = find_end_str(data_all, start_str, f5_config_dict['tail'])
+    software_list = split_content_to_list_split(data_all, start_str, end_str)
+    version = None
+    for i in software_list:
+        if "active" in i and "active-requested" in i:
+            version = find_line_content_from_start_str(i, "version") 
+            if version is None:
+                version = cm_device_version_raw(i)
+            break
+    return version
+
+def cm_device_version_raw(data_all):
+    data_all_version = find_content_from_end(data_all, "version")
+    version = find_line_content_from_start_str(data_all_version, "version")
+    return version
+
+
+def cm_device_management_ip(data_all):
+    data_all_start_from_mgmt = find_content_from_end(data_all, "management-ip")
+    management_ip_data_all = find_line_content_from_start_str(data_all_start_from_mgmt, "management-ip")
+    management_ip = replace_with_patterns(management_ip_data_all, ["{", "}"])
+    return management_ip
+
+def cm_device_hostname(data_all):
+    hostname_data_all = find_content_from_end(data_all, "hostname")
+    hostname = find_line_content_from_start_str(hostname_data_all, "hostname")
+    return hostname
 
 def cm_device_v10(data_all):
 
     device_list = []
-  
-    hostname = find_line_content_from_start_str(data_all, "hostname")
-    management_ip_data_all = find_line_content_from_start_str(data_all, "sys management-ip")
-    management_ip = replace_with_patterns(management_ip_data_all, ["{", "}"])
-
-    device_list.append(BIGIPDevice(None, None, hostname, management_ip, None, None, None, None, None))
+    hostname = cm_device_hostname(data_all)
+    management_ip = cm_device_management_ip(data_all)
+    version = cm_device_version(data_all)
+    device_list.append(BIGIPDevice(None, None, hostname, management_ip, None, None, None, None, version))
     return device_list
 
 
@@ -1140,6 +1179,11 @@ def find_content_from_start(data, start_str):
     line = data[:data_start]
     return trip_prefix(line, None)
 
+def find_content_from_end(data, start_str): 
+    data_start = re.search(start_str, data, re.I).start()
+    line = data[data_start:]
+    return trip_prefix(line, None)
+
 
 def find_line_content_from_start_str(data, prefix):
     lines = data.splitlines()
@@ -1798,7 +1842,7 @@ f5_config_dict = {
     "header": ["auth password-policy", "auth remote-role", "auth remote-user", "auth source", "auth user", "cli admin-partitions", "cli global-settings", "cli preference", "cm cert", "cm device", "cm device-group", "cm key", "cm traffic-group", "cm trust-domain"],
     "ltm": ["ltm data-group", "ltm default-node-monitor", "ltm dns", "ltm global-settings", "ltm monitor", "ltm monitor http", "ltm monitor tcp", "ltm monitor udp", "ltm node", "ltm persistence", "ltm persistence cookie", "ltm persistence global-settings", "ltm persistence source-addr", "ltm policy", "ltm pool", "ltm profile", "ltm profile client-ssl", "ltm profile dns", "ltm profile fastl4", "ltm profile http", "ltm profile http-compression", "ltm profile one-connect", "ltm profile server-ssl", "ltm profile tcp", "ltm profile udp", "ltm profile web-acceleration", "ltm rule", "ltm snat-translation", "ltm snatpool", "ltm tacdb", "ltm virtual"],
     "net": ["net address-list", "net cos", "net dag-globals", "net dns-resolver", "net fdb", "net interface", "net ipsec ike-daemon", "net lldp-globals", "net multicast-globals", "net packet-filter-trusted", "net route", "net route-domain", "net self", "net self-allow", "net stp-globals", "net trunk", "net tunnels", "net vlan"],
-    "tail": ["sys config-sync", "sys aom", "sys autoscale-group", "sys daemon-log-settings", "sys datastor", "sys diags", "sys disk", "sys dns", "sys failover", "sys dynad key", "sys dynad", "sys feature-module", "sys file", "sys folder", "sys fpga", "sys global-settings", "sys httpd", "sys icontrol-soap", "sys log-rotate", "sys management-dhcp", "sys management-ip", "sys management-ovsdb", "sys management-route", "sys ntp", "sys outbound-smtp", "sys provision", "sys scriptd", "sys sflow", "sys snmp", "sys software", "sys sshd", "sys state-mirroring", "sys syslog", "sys turboflex", "sys url-db"]
+    "tail": ["sys config-sync", "sys aom", "sys autoscale-group", "sys daemon-log-settings", "sys datastor", "sys diags", "sys disk", "sys dns", "sys failover", "sys dynad key", "sys dynad", "sys feature-module", "sys file", "sys folder", "sys fpga", "sys global-settings", "sys httpd", "sys icontrol-soap", "sys log-rotate", "sys management-dhcp", "sys management-ip", "sys management-ovsdb", "sys management-route", "sys ntp", "sys outbound-smtp", "sys provision", "sys scriptd", "sys sflow", "sys snmp", "sys software image", "sys software volume", "sys sshd", "sys state-mirroring", "sys syslog", "sys turboflex", "sys url-db"]
 }
 
 def split_data_all(data_all):
