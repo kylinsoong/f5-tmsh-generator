@@ -33,7 +33,7 @@ class TestConfigParse(unittest.TestCase):
         self.assertEqual(len(f5_config_dict['header']), 14)
         self.assertEqual(len(f5_config_dict['ltm']), 31)
         self.assertEqual(len(f5_config_dict['net']), 18)
-        self.assertEqual(len(f5_config_dict['tail']), 35)
+        self.assertEqual(len(f5_config_dict['tail']), 36)
 
     def test_f5_services_dict(self):
         services = f5_services_dict.keys()

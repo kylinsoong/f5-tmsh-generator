@@ -1221,7 +1221,6 @@ def split_to_list(content, splits):
 
 
 def split_destination(destination):
-    print("->", destination)
     if "any:any" == destination:
         return ("0.0.0.0", "0")
     destination_array = destination.split(":")
@@ -1232,6 +1231,9 @@ def split_destination(destination):
         if ip is None:
             destination_array = destination.split(".")
             ip = destination_array[0]
+            # address #25, #24 temporarily
+            if is_valid_ip_network(ip) == False or len(destination_array) != 2:
+                return ("0.0.0.0", "0")
             port = convert_servicename_to_port(destination_array[1])
     return (ip, port)
 
