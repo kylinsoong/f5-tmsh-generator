@@ -727,7 +727,11 @@ def ltm_virtual(data_all):
                 vs_port = array[1]
             elif ~line.startswith("destination") and "destination" in line:
                 vs_ip = find_ip_from_line(line)
-                vs_port = convert_servicename_to_port(trip_prefix(find_content_from_start_end(line, vs_ip, None)[len(vs_ip) + 1:], None))
+                start_str = vs_ip
+                if vs_ip == "0.0.0.0" or "any:" in line:
+                    start_str = "any" 
+                start_cur = len(start_str) + 1
+                vs_port = convert_servicename_to_port(trip_prefix(find_content_from_start_end(line, start_str, None)[start_cur:], None))
             elif line.startswith("ip-protocol"):
                 ip_protocol = trip_prefix(line, "ip-protocol")
             elif line.startswith("mask"):
@@ -1174,7 +1178,7 @@ def find_first_line(data_all):
 
 def find_content_from_start_end(data, start_str, end_str):
 
-    if start_str not in data:
+    if start_str is None or start_str not in data:
         return ""
 
     data_start = re.search(start_str, data, re.I).start()
@@ -1221,6 +1225,8 @@ def find_ip_from_line(line):
     ipv6_addresses = re.findall(ipv6_pattern, line)
     if len(ipv6_addresses) > 0 :
         return ipv6_addresses[0]
+    if "any:any" in line:
+        return "0.0.0.0"
     return None
 
 def find_port_from_line(line):
