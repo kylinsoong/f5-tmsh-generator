@@ -1,0 +1,5 @@
+ltm pool dianziyoujian_25_pool {
+    monitor tcp
+    service-down-action reselect
+}
+

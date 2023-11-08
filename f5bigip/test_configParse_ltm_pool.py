@@ -27,12 +27,17 @@ def load_config_data(filename):
 
 class TestConfigParseValidation(unittest.TestCase):
 
-    def test_data_search(self):
+    def test_pool_name_is_not_ip(self):
         data = load_config_data("issue-25.txt")
         if data is not None: 
             pool_list = ltm_pool(data)
             self.assertEqual(len(net_route_list), 2)
 
+    def test_pool_no_member(self):
+        data = load_config_data("issue-25-pool-no-member.txt")
+        if data is not None:
+            pool_list = ltm_pool(data)
+            self.assertEqual(len(net_route_list), 2)
 
 
 

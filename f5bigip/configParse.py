@@ -1225,7 +1225,7 @@ def split_destination(destination):
         return ("0.0.0.0", "0")
     destination_array = destination.split(":")
     ip = destination_array[0]
-    port = convert_servicename_to_port(destination_array[1])
+    #print("->", destination, destination_array)
     if is_valid_ip_network(ip) == False:
         ip = find_ip_from_line(destination)
         if ip is None:
@@ -1235,6 +1235,7 @@ def split_destination(destination):
             if is_valid_ip_network(ip) == False or len(destination_array) != 2:
                 return ("0.0.0.0", "0")
             port = convert_servicename_to_port(destination_array[1])
+    port = convert_servicename_to_port(destination_array[1])
     return (ip, port)
 
 
