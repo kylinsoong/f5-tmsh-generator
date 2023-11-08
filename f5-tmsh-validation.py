@@ -473,7 +473,7 @@ def spec_tcp_connection_configuration_validation(data_all, vs_list):
     tmsh_rollback_list = []
     for vs in l4_vs_list:
         timeout = extract_timeout(vs.profiles, fastl4_list) 
-        if timeout == "indefinite" or int(timeout) > 300:
+        if timeout is not None and (timeout == "indefinite" or int(timeout) > 300):
             notes = SPEC_APP_TCP_TIEMOUT_LARGER
             tmsh_modify = tmsh.get('tmsh', 'modify.ltm.profile.fastl4').replace("${ltm.profile.name}", vs.profiles[0]).replace("${ltm.profile.timeout}", "300")
             tmsh_rollback = tmsh.get('tmsh', 'modify.ltm.profile.fastl4').replace("${ltm.profile.name}", vs.profiles[0]).replace("${ltm.profile.timeout}", timeout)
