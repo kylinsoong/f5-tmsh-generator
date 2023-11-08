@@ -908,6 +908,7 @@ def load_bigip_running_config(fileconfig):
     data_all = data_all.replace('[24;1H', '')
     data_all = data_all.replace('[m','')
     data_all = data_all.replace('[K', '')
+    data_all = data_all.replace('[7m---(less 94', '')
     error = re.findall(r'\[7m---\(less (\d+)',data_all)
     for i in error:
         error1 = '[7m---(less '+i

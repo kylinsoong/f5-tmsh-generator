@@ -10,12 +10,7 @@ output = '/Users/k.song/Downloads/output'
 directory = '/Users/k.song/Downloads/psbc_running_config'
 files = os.listdir(directory)
 cusor = 1
-RED = '\033[91m'
-GREEN = '\033[92m'
-YELLOW = '\033[93m'
-BLUE = '\033[94m'
-RESET = '\033[0m'
-note = "{RED}失败{RESET}"
+note = "\033[91m失败\033[0m"
 for file in files:
     file_path = os.path.join(directory, file)
     excel_name = file.replace("cfg.txt", "xlsx")
@@ -23,7 +18,7 @@ for file in files:
     shutil.copy(source_file, excel_path)
     result = subprocess.run(['/Users/k.song/src/f5-tmsh-generator/f5-tmsh-validation.py', file_path, excel_path])
     if result.returncode == 0:
-        note = "{GREEN}成功{RESET}"
-    print("{BLUE}" + str(cusor) + "{RESET}", "{BLUE}基线检测{RESET}", file, note)
+        note = "\033[92m成功\033[0m"
+    print("\033[94m" + str(cusor) + "\033[0m", "\033[93m基线检测\033[0m", "\033[90m" + file + "\033[0m", note)
     cusor += 1
-    note = "失败"
+    note = "\033[91m失败\033[0m"
