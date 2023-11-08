@@ -1,0 +1,15 @@
+ltm node pool_gw_pool {
+    address 22.230.31.30
+}
+ltm pool gw_pool {
+    load-balancing-mode least-connections-member
+    members {
+        pool_gw_pool:any {
+            address 22.230.31.30
+            monitor gateway_icmp 
+            session monitor-enabled
+            state up
+        }
+    }
+    monitor gateway_icmp 
+}
