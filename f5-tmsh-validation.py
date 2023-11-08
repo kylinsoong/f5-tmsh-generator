@@ -720,8 +720,8 @@ def sepc_virtual_configuration_validation(data_all, vs_list):
             fastl4_spec = SPEC_BASELINE_NO
             tmsh_pva_none = tmsh.get('tmsh', 'modify.ltm.profile.fastl4.pva').replace("${replace.profile.name}", i.name).replace("${replace.profile.pva}", "none")
             tmsh_pva_rollback = tmsh.get('tmsh', 'modify.ltm.profile.fastl4.pva').replace("${replace.profile.name}", i.name).replace("${replace.profile.pva}", i.pva_acceleration)
-            tmsh_pva_none.append(tmsh_pva_none)
-            tmsh_pva_rollback.append(tmsh_pva_rollback)
+            fastl4_tmsh.append(tmsh_pva_none)
+            fastl4_tmsh_rollback.append(tmsh_pva_rollback)
 
     virtual_validation_list.append((34, fastl4_notes, fastl4_spec, fastl4_tmsh, fastl4_tmsh_rollback, True))
 

@@ -431,6 +431,8 @@ def ltm_monitor_tcp(data_all):
     monitor_tcp_list = []
     results = split_content_to_list_pattern(data_all, r'ltm monitor tcp\s+\S+', "}")
     for i in results:
+        if len(i) == 0:
+            continue
         monitor = i[len("ltm monitor tcp"):].replace("{", "").replace("}", "")
         lines = monitor.splitlines()
         monitor_name = lines[0].strip()
@@ -450,6 +452,8 @@ def ltm_monitor_udp(data_all):
     monitor_udp_list = []
     results = split_content_to_list_pattern(data_all, r'ltm monitor udp\s+\S+', "}")
     for i in results:
+        if len(i) == 0:
+            continue
         monitor = i[len("ltm monitor udp"):].replace("{", "").replace("}", "")
         lines = monitor.splitlines()
         monitor_name = lines[0].strip()
@@ -616,6 +620,8 @@ def ltm_profile_http(data_all):
     http_profile_results = []
     results = split_content_to_list_pattern(data_all, r'ltm profile http\s+\S+', "}")
     for i in results:
+        if len(i) == 0:
+            continue
         profile = i.lstrip("ltm profile http").replace("{", "").replace("}", "")
         lines = profile.splitlines()
         profile_name = lines[0].strip()
@@ -635,6 +641,8 @@ def ltm_profile_fastl4(data_all):
     fastl4_profile_results = []
     results = split_content_to_list_pattern(data_all, r'ltm profile fastl4\s+\S+', "}")
     for i in results:
+        if len(i) == 0:
+            continue
         profile = i[len("ltm profile fastl4"):].replace("{", "").replace("}", "")
         lines = profile.splitlines()
         profile_name = lines[0].strip()
@@ -657,6 +665,8 @@ def ltm_profile_web_acceleration(data_all):
     web_acceleration_results = []
     results = split_content_to_list_pattern(data_all, r'ltm profile web-acceleration\s+\S+', "}")
     for i in results:
+        if len(i) == 0:
+            continue
         profile = i[len("ltm profile web-acceleration"):].replace("{", "").replace("}", "")
         lines = profile.splitlines()
         profile_name = lines[0].strip()
@@ -1170,8 +1180,14 @@ def find_content_from_start_end(data, start_str, end_str):
     data_start = re.search(start_str, data, re.I).start()
     if end_str is None:
         return data[data_start:]
-    data_end = re.search(end_str, data, re.I).start()
-    return data[data_start:data_end]
+    if end_str.endswith(" \\"):
+        return "" #24 temporarily handle iapp
+    data_end_result = re.search(end_str, data, re.I)
+    if data_end_result:
+        data_end = data_end_result.start()
+        return data[data_start:data_end]
+    else:
+        return "" #24 temporarily handle iapp
 
 
 def find_content_from_start(data, start_str):
@@ -1225,7 +1241,6 @@ def split_destination(destination):
         return ("0.0.0.0", "0")
     destination_array = destination.split(":")
     ip = destination_array[0]
-    #print("->", destination, destination_array)
     if is_valid_ip_network(ip) == False:
         ip = find_ip_from_line(destination)
         if ip is None:
@@ -1306,13 +1321,17 @@ def split_content_to_list_pattern(data_all, pattern, end_str):
         content_list.append(i)
 
     for i, num in zip(content_data, range(len(content_data))):
-        data_start = re.search(i, data_all, re.I).start()
-        if num < len(content_list) - 1:
-            data_detail = find_content_from_start_end(data_all[data_start:], i, content_list[num+1])
-        else:
-            data_detail = find_content_from_start_end(data_all[data_start:], i, end_str)
+        if i.endswith(" \\"):
+            continue #24 temporarily handle iapp
+        data_start_result = re.search(i, data_all, re.I)
+        if data_start_result:
+            data_start = data_start_result.start()
+            if num < len(content_list) - 1:
+                data_detail = find_content_from_start_end(data_all[data_start:], i, content_list[num+1])
+            else:
+                data_detail = find_content_from_start_end(data_all[data_start:], i, end_str)
 
-        results.append(data_detail)
+            results.append(data_detail)
 
     return results
 
