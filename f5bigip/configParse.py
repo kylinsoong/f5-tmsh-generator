@@ -1221,6 +1221,7 @@ def split_to_list(content, splits):
 
 
 def split_destination(destination):
+    print("->", destination)
     if "any:any" == destination:
         return ("0.0.0.0", "0")
     destination_array = destination.split(":")

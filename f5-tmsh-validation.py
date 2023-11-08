@@ -589,6 +589,8 @@ def sepc_monitor_configuration_validation(data_all, vs_list):
     tcp_monitors_spec = SPEC_BASELINE_YES
     tcp_monitors_tmsh, tcp_monitors_tmsh_rollback = [], []
     for i in tcp_monitors_list:
+        if i.name is None or i.interval is None or i.timeout is None:
+            continue
         if i.name == "monitor_tcp_5s":
             isMonitorTCPTemplateExist = True
         if i.timeout != "16" or i.interval != "5":

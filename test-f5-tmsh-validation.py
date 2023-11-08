@@ -34,7 +34,7 @@ class TestF5TMSHValidation(unittest.TestCase):
         for file_path in file_paths:
             bigip_running_config = load_bigip_running_config(file_path)
             results = data_collect_system_extract_hostname(bigip_running_config)
-            if results[0] is None or results[1] is None or results[2] is None:
+            if results[2].startswith("13"):
                 print(cusor, os.path.basename(file_path), results)
                 cusor += 1
 
