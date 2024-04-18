@@ -474,6 +474,26 @@ def listToString(s):
         result += item
     return result
 
+def internaltrunk_extract(trunk_list):
+    if len(trunk_list) == 1:
+        return trunk_list[0]
+
+    for name in trunk_list:
+        if 'internal' in name.lower():
+            return name
+            
+    return "Link_trunk"
+
+def externaltrunk_extract(trunk_list):
+    if len(trunk_list) == 1:
+        return trunk_list[0]
+
+    for name in trunk_list:
+        if 'external' in name.lower():
+            return name
+            
+    return "Link_trunk"
+
 def load_bigip_running_config(fileconfig):
     with open(fileconfig, 'r') as fo:
         data_all = fo.read()
@@ -542,10 +562,12 @@ def load_app_request_form(fileadd):
             config['snatpoollist'] = format_app_table_ip_addr_to_list(dict[k_snataddr])
             config['internal'] = dict[k_internal]
             config['internalvlan'] = dict[k_internalvlan]
-            config['internaltrunk'] = dict[k_internaltrunk]
+            #config['internaltrunk'] = dict[k_internaltrunk]
+            config['internaltrunk'] = dict.get(k_internaltrunk, None)
             config['external'] = dict[k_external]
             config['externalvlan'] = dict[k_externalvlan]
-            config['externaltrunk'] = dict[k_externaltrunk]
+            #config['externaltrunk'] = dict[k_externaltrunk]
+            config['externaltrunk'] = dict.get(k_externaltrunk, None)
             config['persistname'] = dict[k_persist]
             config_list.append(config)
     file.close
@@ -589,6 +611,10 @@ for config in config_list:
     config['netset'] = infolists[1]
     config['syslist'] = infolists[2]
     config['persistlist'] = infolists[3]
+    if config['internaltrunk'] is None:
+        config['internaltrunk'] = internaltrunk_extract(infolists[4])
+    if config['externaltrunk'] is None:
+        config['externaltrunk'] = externaltrunk_extract(infolists[4])
     generate(config)
     rollback_list.append(config['rollback_tmsh_list'])
     is_second_request_config = True
