@@ -12,16 +12,20 @@ from pypinyin import pinyin, Style
 
 
 def generator_tmsh_create_ltm_pool(name, dict, rollback_tmsh_list):
-    if("serverlist" in dict and "serverport" in dict):
+    if("serverlist" in dict and "serverport" in dict and len(config['serverlist']) > 0):
         serlist = dict['serverlist']
         serport = dict['serverport']
         members = ""
         for ip in serlist:
             member = " " + ip + ":" + str(serport)
             members += member
-        pool_create = tmsh.get('tmsh', 'create.ltm.pool').replace("${replace.pool.name}", name).replace("${replace.pool.members}", members)
+        if dict['protocol'] == "udp":
+            pool_create = tmsh.get('tmsh', 'create.ltm.pool.udp').replace("${replace.pool.name}", name).replace("${replace.pool.members}", members)
+            print(pool_create)
+        else:
+            pool_create = tmsh.get('tmsh', 'create.ltm.pool').replace("${replace.pool.name}", name).replace("${replace.pool.members}", members)
+            print(pool_create)
         pool_delete = tmsh.get('tmsh', 'delete.ltm.pool').replace("${replace.pool.name}", name)
-        print(pool_create)
         rollback_tmsh_list.append(pool_delete)
         dict['create_ltm_pool'] = True
         return True
@@ -54,9 +58,25 @@ def generator_tmsh_modify_ltm_pool(name, dict, rollback_tmsh_list):
             print(pool_members_add)
             rollback_tmsh_list.append(pool_members_del)
 
+        if len(members) > len(serlist):
+            pool_members_del = ""
+            exist_members =[]
+            for ip in serlist:
+                member = ip + ":" + str(serport)
+                exist_members.append(member)
+
+            for m in members:
+                if m not in exist_members:
+                    pool_members_del += m
+                    pool_members += " "
+            pool_members_del_add = tmsh.get('tmsh', 'modify.ltm.pool.rollback').replace("${replace.pool.name}", name).replace("${replace.pool.members}", pool_members_del)
+            pool_members_del_del = tmsh.get('tmsh', 'modify.ltm.pool').replace("${replace.pool.name}", name).replace("${replace.pool.members}", pool_members_del)
+            print(pool_members_del_add)
+            rollback_tmsh_list.append(pool_members_del_del)
+
 
 def generator_tmsh_create_ltm_snatpool(name, dict, rollback_tmsh_list):
-    if("snatpoollist" in dict):
+    if("snatpoollist" in dict and len(dict['snatpoollist']) > 0):
         snatlist = dict['snatpoollist']
         snat = "tmsh create ltm snatpool " + name + " members add {"
         members = ""
@@ -100,6 +120,16 @@ def generator_tmsh_modify_ltm_snatpool(snat_name, dict, rollback_tmsh_list):
             print(snat_members_add)
             rollback_tmsh_list.append(snat_members_del)
 
+        if len(members) > len(snatlist):
+            snat_del = ""
+            for m in members:
+                if m not in snatlist:
+                    member = " " + m
+                    snat_del += member
+            snat_members_del_add = tmsh.get('tmsh', 'modify.ltm.snatpool.rollback').replace("${replace.snatpool.name}", snat_name).replace("${replace.snatpool.members}", snat_del)
+            snat_members_del_del = tmsh.get('tmsh', 'modify.ltm.snatpool').replace("${replace.snatpool.name}", snat_name).replace("${replace.snatpool.members}", snat_del)
+            print(snat_members_del_add)
+            rollback_tmsh_list.append(snat_members_del_del)
 
 def generator_tmsh_persist(persistname, protocol, dict, rollback_tmsh_list):
     results = is_persist_exist(persistname, dict)
@@ -174,6 +204,14 @@ def generator_tmsh_create_ltm_virtual(vs_name, pool_name, snat_name, addr, port,
         vs_create =  form_create_ltm_tmsh_nopool_nosnat('create.ltm.virtual.http.nopool.nosnat', vs_name, destination, persist_name)
     elif key_pool not in dict and key_snat not in dict and protocol == "http" and dict['syslist'][0] < 12:
         vs_create =  form_create_ltm_tmsh_nopool_nosnat('create.ltm.virtual.http.legacy.nopool.nosnat', vs_name, destination, persist_name)
+    elif key_pool in dict and key_snat in dict and dict[key_pool] and dict[key_snat] and protocol == "udp":
+        vs_create = form_create_ltm_tmsh('create.ltm.virtual.udp', vs_name, pool_name, snat_name, destination, persist_name)
+    elif key_pool in dict and key_snat not in dict and dict[key_pool] and protocol == "udp":
+        vs_create = form_create_ltm_tmsh_nosnat('create.ltm.virtual.udp.nosnat', vs_name, pool_name, destination, persist_name)
+    elif key_pool not in dict and key_snat in dict and dict[key_snat] and protocol == "udp":
+        vs_create = form_create_ltm_tmsh_nopool('create.ltm.virtual.udp.nopool', vs_name, snat_name, destination, persist_name)
+    elif key_pool not in dict and key_snat not in dict and protocol == "udp":
+        vs_create =  form_create_ltm_tmsh_nopool_nosnat('create.ltm.virtual.udp.nopool.nosnat', vs_name, destination, persist_name)
 
     vs_delete = tmsh.get('tmsh', 'delete.ltm.virtual').replace("${replace.virtual.name}", vs_name)
  
@@ -260,7 +298,7 @@ def is_vs_exist(vs_name, dict):
             dict['existed_pool_name'] = info[3]
             dict['existed_pool_members'] = info[4]
             dict['existed_snatpool_name'] = info[5]
-            dict['existed_snatpool_members'] = info[5]
+            dict['existed_snatpool_members'] = info[6]
             return True
     return False
 
@@ -573,6 +611,8 @@ def find_last_index(str, substr):
 
 def format_app_table_ip_addr(ip):
     list = []
+    if len(ip) == 0:
+        return list
     if("-" in ip) :
         ips = ip.split("-")
         list.insert(0, ips[0])
