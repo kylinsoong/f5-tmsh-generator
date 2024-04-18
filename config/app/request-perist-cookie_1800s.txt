@@ -1,0 +1,1 @@
+['系统名称': '测试应用', 'VS地址': '192.168.20.100', 'VS端口': '80', '真实服务器地址': '192.168.10.21-24', '服务器端口': '8080', '协议类型': 'http', 'SNAT地址': '192.168.20.101-102', '会话保持': 'cookie_1800s', 'internal地址': '', 'internalvlan': '', 'internaltrunk': '', 'external地址': '', 'externalvlan': '', 'externaltrunk': '']

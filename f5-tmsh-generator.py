@@ -104,7 +104,10 @@ def generator_tmsh_modify_ltm_snatpool(snat_name, dict, rollback_tmsh_list):
 def generator_tmsh_persist(persistname, protocol, dict, rollback_tmsh_list):
     results = is_persist_exist(persistname, dict)
     if results == False and protocol == "tcp":
-        tmsh_persist_create = tmsh.get('tmsh', 'create.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", persistname).replace("${replace.persist.timeout}", "300")
+        persist_timeout = "300"
+        if "1800" in persistname:
+            persist_timeout = "1800"
+        tmsh_persist_create = tmsh.get('tmsh', 'create.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", persistname).replace("${replace.persist.timeout}", persist_timeout)
         tmsh_persist_delete = tmsh.get('tmsh', 'delete.ltm.persist').replace("${replace.persist.type}", "source-addr").replace("${replace.persist.name}", persistname)
         print(tmsh_persist_create)
         rollback_tmsh_list.append(tmsh_persist_delete)        
