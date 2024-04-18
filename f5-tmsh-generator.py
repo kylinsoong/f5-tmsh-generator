@@ -293,6 +293,9 @@ Generate Network Script Start, related fucntion:
     extract_floating_address()
     extract_standby_address()
     generate_net_gateway()
+    is_automation_customized_addr()
+    separate_cidr()
+    separate_automation_customized_addr()
 '''
 def is_net_exists(ip, netlist):
     for n in netlist:
@@ -300,12 +303,19 @@ def is_net_exists(ip, netlist):
             return True
     return False
 
+def is_automation_customized_addr(address):
+    if re.search(r"/\d+$", address) and "-" in address:
+        return True
+    else:
+        return False
 
 def is_valid_ip_network(address):
     try:
         ipaddress.ip_network(address, False)
         return True
     except ValueError:
+        if is_automation_customized_addr(address):
+            return True
         return False
 
 
@@ -316,17 +326,49 @@ def generate_net_vlan(vlan_name, trunk, tag, rollback_tmsh_list, isActive):
     if isActive:
         rollback_tmsh_list.append(vlan_delete)
 
+def separate_cidr(address):
+    parts = address.split("/")
+    ip_range = parts[0]
+    cidr = "/" + parts[1]
+    return ip_range, cidr
+
+def separate_automation_customized_addr(address):
+    parts = address.split("-")
+    return parts[0], parts[1]
+
 def extract_floating_address(network):
-    ip_address_str = network[0:len(network) - 3]
-    ip_address = ipaddress.ip_address(ip_address_str) + 2
-    floatingip = str(ip_address) + network[len(network) - 3:]
-    return floatingip
+    if is_automation_customized_addr(network):
+        ip_range, cidr = separate_cidr(network)
+        prefix, ending = separate_automation_customized_addr(ip_range)
+        floatingip = prefix[:prefix.rfind('.') + 1] + ending + cidr
+        return floatingip
+    else:
+        ip_address_str = network[0:len(network) - 3]
+        ip_address = ipaddress.ip_address(ip_address_str) + 2
+        floatingip = str(ip_address) + network[len(network) - 3:]
+        return floatingip
 
 def extract_standby_address(network):
-    ip_address_str = network[0:len(network) - 3]
-    ip_address = ipaddress.ip_address(ip_address_str) + 1
-    standbyip = str(ip_address) + network[len(network) - 3:]
-    return standbyip
+    if is_automation_customized_addr(network):
+        ip_range, cidr = separate_cidr(network)
+        prefix, ending = separate_automation_customized_addr(ip_range)
+        standby_ending =  int(ending) - 1
+        floatingip = prefix[:prefix.rfind('.') + 1] + str(standby_ending) + cidr
+        return floatingip
+    else:
+        ip_address_str = network[0:len(network) - 3]
+        ip_address = ipaddress.ip_address(ip_address_str) + 1
+        standbyip = str(ip_address) + network[len(network) - 3:]
+        return standbyip
+
+def extract_self_address(network):
+    if is_automation_customized_addr(network):
+        ip_range, cidr = separate_cidr(network)
+        prefix, ending = separate_automation_customized_addr(ip_range)
+        self = prefix + cidr
+        return self
+    else:
+        return network
 
 def generate_net_gateway(self, floating, vlan_name, self_name, floating_name, standby, isActive, rollback_tmsh_list):
     tmsh_self = tmsh.get('tmsh', 'create.net.self').replace("${replace.self.name}", self_name).replace("${replace.self.address}", self).replace("${replace.self.vlan}", vlan_name)
@@ -363,7 +405,8 @@ def generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_inter
         floating_name = "External_floatingip_vlan" + net_externaltag
         floatingip = extract_floating_address(net_external)
         standby = extract_standby_address(net_external)
-        generate_net_gateway(net_external, floatingip, vlan_name, self_name, floating_name, standby, isActive, rollback_tmsh_list)
+        self = extract_self_address(net_external)
+        generate_net_gateway(self, floatingip, vlan_name, self_name, floating_name, standby, isActive, rollback_tmsh_list)
 
     if isInternalVlanCreated and is_valid_ip_network(net_internal):
         vlan_name = "Internal_vlan" + net_internaltag
@@ -371,7 +414,8 @@ def generate_net_scripts_with_flag(net_externaltag, net_externaltrunk, net_inter
         floating_name = "Internal_floatingip_vlan" + net_internaltag
         floatingip = extract_floating_address(net_internal)
         standby = extract_standby_address(net_internal)
-        generate_net_gateway(net_internal, floatingip, vlan_name, self_name, floating_name, standby, isActive, rollback_tmsh_list)
+        self = extract_self_address(net_internal)
+        generate_net_gateway(self, floatingip, vlan_name, self_name, floating_name, standby, isActive, rollback_tmsh_list)
 
 def generate_net_scripts(config, rollback_tmsh_list):
 
